@@ -61,6 +61,14 @@ public class HelloWorldMod implements ModInitializer {
         String message = StringArgumentType.getString(context, "message");
         ServerCommandSource source = context.getSource();
 
+        // 通知客户端截图
+        ServerPlayerEntity player = source.getPlayer();
+        if (player != null) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeString(message);
+            ServerPlayNetworking.send(player, TAKE_SCREENSHOT_PACKET, buf);
+        }
+
         // 告诉玩家正在思考
         source.sendFeedback(() -> Text.literal("§7[AI] 正在思考..."), false);
 
