@@ -1,0 +1,11 @@
+pluginManagement {
+    repositories {
+        maven { url "https://maven.fabricmc.net/" }
+        maven { url "https://maven.aliyun.com/repository/central" }
+        maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = "hello-world-mod"

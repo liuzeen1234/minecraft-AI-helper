@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 1,
+    "id": "helloworld",
+    "version": "${version}",
+    "name": "Hello World Mod",
+    "description": "一个简单的模组，玩家加入时在聊天框输出 Hello World",
+    "authors": ["Developer"],
+    "contact": {},
+    "license": "MIT",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.example.helloworld.HelloWorldMod"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=0.15.0",
+        "minecraft": "~1.20.4",
+        "java": ">=17",
+        "fabric-api": "*"
+    }
+}

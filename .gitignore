@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+gradle-8.5-bin.zip
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Minecraft run directory
+run/
+
+# OS files
+.DS_Store
+Thumbs.db
