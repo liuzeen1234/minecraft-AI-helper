@@ -11,6 +11,9 @@
     "entrypoints": {
         "main": [
             "com.example.helloworld.HelloWorldMod"
+        ],
+        "client": [
+            "com.example.helloworld.HelloWorldClientMod"
         ]
     },
     "depends": {
