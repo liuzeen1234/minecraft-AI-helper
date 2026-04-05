@@ -28,7 +28,10 @@ public class HelloWorldMod implements ModInitializer {
     public static final String MOD_ID = "helloworld";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+    // 服务端 -> 客户端：通知截图
     public static final Identifier TAKE_SCREENSHOT_PACKET = new Identifier(MOD_ID, "take_screenshot");
+    // 客户端 -> 服务端：回传截图数据
+    public static final Identifier SCREENSHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "screenshot_response");
 
     private static final ModConfig CONFIG = new ModConfig();
 
@@ -39,13 +42,44 @@ public class HelloWorldMod implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("Hello World Mod 已加载!");
-
-        // 加载配置
         CONFIG.load();
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
             player.sendMessage(Text.literal("Hello World! 输入 /lze <问题> 来和 AI 对话"), false);
+        });
+
+        // 注册接收客户端截图完成通知的处理器
+        ServerPlayNetworking.registerGlobalReceiver(SCREENSHOT_RESPONSE_PACKET, (server, player, handler, buf, responseSender) -> {
+            String message = buf.readString();
+            String screenshotPath = buf.readString();
+
+            // 从文件读取图片并转 base64
+            String base64Image = "";
+            try {
+                byte[] imageBytes = java.nio.file.Files.readAllBytes(java.nio.file.Path.of(screenshotPath));
+                base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+            } catch (Exception e) {
+                LOGGER.error("读取截图文件失败: {}", screenshotPath, e);
+            }
+            final String finalBase64Image = base64Image;
+
+            server.execute(() -> {
+                ServerCommandSource source = player.getCommandSource();
+                source.sendFeedback(() -> Text.literal("§7[AI] 正在思考..."), false);
+
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        String response = callKimiApi(message, finalBase64Image);
+                        server.execute(() -> sendLongMessage(source, response));
+                    } catch (Exception e) {
+                        LOGGER.error("调用 AI API 失败", e);
+                        server.execute(() -> {
+                            source.sendFeedback(() -> Text.literal("§c[AI] 请求失败: " + e.getMessage()), false);
+                        });
+                    }
+                });
+            });
         });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -61,7 +95,7 @@ public class HelloWorldMod implements ModInitializer {
         String message = StringArgumentType.getString(context, "message");
         ServerCommandSource source = context.getSource();
 
-        // 通知客户端截图
+        // 通知客户端截图，客户端截完图会把图片数据和消息一起发回来
         ServerPlayerEntity player = source.getPlayer();
         if (player != null) {
             PacketByteBuf buf = PacketByteBufs.create();
@@ -69,30 +103,10 @@ public class HelloWorldMod implements ModInitializer {
             ServerPlayNetworking.send(player, TAKE_SCREENSHOT_PACKET, buf);
         }
 
-        // 告诉玩家正在思考
-        source.sendFeedback(() -> Text.literal("§7[AI] 正在思考..."), false);
-
-        // 异步调用 API，避免阻塞服务端主线程
-        CompletableFuture.runAsync(() -> {
-            try {
-                String response = callKimiApi(message);
-                // 回到服务端主线程发送消息
-                source.getServer().execute(() -> {
-                    sendLongMessage(source, response);
-                });
-            } catch (Exception e) {
-                LOGGER.error("调用 AI API 失败", e);
-                source.getServer().execute(() -> {
-                    source.sendFeedback(() -> Text.literal("§c[AI] 请求失败: " + e.getMessage()), false);
-                });
-            }
-        });
-
         return 1;
     }
 
-    private String callKimiApi(String userMessage) throws Exception {
-        // 构建 Anthropic 兼容格式的请求体
+    private String callKimiApi(String userMessage, String base64Image) throws Exception {
         String escapedMessage = userMessage
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
@@ -100,7 +114,36 @@ public class HelloWorldMod implements ModInitializer {
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
 
-        String requestBody = """
+        // Anthropic 多模态格式：content 是数组，包含图片和文字
+        String requestBody;
+        if (base64Image != null && !base64Image.isEmpty()) {
+            requestBody = """
+                {
+                    "model": "%s",
+                    "max_tokens": 1024,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/png",
+                                        "data": "%s"
+                                    }
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "%s"
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """.formatted(CONFIG.getModel(), base64Image, escapedMessage);
+        } else {
+            requestBody = """
                 {
                     "model": "%s",
                     "max_tokens": 1024,
@@ -112,6 +155,7 @@ public class HelloWorldMod implements ModInitializer {
                     ]
                 }
                 """.formatted(CONFIG.getModel(), escapedMessage);
+        }
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(CONFIG.getApiBaseUrl()))
@@ -131,13 +175,7 @@ public class HelloWorldMod implements ModInitializer {
         return extractContent(response.body());
     }
 
-    /**
-     * 从 Anthropic 格式的响应中提取文本内容。
-     * 响应格式: {"content":[{"type":"text","text":"..."}], ...}
-     * 用简单字符串解析避免引入 JSON 库依赖。
-     */
     private String extractContent(String jsonResponse) {
-        // 找 "text":" 后面的内容
         String marker = "\"text\":\"";
         int start = jsonResponse.indexOf(marker);
         if (start == -1) {
@@ -146,7 +184,6 @@ public class HelloWorldMod implements ModInitializer {
         }
         start += marker.length();
 
-        // 找到对应的结束引号（处理转义）
         StringBuilder sb = new StringBuilder();
         for (int i = start; i < jsonResponse.length(); i++) {
             char c = jsonResponse.charAt(i);
@@ -169,15 +206,11 @@ public class HelloWorldMod implements ModInitializer {
         return sb.toString();
     }
 
-    /**
-     * 将长消息分段发送到聊天框（Minecraft 单条消息有长度限制）
-     */
     private void sendLongMessage(ServerCommandSource source, String message) {
         String prefix = "§a[AI] §r";
         String[] lines = message.split("\n");
 
         for (String line : lines) {
-            // 每行最多 200 字符，超过就分段
             while (line.length() > 200) {
                 String part = line.substring(0, 200);
                 String finalPart = part;
