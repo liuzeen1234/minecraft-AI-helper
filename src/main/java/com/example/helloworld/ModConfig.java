@@ -1,0 +1,68 @@
+package com.example.helloworld;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Properties;
+
+/**
+ * 模组配置管理，从 config/helloworld.properties 读取 API 配置。
+ * 如果配置文件不存在，会自动创建带默认值的文件。
+ */
+public class ModConfig {
+
+    private static final String CONFIG_FILE = "config/helloworld.properties";
+
+    private String apiBaseUrl;
+    private String apiKey;
+    private String model;
+
+    // 默认值
+    private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
+    private static final String DEFAULT_API_KEY = "your-api-key-here";
+    private static final String DEFAULT_MODEL = "kimi-for-coding";
+
+    public void load() {
+        Path configPath = Path.of(CONFIG_FILE);
+        Properties props = new Properties();
+
+        if (!Files.exists(configPath)) {
+            // 配置文件不存在，创建默认配置
+            createDefault(configPath);
+        }
+
+        try (InputStream in = Files.newInputStream(configPath)) {
+            props.load(in);
+        } catch (IOException e) {
+            HelloWorldMod.LOGGER.error("读取配置文件失败", e);
+        }
+
+        apiBaseUrl = props.getProperty("api_base_url", DEFAULT_API_BASE_URL);
+        apiKey = props.getProperty("api_key", DEFAULT_API_KEY);
+        model = props.getProperty("model", DEFAULT_MODEL);
+
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}", model, apiBaseUrl);
+    }
+
+    private void createDefault(Path configPath) {
+        try {
+            Files.createDirectories(configPath.getParent());
+            Properties props = new Properties();
+            props.setProperty("api_base_url", DEFAULT_API_BASE_URL);
+            props.setProperty("api_key", DEFAULT_API_KEY);
+            props.setProperty("model", DEFAULT_MODEL);
+            try (OutputStream out = Files.newOutputStream(configPath)) {
+                props.store(out, "HelloWorld Mod - AI API Configuration");
+            }
+            HelloWorldMod.LOGGER.info("已创建默认配置文件: {}", configPath);
+        } catch (IOException e) {
+            HelloWorldMod.LOGGER.error("创建默认配置文件失败", e);
+        }
+    }
+
+    public String getApiBaseUrl() { return apiBaseUrl; }
+    public String getApiKey() { return apiKey; }
+    public String getModel() { return model; }
+}
