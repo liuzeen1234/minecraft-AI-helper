@@ -20,6 +20,8 @@ public class ModConfig {
     private String model;
     private boolean screenshotEnabled;
     private boolean contextEnabled;
+    private boolean webSearchEnabled;
+    private String tavilyApiKey;
 
     // 默认值
     private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
@@ -27,6 +29,8 @@ public class ModConfig {
     private static final String DEFAULT_MODEL = "kimi-for-coding";
     private static final boolean DEFAULT_SCREENSHOT_ENABLED = true;
     private static final boolean DEFAULT_CONTEXT_ENABLED = true;
+    private static final boolean DEFAULT_WEB_SEARCH_ENABLED = true;
+    private static final String DEFAULT_TAVILY_API_KEY = "";
 
     public void load() {
         Path configPath = Path.of(CONFIG_FILE);
@@ -48,8 +52,10 @@ public class ModConfig {
         model = props.getProperty("model", DEFAULT_MODEL);
         screenshotEnabled = Boolean.parseBoolean(props.getProperty("screenshot_enabled", String.valueOf(DEFAULT_SCREENSHOT_ENABLED)));
         contextEnabled = Boolean.parseBoolean(props.getProperty("context_enabled", String.valueOf(DEFAULT_CONTEXT_ENABLED)));
+        webSearchEnabled = Boolean.parseBoolean(props.getProperty("web_search_enabled", String.valueOf(DEFAULT_WEB_SEARCH_ENABLED)));
+        tavilyApiKey = props.getProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}", model, apiBaseUrl, contextEnabled);
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}", model, apiBaseUrl, contextEnabled, webSearchEnabled);
     }
 
     private void createDefault(Path configPath) {
@@ -61,6 +67,8 @@ public class ModConfig {
             props.setProperty("model", DEFAULT_MODEL);
             props.setProperty("screenshot_enabled", String.valueOf(DEFAULT_SCREENSHOT_ENABLED));
             props.setProperty("context_enabled", String.valueOf(DEFAULT_CONTEXT_ENABLED));
+            props.setProperty("web_search_enabled", String.valueOf(DEFAULT_WEB_SEARCH_ENABLED));
+            props.setProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "HelloWorld Mod - AI API Configuration");
             }
@@ -75,6 +83,8 @@ public class ModConfig {
     public String getModel() { return model; }
     public boolean isScreenshotEnabled() { return screenshotEnabled; }
     public boolean isContextEnabled() { return contextEnabled; }
+    public boolean isWebSearchEnabled() { return webSearchEnabled; }
+    public String getTavilyApiKey() { return tavilyApiKey; }
 
     public void setApiBaseUrl(String apiBaseUrl) {
         this.apiBaseUrl = apiBaseUrl;
@@ -101,6 +111,16 @@ public class ModConfig {
         save();
     }
 
+    public void setWebSearchEnabled(boolean webSearchEnabled) {
+        this.webSearchEnabled = webSearchEnabled;
+        save();
+    }
+
+    public void setTavilyApiKey(String tavilyApiKey) {
+        this.tavilyApiKey = tavilyApiKey;
+        save();
+    }
+
     private void save() {
         Path configPath = Path.of(CONFIG_FILE);
         Properties props = new Properties();
@@ -109,6 +129,8 @@ public class ModConfig {
         props.setProperty("model", model);
         props.setProperty("screenshot_enabled", String.valueOf(screenshotEnabled));
         props.setProperty("context_enabled", String.valueOf(contextEnabled));
+        props.setProperty("web_search_enabled", String.valueOf(webSearchEnabled));
+        props.setProperty("tavily_api_key", tavilyApiKey);
         try (OutputStream out = Files.newOutputStream(configPath)) {
             props.store(out, "HelloWorld Mod - AI API Configuration");
         } catch (IOException e) {

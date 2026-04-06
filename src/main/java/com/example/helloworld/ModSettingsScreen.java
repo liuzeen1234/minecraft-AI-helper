@@ -43,11 +43,22 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
+        // 联网搜索开关按钮
+        this.addDrawableChild(ButtonWidget.builder(
+                getWebSearchButtonText(),
+                button -> {
+                    config.setWebSearchEnabled(!config.isWebSearchEnabled());
+                    button.setMessage(getWebSearchButtonText());
+                })
+                .dimensions(this.width / 2 - 100, this.height / 2 + 14, 200, 20)
+                .build()
+        );
+
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 14, 200, 20)
+                .dimensions(this.width / 2 - 100, this.height / 2 + 38, 200, 20)
                 .build()
         );
     }
@@ -58,6 +69,10 @@ public class ModSettingsScreen extends Screen {
 
     private Text getContextButtonText() {
         return Text.literal("多轮对话记忆: " + (config.isContextEnabled() ? "§a开启" : "§c关闭"));
+    }
+
+    private Text getWebSearchButtonText() {
+        return Text.literal("联网搜索: " + (config.isWebSearchEnabled() ? "§a开启" : "§c关闭"));
     }
 
     @Override

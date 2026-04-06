@@ -49,6 +49,10 @@ public class HelloWorldMod implements ModInitializer {
             .connectTimeout(Duration.ofSeconds(15))
             .build();
 
+    private final WebSearchService webSearchService = new WebSearchService(
+            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build()
+    );
+
     @Override
     public void onInitialize() {
         LOGGER.info("Hello World Mod 已加载!");
@@ -94,11 +98,46 @@ public class HelloWorldMod implements ModInitializer {
                 CompletableFuture.runAsync(() -> {
                     try {
                         String response = callKimiApi(message, finalBase64Image);
-                        // 在主线程中解析并执行 AI 指令
-                        server.execute(() -> {
-                            String processed = AICommandExecutor.processResponse(response, player);
-                            sendLongMessage(source, processed);
-                        });
+
+                        // 检查 AI 是否请求联网搜索
+                        String searchQuery = extractSearchQuery(response);
+                        if (searchQuery != null && CONFIG.isWebSearchEnabled()
+                                && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
+                            // AI 请求了搜索，执行搜索
+                            server.execute(() -> {
+                                source.sendFeedback(() -> Text.literal("§7[AI] 正在联网搜索: " + searchQuery), false);
+                            });
+
+                            String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
+                            if (searchResults != null) {
+                                // 把搜索结果作为补充信息，再调一次 AI
+                                String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
+                                        + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
+                                String finalResponse = callKimiApi(searchContext, "");
+                                server.execute(() -> {
+                                    String processed = AICommandExecutor.processResponse(finalResponse, player);
+                                    sendLongMessage(source, processed);
+                                });
+                            } else {
+                                // 搜索失败，用原始回复（去掉 SEARCH 标签）
+                                String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                                if (cleanResponse.isEmpty()) {
+                                    cleanResponse = "搜索失败了，请稍后再试。";
+                                }
+                                String finalClean = cleanResponse;
+                                server.execute(() -> {
+                                    String processed = AICommandExecutor.processResponse(finalClean, player);
+                                    sendLongMessage(source, processed);
+                                });
+                            }
+                        } else {
+                            // 不需要搜索，直接处理回复
+                            String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                            server.execute(() -> {
+                                String processed = AICommandExecutor.processResponse(cleanResponse, player);
+                                sendLongMessage(source, processed);
+                            });
+                        }
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
                         server.execute(() -> {
@@ -125,6 +164,8 @@ public class HelloWorldMod implements ModInitializer {
                         src.sendFeedback(() -> Text.literal("§e[配置] api_base_url = §f" + CONFIG.getApiBaseUrl()), false);
                         src.sendFeedback(() -> Text.literal("§e[配置] api_key = §f" + maskKey(CONFIG.getApiKey())), false);
                         src.sendFeedback(() -> Text.literal("§e[配置] model = §f" + CONFIG.getModel()), false);
+                        src.sendFeedback(() -> Text.literal("§e[配置] web_search = §f" + (CONFIG.isWebSearchEnabled() ? "开启" : "关闭")), false);
+                        src.sendFeedback(() -> Text.literal("§e[配置] tavily_api_key = §f" + maskKey(CONFIG.getTavilyApiKey())), false);
                         return 1;
                     })
                 )
@@ -157,6 +198,29 @@ public class HelloWorldMod implements ModInitializer {
                             String value = StringArgumentType.getString(ctx, "value");
                             CONFIG.setModel(value);
                             ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] model 已更新为: §f" + value), false);
+                            return 1;
+                        })
+                    )
+                )
+                // /lzeconfig web_search <on/off>
+                .then(CommandManager.literal("web_search")
+                    .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                        .executes(ctx -> {
+                            String value = StringArgumentType.getString(ctx, "value");
+                            boolean enabled = value.equalsIgnoreCase("on") || value.equalsIgnoreCase("true");
+                            CONFIG.setWebSearchEnabled(enabled);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] 联网搜索已" + (enabled ? "开启" : "关闭")), false);
+                            return 1;
+                        })
+                    )
+                )
+                // /lzeconfig tavily_api_key <value>
+                .then(CommandManager.literal("tavily_api_key")
+                    .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                        .executes(ctx -> {
+                            String value = StringArgumentType.getString(ctx, "value");
+                            CONFIG.setTavilyApiKey(value);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] tavily_api_key 已更新"), false);
                             return 1;
                         })
                     )
@@ -261,7 +325,7 @@ public class HelloWorldMod implements ModInitializer {
         String requestBody = """
                 {
                     "model": "%s",
-                    "max_tokens": 2048,
+                    "max_tokens": 8192,
                     "system": "%s",
                     "messages": %s
                 }
@@ -273,7 +337,7 @@ public class HelloWorldMod implements ModInitializer {
                 .header("x-api-key", CONFIG.getApiKey())
                 .header("anthropic-version", "2023-06-01")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(180))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -362,5 +426,18 @@ public class HelloWorldMod implements ModInitializer {
     private static String maskKey(String key) {
         if (key == null || key.length() <= 8) return "****";
         return key.substring(0, 4) + "****" + key.substring(key.length() - 4);
+    }
+
+    /**
+     * 从 AI 回复中提取 [SEARCH]...[/SEARCH] 标签内的搜索关键词。
+     */
+    private String extractSearchQuery(String response) {
+        int start = response.indexOf("[SEARCH]");
+        int end = response.indexOf("[/SEARCH]");
+        if (start != -1 && end != -1 && end > start) {
+            String query = response.substring(start + 8, end).trim();
+            return query.isEmpty() ? null : query;
+        }
+        return null;
     }
 }
