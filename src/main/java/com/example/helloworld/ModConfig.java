@@ -65,4 +65,32 @@ public class ModConfig {
     public String getApiBaseUrl() { return apiBaseUrl; }
     public String getApiKey() { return apiKey; }
     public String getModel() { return model; }
+
+    public void setApiBaseUrl(String apiBaseUrl) {
+        this.apiBaseUrl = apiBaseUrl;
+        save();
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+        save();
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+        save();
+    }
+
+    private void save() {
+        Path configPath = Path.of(CONFIG_FILE);
+        Properties props = new Properties();
+        props.setProperty("api_base_url", apiBaseUrl);
+        props.setProperty("api_key", apiKey);
+        props.setProperty("model", model);
+        try (OutputStream out = Files.newOutputStream(configPath)) {
+            props.store(out, "HelloWorld Mod - AI API Configuration");
+        } catch (IOException e) {
+            HelloWorldMod.LOGGER.error("保存配置文件失败", e);
+        }
+    }
 }

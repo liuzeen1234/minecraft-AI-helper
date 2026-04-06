@@ -88,6 +88,61 @@ public class HelloWorldMod implements ModInitializer {
                     .executes(this::executeLze)
                 )
             );
+
+            // /lzeconfig 查看和修改 AI 配置
+            dispatcher.register(CommandManager.literal("lzeconfig")
+                // /lzeconfig show - 查看当前配置
+                .then(CommandManager.literal("show")
+                    .executes(ctx -> {
+                        ServerCommandSource src = ctx.getSource();
+                        src.sendFeedback(() -> Text.literal("§e[配置] api_base_url = §f" + CONFIG.getApiBaseUrl()), false);
+                        src.sendFeedback(() -> Text.literal("§e[配置] api_key = §f" + maskKey(CONFIG.getApiKey())), false);
+                        src.sendFeedback(() -> Text.literal("§e[配置] model = §f" + CONFIG.getModel()), false);
+                        return 1;
+                    })
+                )
+                // /lzeconfig api_base_url <value>
+                .then(CommandManager.literal("api_base_url")
+                    .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                        .executes(ctx -> {
+                            String value = StringArgumentType.getString(ctx, "value");
+                            CONFIG.setApiBaseUrl(value);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] api_base_url 已更新为: §f" + value), false);
+                            return 1;
+                        })
+                    )
+                )
+                // /lzeconfig api_key <value>
+                .then(CommandManager.literal("api_key")
+                    .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                        .executes(ctx -> {
+                            String value = StringArgumentType.getString(ctx, "value");
+                            CONFIG.setApiKey(value);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] api_key 已更新"), false);
+                            return 1;
+                        })
+                    )
+                )
+                // /lzeconfig model <value>
+                .then(CommandManager.literal("model")
+                    .then(CommandManager.argument("value", StringArgumentType.greedyString())
+                        .executes(ctx -> {
+                            String value = StringArgumentType.getString(ctx, "value");
+                            CONFIG.setModel(value);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] model 已更新为: §f" + value), false);
+                            return 1;
+                        })
+                    )
+                )
+                // /lzeconfig reload - 重新加载配置文件
+                .then(CommandManager.literal("reload")
+                    .executes(ctx -> {
+                        CONFIG.load();
+                        ctx.getSource().sendFeedback(() -> Text.literal("§a[配置] 配置已重新加载"), false);
+                        return 1;
+                    })
+                )
+            );
         });
     }
 
@@ -222,5 +277,10 @@ public class HelloWorldMod implements ModInitializer {
                 source.sendFeedback(() -> Text.literal(prefix + finalLine), false);
             }
         }
+    }
+
+    private static String maskKey(String key) {
+        if (key == null || key.length() <= 8) return "****";
+        return key.substring(0, 4) + "****" + key.substring(key.length() - 4);
     }
 }
