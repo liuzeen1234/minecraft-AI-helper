@@ -19,12 +19,14 @@ public class ModConfig {
     private String apiKey;
     private String model;
     private boolean screenshotEnabled;
+    private boolean contextEnabled;
 
     // 默认值
     private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
     private static final String DEFAULT_API_KEY = "your-api-key-here";
     private static final String DEFAULT_MODEL = "kimi-for-coding";
     private static final boolean DEFAULT_SCREENSHOT_ENABLED = true;
+    private static final boolean DEFAULT_CONTEXT_ENABLED = true;
 
     public void load() {
         Path configPath = Path.of(CONFIG_FILE);
@@ -45,8 +47,9 @@ public class ModConfig {
         apiKey = props.getProperty("api_key", DEFAULT_API_KEY);
         model = props.getProperty("model", DEFAULT_MODEL);
         screenshotEnabled = Boolean.parseBoolean(props.getProperty("screenshot_enabled", String.valueOf(DEFAULT_SCREENSHOT_ENABLED)));
+        contextEnabled = Boolean.parseBoolean(props.getProperty("context_enabled", String.valueOf(DEFAULT_CONTEXT_ENABLED)));
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}", model, apiBaseUrl);
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}", model, apiBaseUrl, contextEnabled);
     }
 
     private void createDefault(Path configPath) {
@@ -57,6 +60,7 @@ public class ModConfig {
             props.setProperty("api_key", DEFAULT_API_KEY);
             props.setProperty("model", DEFAULT_MODEL);
             props.setProperty("screenshot_enabled", String.valueOf(DEFAULT_SCREENSHOT_ENABLED));
+            props.setProperty("context_enabled", String.valueOf(DEFAULT_CONTEXT_ENABLED));
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "HelloWorld Mod - AI API Configuration");
             }
@@ -70,6 +74,7 @@ public class ModConfig {
     public String getApiKey() { return apiKey; }
     public String getModel() { return model; }
     public boolean isScreenshotEnabled() { return screenshotEnabled; }
+    public boolean isContextEnabled() { return contextEnabled; }
 
     public void setApiBaseUrl(String apiBaseUrl) {
         this.apiBaseUrl = apiBaseUrl;
@@ -91,6 +96,11 @@ public class ModConfig {
         save();
     }
 
+    public void setContextEnabled(boolean contextEnabled) {
+        this.contextEnabled = contextEnabled;
+        save();
+    }
+
     private void save() {
         Path configPath = Path.of(CONFIG_FILE);
         Properties props = new Properties();
@@ -98,6 +108,7 @@ public class ModConfig {
         props.setProperty("api_key", apiKey);
         props.setProperty("model", model);
         props.setProperty("screenshot_enabled", String.valueOf(screenshotEnabled));
+        props.setProperty("context_enabled", String.valueOf(contextEnabled));
         try (OutputStream out = Files.newOutputStream(configPath)) {
             props.store(out, "HelloWorld Mod - AI API Configuration");
         } catch (IOException e) {

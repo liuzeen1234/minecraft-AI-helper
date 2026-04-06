@@ -21,6 +21,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class HelloWorldMod implements ModInitializer {
@@ -38,6 +40,10 @@ public class HelloWorldMod implements ModInitializer {
     public static ModConfig getConfig() {
         return CONFIG;
     }
+
+    // 对话历史记录（多轮上下文）
+    private final List<String> conversationHistory = new ArrayList<>();
+    private static final int MAX_HISTORY_SIZE = 20; // 最多保留 20 条消息（10轮对话）
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -147,6 +153,15 @@ public class HelloWorldMod implements ModInitializer {
                     })
                 )
             );
+
+            // /lzenew - 清空对话历史，开启新话题
+            dispatcher.register(CommandManager.literal("lzenew")
+                .executes(ctx -> {
+                    conversationHistory.clear();
+                    ctx.getSource().sendFeedback(() -> Text.literal("§a[AI] 对话历史已清空，开始新话题"), false);
+                    return 1;
+                })
+            );
         });
     }
 
@@ -173,14 +188,10 @@ public class HelloWorldMod implements ModInitializer {
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
 
-        // Anthropic 多模态格式：content 是数组，包含图片和文字
-        String requestBody;
+        // 构建当前用户消息
+        String currentUserMessage;
         if (base64Image != null && !base64Image.isEmpty()) {
-            requestBody = """
-                {
-                    "model": "%s",
-                    "max_tokens": 1024,
-                    "messages": [
+            currentUserMessage = """
                         {
                             "role": "user",
                             "content": [
@@ -197,24 +208,38 @@ public class HelloWorldMod implements ModInitializer {
                                     "text": "%s"
                                 }
                             ]
-                        }
-                    ]
-                }
-                """.formatted(CONFIG.getModel(), base64Image, escapedMessage);
+                        }""".formatted(base64Image, escapedMessage);
         } else {
-            requestBody = """
-                {
-                    "model": "%s",
-                    "max_tokens": 1024,
-                    "messages": [
+            currentUserMessage = """
                         {
                             "role": "user",
                             "content": "%s"
-                        }
-                    ]
-                }
-                """.formatted(CONFIG.getModel(), escapedMessage);
+                        }""".formatted(escapedMessage);
         }
+
+        // 构建 messages 数组
+        StringBuilder messagesBuilder = new StringBuilder();
+        messagesBuilder.append("[");
+
+        if (CONFIG.isContextEnabled() && !conversationHistory.isEmpty()) {
+            // 加入历史消息
+            for (int i = 0; i < conversationHistory.size(); i++) {
+                messagesBuilder.append(conversationHistory.get(i));
+                messagesBuilder.append(",");
+            }
+        }
+
+        // 加入当前消息
+        messagesBuilder.append(currentUserMessage);
+        messagesBuilder.append("]");
+
+        String requestBody = """
+                {
+                    "model": "%s",
+                    "max_tokens": 1024,
+                    "messages": %s
+                }
+                """.formatted(CONFIG.getModel(), messagesBuilder.toString());
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(CONFIG.getApiBaseUrl()))
@@ -231,7 +256,32 @@ public class HelloWorldMod implements ModInitializer {
             throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
         }
 
-        return extractContent(response.body());
+        String content = extractContent(response.body());
+
+        // 保存到对话历史
+        if (CONFIG.isContextEnabled()) {
+            conversationHistory.add(currentUserMessage);
+
+            String escapedContent = content
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            conversationHistory.add("""
+                        {
+                            "role": "assistant",
+                            "content": "%s"
+                        }""".formatted(escapedContent));
+
+            // 限制历史大小
+            while (conversationHistory.size() > MAX_HISTORY_SIZE) {
+                conversationHistory.remove(0);
+                conversationHistory.remove(0); // 成对移除
+            }
+        }
+
+        return content;
     }
 
     private String extractContent(String jsonResponse) {
