@@ -31,6 +31,19 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 17
+    it.options.encoding = "UTF-8"
+}
+
+// 运行时强制 UTF-8，避免 Windows 下中文乱码
+loom {
+    runs {
+        client {
+            vmArgs "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8"
+        }
+        server {
+            vmArgs "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8"
+        }
+    }
 }
 
 java {

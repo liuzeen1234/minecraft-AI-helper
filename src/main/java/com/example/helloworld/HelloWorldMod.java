@@ -66,11 +66,24 @@ public class HelloWorldMod implements ModInitializer {
 
             // 从文件读取图片并转 base64
             String base64Image = "";
-            try {
-                byte[] imageBytes = java.nio.file.Files.readAllBytes(java.nio.file.Path.of(screenshotPath));
-                base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
-            } catch (Exception e) {
-                LOGGER.error("读取截图文件失败: {}", screenshotPath, e);
+            if (screenshotPath != null && !screenshotPath.isEmpty()) {
+                java.nio.file.Path imgPath = java.nio.file.Path.of(screenshotPath);
+                // 等待文件写入完成，最多重试 5 次，每次间隔 200ms
+                for (int attempt = 0; attempt < 5; attempt++) {
+                    try {
+                        if (java.nio.file.Files.exists(imgPath) && java.nio.file.Files.size(imgPath) > 0) {
+                            byte[] imageBytes = java.nio.file.Files.readAllBytes(imgPath);
+                            base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+                            break;
+                        }
+                    } catch (java.nio.file.AccessDeniedException e) {
+                        LOGGER.warn("截图文件被占用，重试中... ({})", attempt + 1);
+                    } catch (Exception e) {
+                        LOGGER.error("读取截图文件失败: {}", screenshotPath, e);
+                        break;
+                    }
+                    try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+                }
             }
             final String finalBase64Image = base64Image;
 
@@ -81,7 +94,11 @@ public class HelloWorldMod implements ModInitializer {
                 CompletableFuture.runAsync(() -> {
                     try {
                         String response = callKimiApi(message, finalBase64Image);
-                        server.execute(() -> sendLongMessage(source, response));
+                        // 在主线程中解析并执行 AI 指令
+                        server.execute(() -> {
+                            String processed = AICommandExecutor.processResponse(response, player);
+                            sendLongMessage(source, processed);
+                        });
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
                         server.execute(() -> {
@@ -233,13 +250,22 @@ public class HelloWorldMod implements ModInitializer {
         messagesBuilder.append(currentUserMessage);
         messagesBuilder.append("]");
 
+        // system prompt 用于告诉 AI 可用的游戏指令
+        String systemPrompt = AICommandExecutor.getSystemPrompt()
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+
         String requestBody = """
                 {
                     "model": "%s",
-                    "max_tokens": 1024,
+                    "max_tokens": 2048,
+                    "system": "%s",
                     "messages": %s
                 }
-                """.formatted(CONFIG.getModel(), messagesBuilder.toString());
+                """.formatted(CONFIG.getModel(), systemPrompt, messagesBuilder.toString());
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(CONFIG.getApiBaseUrl()))
