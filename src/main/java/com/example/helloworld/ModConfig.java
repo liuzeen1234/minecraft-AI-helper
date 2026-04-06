@@ -18,11 +18,13 @@ public class ModConfig {
     private String apiBaseUrl;
     private String apiKey;
     private String model;
+    private boolean screenshotEnabled;
 
     // 默认值
     private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
     private static final String DEFAULT_API_KEY = "your-api-key-here";
     private static final String DEFAULT_MODEL = "kimi-for-coding";
+    private static final boolean DEFAULT_SCREENSHOT_ENABLED = true;
 
     public void load() {
         Path configPath = Path.of(CONFIG_FILE);
@@ -42,6 +44,7 @@ public class ModConfig {
         apiBaseUrl = props.getProperty("api_base_url", DEFAULT_API_BASE_URL);
         apiKey = props.getProperty("api_key", DEFAULT_API_KEY);
         model = props.getProperty("model", DEFAULT_MODEL);
+        screenshotEnabled = Boolean.parseBoolean(props.getProperty("screenshot_enabled", String.valueOf(DEFAULT_SCREENSHOT_ENABLED)));
 
         HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}", model, apiBaseUrl);
     }
@@ -53,6 +56,7 @@ public class ModConfig {
             props.setProperty("api_base_url", DEFAULT_API_BASE_URL);
             props.setProperty("api_key", DEFAULT_API_KEY);
             props.setProperty("model", DEFAULT_MODEL);
+            props.setProperty("screenshot_enabled", String.valueOf(DEFAULT_SCREENSHOT_ENABLED));
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "HelloWorld Mod - AI API Configuration");
             }
@@ -65,6 +69,7 @@ public class ModConfig {
     public String getApiBaseUrl() { return apiBaseUrl; }
     public String getApiKey() { return apiKey; }
     public String getModel() { return model; }
+    public boolean isScreenshotEnabled() { return screenshotEnabled; }
 
     public void setApiBaseUrl(String apiBaseUrl) {
         this.apiBaseUrl = apiBaseUrl;
@@ -81,12 +86,18 @@ public class ModConfig {
         save();
     }
 
+    public void setScreenshotEnabled(boolean screenshotEnabled) {
+        this.screenshotEnabled = screenshotEnabled;
+        save();
+    }
+
     private void save() {
         Path configPath = Path.of(CONFIG_FILE);
         Properties props = new Properties();
         props.setProperty("api_base_url", apiBaseUrl);
         props.setProperty("api_key", apiKey);
         props.setProperty("model", model);
+        props.setProperty("screenshot_enabled", String.valueOf(screenshotEnabled));
         try (OutputStream out = Files.newOutputStream(configPath)) {
             props.store(out, "HelloWorld Mod - AI API Configuration");
         } catch (IOException e) {

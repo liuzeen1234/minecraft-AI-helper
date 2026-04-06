@@ -35,6 +35,10 @@ public class HelloWorldMod implements ModInitializer {
 
     private static final ModConfig CONFIG = new ModConfig();
 
+    public static ModConfig getConfig() {
+        return CONFIG;
+    }
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
             .build();

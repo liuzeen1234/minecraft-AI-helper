@@ -2,10 +2,13 @@ package com.example.helloworld;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
@@ -16,6 +19,7 @@ import java.io.File;
 import java.nio.IntBuffer;
 
 import org.lwjgl.BufferUtils;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -25,8 +29,19 @@ public class HelloWorldClientMod implements ClientModInitializer {
     private String pendingMessage = null;
     private int delayTicks = 0;
 
+    // 按键绑定：打开设置页面
+    private static KeyBinding openSettingsKey;
+
     @Override
     public void onInitializeClient() {
+        // 注册按键绑定 (默认 K 键)
+        openSettingsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.helloworld.settings",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_K,
+                "category.helloworld"
+        ));
+
         ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.TAKE_SCREENSHOT_PACKET, (client, handler, buf, responseSender) -> {
             String message = buf.readString();
             // 收到截图指令后，等 2 个 tick 再截图（等聊天框关闭）
@@ -38,6 +53,11 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
         // 每个客户端 tick 检查是否需要截图
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // 按键打开设置页面
+            while (openSettingsKey.wasPressed()) {
+                client.setScreen(new ModSettingsScreen(client.currentScreen));
+            }
+
             if (pendingMessage != null && delayTicks > 0) {
                 delayTicks--;
                 if (delayTicks == 0) {
@@ -50,23 +70,33 @@ public class HelloWorldClientMod implements ClientModInitializer {
     }
 
     private void doScreenshotAndSend(MinecraftClient client, String message) {
-        File screenshotDir = new File(client.runDirectory, "screenshots/lze");
-        if (!screenshotDir.exists()) {
-            screenshotDir.mkdirs();
+        boolean screenshotEnabled = HelloWorldMod.getConfig().isScreenshotEnabled();
+
+        if (screenshotEnabled) {
+            File screenshotDir = new File(client.runDirectory, "screenshots/lze");
+            if (!screenshotDir.exists()) {
+                screenshotDir.mkdirs();
+            }
+            ScreenshotRecorder.saveScreenshot(
+                screenshotDir,
+                client.getFramebuffer(),
+                (text) -> client.inGameHud.getChatHud().addMessage(text)
+            );
+
+            File aiScreenshot = new File(client.runDirectory, "screenshots/lze/ai_temp.png");
+            saveScaledScreenshot(client.getFramebuffer(), aiScreenshot);
+
+            PacketByteBuf responseBuf = PacketByteBufs.create();
+            responseBuf.writeString(message);
+            responseBuf.writeString(aiScreenshot.getAbsolutePath());
+            ClientPlayNetworking.send(HelloWorldMod.SCREENSHOT_RESPONSE_PACKET, responseBuf);
+        } else {
+            // 截图关闭时，发送空路径
+            PacketByteBuf responseBuf = PacketByteBufs.create();
+            responseBuf.writeString(message);
+            responseBuf.writeString("");
+            ClientPlayNetworking.send(HelloWorldMod.SCREENSHOT_RESPONSE_PACKET, responseBuf);
         }
-        ScreenshotRecorder.saveScreenshot(
-            screenshotDir,
-            client.getFramebuffer(),
-            (text) -> client.inGameHud.getChatHud().addMessage(text)
-        );
-
-        File aiScreenshot = new File(client.runDirectory, "screenshots/lze/ai_temp.png");
-        saveScaledScreenshot(client.getFramebuffer(), aiScreenshot);
-
-        PacketByteBuf responseBuf = PacketByteBufs.create();
-        responseBuf.writeString(message);
-        responseBuf.writeString(aiScreenshot.getAbsolutePath());
-        ClientPlayNetworking.send(HelloWorldMod.SCREENSHOT_RESPONSE_PACKET, responseBuf);
     }
 
     /**
