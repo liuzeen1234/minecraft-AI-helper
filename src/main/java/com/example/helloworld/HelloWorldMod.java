@@ -53,6 +53,10 @@ public class HelloWorldMod implements ModInitializer {
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build()
     );
 
+    private final WebFetchService webFetchService = new WebFetchService(
+            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()
+    );
+
     @Override
     public void onInitialize() {
         LOGGER.info("Hello World Mod 已加载!");
@@ -93,36 +97,37 @@ public class HelloWorldMod implements ModInitializer {
 
             server.execute(() -> {
                 ServerCommandSource source = player.getCommandSource();
+
+                // 在聊天框回显玩家输入的消息
+                String playerName = player.getName().getString();
+                source.sendFeedback(() -> Text.literal("§f<" + playerName + "> " + message), false);
+
                 source.sendFeedback(() -> Text.literal("§7[AI] 正在思考..."), false);
 
                 CompletableFuture.runAsync(() -> {
                     try {
                         String response = callKimiApi(message, finalBase64Image);
 
-                        // 检查 AI 是否请求联网搜索
-                        String searchQuery = extractSearchQuery(response);
-                        if (searchQuery != null && CONFIG.isWebSearchEnabled()
-                                && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
-                            // AI 请求了搜索，执行搜索
+                        // 检查 AI 是否请求抓取网页
+                        String fetchUrl = extractFetchUrl(response);
+                        if (fetchUrl != null) {
                             server.execute(() -> {
-                                source.sendFeedback(() -> Text.literal("§7[AI] 正在联网搜索: " + searchQuery), false);
+                                source.sendFeedback(() -> Text.literal("§7[AI] 正在抓取网页: " + fetchUrl), false);
                             });
 
-                            String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
-                            if (searchResults != null) {
-                                // 把搜索结果作为补充信息，再调一次 AI
-                                String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
-                                        + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
-                                String finalResponse = callKimiApi(searchContext, "");
+                            String pageContent = webFetchService.fetch(fetchUrl);
+                            if (pageContent != null) {
+                                String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
+                                        + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
+                                String finalResponse = callKimiApi(fetchContext, "");
                                 server.execute(() -> {
                                     String processed = AICommandExecutor.processResponse(finalResponse, player);
                                     sendLongMessage(source, processed);
                                 });
                             } else {
-                                // 搜索失败，用原始回复（去掉 SEARCH 标签）
-                                String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                                String cleanResponse = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
                                 if (cleanResponse.isEmpty()) {
-                                    cleanResponse = "搜索失败了，请稍后再试。";
+                                    cleanResponse = "网页抓取失败了，请检查 URL 是否正确。";
                                 }
                                 String finalClean = cleanResponse;
                                 server.execute(() -> {
@@ -130,13 +135,44 @@ public class HelloWorldMod implements ModInitializer {
                                     sendLongMessage(source, processed);
                                 });
                             }
-                        } else {
-                            // 不需要搜索，直接处理回复
-                            String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                            server.execute(() -> {
-                                String processed = AICommandExecutor.processResponse(cleanResponse, player);
-                                sendLongMessage(source, processed);
-                            });
+                        }
+                        // 检查 AI 是否请求联网搜索
+                        else {
+                            String searchQuery = extractSearchQuery(response);
+                            if (searchQuery != null && CONFIG.isWebSearchEnabled()
+                                    && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
+                                server.execute(() -> {
+                                    source.sendFeedback(() -> Text.literal("§7[AI] 正在联网搜索: " + searchQuery), false);
+                                });
+
+                                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
+                                if (searchResults != null) {
+                                    String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
+                                            + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
+                                    String finalResponse = callKimiApi(searchContext, "");
+                                    server.execute(() -> {
+                                        String processed = AICommandExecutor.processResponse(finalResponse, player);
+                                        sendLongMessage(source, processed);
+                                    });
+                                } else {
+                                    String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                                    if (cleanResponse.isEmpty()) {
+                                        cleanResponse = "搜索失败了，请稍后再试。";
+                                    }
+                                    String finalClean = cleanResponse;
+                                    server.execute(() -> {
+                                        String processed = AICommandExecutor.processResponse(finalClean, player);
+                                        sendLongMessage(source, processed);
+                                    });
+                                }
+                            } else {
+                                // 不需要搜索也不需要抓取，直接处理回复
+                                String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                                server.execute(() -> {
+                                    String processed = AICommandExecutor.processResponse(cleanResponse, player);
+                                    sendLongMessage(source, processed);
+                                });
+                            }
                         }
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
@@ -426,6 +462,21 @@ public class HelloWorldMod implements ModInitializer {
     private static String maskKey(String key) {
         if (key == null || key.length() <= 8) return "****";
         return key.substring(0, 4) + "****" + key.substring(key.length() - 4);
+    }
+
+    /**
+     * 从 AI 回复中提取 [FETCH]...[/FETCH] 标签内的 URL。
+     */
+    private String extractFetchUrl(String response) {
+        int start = response.indexOf("[FETCH]");
+        int end = response.indexOf("[/FETCH]");
+        if (start != -1 && end != -1 && end > start) {
+            String url = response.substring(start + 7, end).trim();
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                return url;
+            }
+        }
+        return null;
     }
 
     /**
