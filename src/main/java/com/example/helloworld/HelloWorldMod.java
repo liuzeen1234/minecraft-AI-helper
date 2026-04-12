@@ -16,6 +16,10 @@ import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.example.helloworld.blueprint.BlueprintBuilder;
+import com.example.helloworld.blueprint.BlueprintData;
+import com.example.helloworld.blueprint.BlueprintRegistry;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -57,10 +61,13 @@ public class HelloWorldMod implements ModInitializer {
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()
     );
 
+    private final BlueprintRegistry blueprintRegistry = new BlueprintRegistry();
+
     @Override
     public void onInitialize() {
         LOGGER.info("Hello World Mod 已加载!");
         CONFIG.load();
+        blueprintRegistry.loadAll();
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
@@ -186,6 +193,17 @@ public class HelloWorldMod implements ModInitializer {
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(CommandManager.literal("lze")
+                .then(CommandManager.literal("build")
+                    .then(CommandManager.argument("name", StringArgumentType.greedyString())
+                        .executes(this::executeBuild)
+                    )
+                )
+                .then(CommandManager.literal("blueprints")
+                    .executes(this::listBlueprints)
+                )
+                .then(CommandManager.literal("reload_blueprints")
+                    .executes(this::reloadBlueprints)
+                )
                 .then(CommandManager.argument("message", StringArgumentType.greedyString())
                     .executes(this::executeLze)
                 )
@@ -280,6 +298,62 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
         });
+    }
+
+    private int executeBuild(CommandContext<ServerCommandSource> context) {
+        String name = StringArgumentType.getString(context, "name");
+        ServerCommandSource source = context.getSource();
+        ServerPlayerEntity player = source.getPlayer();
+
+        if (player == null) {
+            source.sendFeedback(() -> Text.literal("§c只有玩家可以执行此命令"), false);
+            return 0;
+        }
+
+        BlueprintData blueprint = blueprintRegistry.find(name);
+        if (blueprint == null) {
+            source.sendFeedback(() -> Text.literal("§c未找到蓝图: " + name), false);
+            source.sendFeedback(() -> Text.literal("§e使用 /lze blueprints 查看可用蓝图"), false);
+            return 0;
+        }
+
+        source.sendFeedback(() -> Text.literal("§e[建造] 开始建造: " + blueprint.getName() + " ..."), false);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                int count = BlueprintBuilder.build(blueprint, player, player.getServerWorld());
+                player.getServer().execute(() -> {
+                    source.sendFeedback(() -> Text.literal("§a[建造] " + blueprint.getName() + " 建造完成! 共放置 " + count + " 个方块"), false);
+                });
+            } catch (Exception e) {
+                LOGGER.error("建造蓝图失败", e);
+                player.getServer().execute(() -> {
+                    source.sendFeedback(() -> Text.literal("§c[建造] 建造失败: " + e.getMessage()), false);
+                });
+            }
+        });
+
+        return 1;
+    }
+
+    private int listBlueprints(CommandContext<ServerCommandSource> context) {
+        ServerCommandSource source = context.getSource();
+        if (blueprintRegistry.size() == 0) {
+            source.sendFeedback(() -> Text.literal("§e没有已加载的蓝图。将 .txt 蓝图文件放入 architect-docs/ 目录"), false);
+        } else {
+            source.sendFeedback(() -> Text.literal("§e已加载 " + blueprintRegistry.size() + " 个蓝图:"), false);
+            for (String name : blueprintRegistry.getNames()) {
+                source.sendFeedback(() -> Text.literal("§a  - " + name), false);
+            }
+        }
+        return 1;
+    }
+
+    private int reloadBlueprints(CommandContext<ServerCommandSource> context) {
+        blueprintRegistry.loadAll();
+        ServerCommandSource source = context.getSource();
+        source.sendFeedback(() -> Text.literal("§a[蓝图] 已重新加载 " + blueprintRegistry.size() + " 个蓝图"), false);
+        return 1;
     }
 
     private int executeLze(CommandContext<ServerCommandSource> context) {

@@ -1,0 +1,327 @@
+package com.example.helloworld.blueprint;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.registry.Registries;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.state.property.Property;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+
+/**
+ * 根据蓝图数据在游戏世界中建造建筑。
+ * 以玩家当前位置为原点，蓝图第1层第1行第1列对应玩家脚下位置。
+ * 蓝图的行方向(row)对应 Z+（南），列方向(col)对应 X+（东）。
+ *
+ * 分两阶段放置：先放实体方块，再放附着方块（按钮、火把等），
+ * 对未指定朝向的附着方块自动推断朝向。
+ */
+public class BlueprintBuilder {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("BlueprintBuilder");
+
+    // 需要附着在其他方块上的方块类型（需要延迟放置并自动推断朝向）
+    private static final Set<String> ATTACHABLE_BLOCKS = Set.of(
+            "wall_torch", "stone_button", "oak_button", "spruce_button",
+            "birch_button", "jungle_button", "acacia_button", "dark_oak_button",
+            "mangrove_button", "cherry_button", "bamboo_button", "crimson_button",
+            "warped_button", "polished_blackstone_button"
+    );
+
+    /**
+     * 在玩家位置建造蓝图建筑。
+     * @return 放置的方块数量
+     */
+    public static int build(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world) {
+        BlockPos origin = player.getBlockPos();
+        Map<Character, BlueprintData.BlockEntry> legend = blueprint.getLegend();
+        List<char[][]> layers = blueprint.getLayers();
+
+        int placedCount = 0;
+        // 延迟放置的附着方块
+        List<DeferredBlock> deferred = new ArrayList<>();
+        // 床的 head 部分位置记录（跳过放置，由 foot 自动生成）
+        Set<String> bedHeadPositions = new HashSet<>();
+        // 床的 foot 部分记录（延迟放置，需要推断 facing）
+        List<DeferredBlock> bedFootBlocks = new ArrayList<>();
+
+        // 预扫描：找出所有床的 head 和 foot 位置
+        for (int layerIdx = 0; layerIdx < layers.size(); layerIdx++) {
+            char[][] grid = layers.get(layerIdx);
+            for (int row = 0; row < grid.length; row++) {
+                for (int col = 0; col < grid[row].length; col++) {
+                    char symbol = grid[row][col];
+                    if (symbol == ' ') continue;
+                    BlueprintData.BlockEntry entry = legend.get(symbol);
+                    if (entry == null) continue;
+                    if (entry.getBlockId().endsWith("_bed")) {
+                        String posKey = layerIdx + "," + row + "," + col;
+                        if (entry.getProperties().containsKey("part")
+                                && "head".equals(entry.getProperties().get("part"))) {
+                            bedHeadPositions.add(posKey);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 第一阶段：放置所有实体方块，收集附着方块
+        for (int layerIdx = 0; layerIdx < layers.size(); layerIdx++) {
+            char[][] grid = layers.get(layerIdx);
+            int y = origin.getY() + layerIdx;
+
+            for (int row = 0; row < grid.length; row++) {
+                for (int col = 0; col < grid[row].length; col++) {
+                    char symbol = grid[row][col];
+                    if (symbol == ' ') continue;
+
+                    BlueprintData.BlockEntry entry = legend.get(symbol);
+                    if (entry == null) {
+                        LOGGER.warn("未知图例符号: '{}' (层{}, 行{}, 列{})", symbol, layerIdx + 1, row, col);
+                        continue;
+                    }
+
+                    int x = origin.getX() + col;
+                    int z = origin.getZ() + row;
+                    BlockPos pos = new BlockPos(x, y, z);
+
+                    // 床的 head 部分跳过（由 foot 放置时自动生成）
+                    if (entry.getBlockId().endsWith("_bed")) {
+                        String posKey = layerIdx + "," + row + "," + col;
+                        if (bedHeadPositions.contains(posKey)) {
+                            continue; // 跳过 head
+                        }
+                        // foot 部分延迟放置
+                        bedFootBlocks.add(new DeferredBlock(pos, entry, layerIdx, row, col));
+                        continue;
+                    }
+
+                    if (needsAutoFacing(entry)) {
+                        deferred.add(new DeferredBlock(pos, entry, layerIdx, row, col));
+                    } else {
+                        BlockState state = resolveBlockState(entry);
+                        if (state != null) {
+                            world.setBlockState(pos, state);
+                            placedCount++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 第二阶段：放置附着方块，自动推断朝向
+        for (DeferredBlock db : deferred) {
+            BlockState state = resolveBlockState(db.entry);
+            if (state == null) continue;
+
+            // 如果方块没有指定 facing，自动推断
+            if (!db.entry.getProperties().containsKey("facing")) {
+                String facing = inferFacing(db.pos, db.entry, world, layers, legend, origin, db.layerIdx, db.row, db.col);
+                if (facing != null) {
+                    state = applyProperty(state, "facing", facing);
+                }
+                // 按钮默认 face=wall（贴墙放置）
+                if (db.entry.getBlockId().endsWith("_button")) {
+                    state = applyProperty(state, "face", "wall");
+                }
+            }
+
+            world.setBlockState(db.pos, state);
+            placedCount++;
+        }
+
+        // 第三阶段：放置床（根据 foot 和 head 的相对位置推断 facing）
+        for (DeferredBlock db : bedFootBlocks) {
+            String facing = inferBedFacing(db, layers, legend, bedHeadPositions);
+            BlockState state = resolveBlockState(db.entry);
+            if (state == null) continue;
+
+            // 设置 part=foot 和推断的 facing
+            state = applyProperty(state, "part", "foot");
+            if (facing != null) {
+                state = applyProperty(state, "facing", facing);
+            }
+            world.setBlockState(db.pos, state);
+            placedCount++;
+
+            // 在 facing 方向放置 head 部分
+            if (facing != null) {
+                BlockPos headPos = db.pos.offset(directionFromString(facing));
+                BlockState headState = resolveBlockState(db.entry);
+                if (headState != null) {
+                    headState = applyProperty(headState, "part", "head");
+                    headState = applyProperty(headState, "facing", facing);
+                    world.setBlockState(headPos, headState);
+                    placedCount++;
+                }
+            }
+        }
+
+        return placedCount;
+    }
+
+    /**
+     * 根据蓝图中 foot 和 head 的相对位置推断床的 facing 方向。
+     * facing = 从 foot 指向 head 的方向。
+     */
+    private static String inferBedFacing(DeferredBlock footBlock, List<char[][]> layers,
+                                          Map<Character, BlueprintData.BlockEntry> legend,
+                                          Set<String> bedHeadPositions) {
+        int layer = footBlock.layerIdx;
+        int row = footBlock.row;
+        int col = footBlock.col;
+
+        // 检查四个方向是否有 bed head
+        // 北(row-1)=north, 南(row+1)=south, 西(col-1)=west, 东(col+1)=east
+        int[][] offsets = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        String[] directions = {"north", "south", "west", "east"};
+
+        for (int i = 0; i < 4; i++) {
+            String key = layer + "," + (row + offsets[i][0]) + "," + (col + offsets[i][1]);
+            if (bedHeadPositions.contains(key)) {
+                return directions[i];
+            }
+        }
+
+        // 没找到 head，使用图例中的 facing
+        Map<String, String> props = footBlock.entry.getProperties();
+        return props.getOrDefault("facing", "north");
+    }
+
+    private static net.minecraft.util.math.Direction directionFromString(String facing) {
+        return switch (facing) {
+            case "north" -> net.minecraft.util.math.Direction.NORTH;
+            case "south" -> net.minecraft.util.math.Direction.SOUTH;
+            case "west" -> net.minecraft.util.math.Direction.WEST;
+            case "east" -> net.minecraft.util.math.Direction.EAST;
+            default -> net.minecraft.util.math.Direction.NORTH;
+        };
+    }
+
+    /**
+     * 判断方块是否需要自动推断朝向。
+     * 条件：是附着类方块，且图例中没有指定 facing 属性。
+     */
+    private static boolean needsAutoFacing(BlueprintData.BlockEntry entry) {
+        return ATTACHABLE_BLOCKS.contains(entry.getBlockId()) && !entry.getProperties().containsKey("facing");
+    }
+
+    /**
+     * 根据蓝图中周围方块推断附着方块的 facing 方向。
+     * facing 表示方块面朝的方向（即从附着墙面伸出的方向）。
+     *
+     * 检查四个水平方向，找到有实体方块的那一面，facing 就是从那面墙伸出来的反方向。
+     * 例如：北边有墙 → facing=south（从北墙伸出来朝南）
+     */
+    private static String inferFacing(BlockPos pos, BlueprintData.BlockEntry entry,
+                                       ServerWorld world, List<char[][]> layers,
+                                       Map<Character, BlueprintData.BlockEntry> legend,
+                                       BlockPos origin, int layerIdx, int row, int col) {
+        char[][] grid = layers.get(layerIdx);
+
+        // 检查四个方向：北(row-1)、南(row+1)、西(col-1)、东(col+1)
+        // 如果该方向有实体方块，则 facing 为反方向
+        String[] directions = {"south", "north", "east", "west"};
+        int[][] offsets = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // row, col 偏移
+
+        for (int i = 0; i < 4; i++) {
+            int nr = row + offsets[i][0];
+            int nc = col + offsets[i][1];
+
+            if (nr >= 0 && nr < grid.length && nc >= 0 && nc < grid[nr].length) {
+                char neighbor = grid[nr][nc];
+                if (neighbor != ' ') {
+                    BlueprintData.BlockEntry neighborEntry = legend.get(neighbor);
+                    if (neighborEntry != null && isSolidBlock(neighborEntry.getBlockId())) {
+                        return directions[i];
+                    }
+                }
+            }
+        }
+
+        // 没找到相邻实体方块，检查世界中已放置的方块
+        BlockPos north = pos.north();
+        BlockPos south = pos.south();
+        BlockPos west = pos.west();
+        BlockPos east = pos.east();
+
+        if (isSolidInWorld(world, north)) return "south";
+        if (isSolidInWorld(world, south)) return "north";
+        if (isSolidInWorld(world, west)) return "east";
+        if (isSolidInWorld(world, east)) return "west";
+
+        return null;
+    }
+
+    /**
+     * 判断方块ID是否为实体方块（可以附着其他方块的）
+     */
+    private static boolean isSolidBlock(String blockId) {
+        // 排除已知的非实体方块
+        return !blockId.contains("torch") && !blockId.contains("button")
+                && !blockId.contains("door") && !blockId.contains("fence")
+                && !blockId.contains("slab") && !blockId.equals("air");
+    }
+
+    private static boolean isSolidInWorld(ServerWorld world, BlockPos pos) {
+        BlockState state = world.getBlockState(pos);
+        return state.isSolidBlock(world, pos);
+    }
+
+    /**
+     * 根据 BlockEntry 解析出带属性的 BlockState。
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static BlockState resolveBlockState(BlueprintData.BlockEntry entry) {
+        String blockId = entry.getBlockId();
+        Identifier id = new Identifier("minecraft", blockId);
+        Block block = Registries.BLOCK.get(id);
+
+        if (block == Blocks.AIR && !"air".equals(blockId)) {
+            LOGGER.warn("未知方块ID: {}", blockId);
+            return null;
+        }
+
+        BlockState state = block.getDefaultState();
+
+        for (Map.Entry<String, String> prop : entry.getProperties().entrySet()) {
+            state = applyProperty(state, prop.getKey(), prop.getValue());
+        }
+
+        return state;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static BlockState applyProperty(BlockState state, String propName, String propValue) {
+        Property<?> property = findProperty(state, propName);
+        if (property != null) {
+            Optional<?> value = property.parse(propValue);
+            if (value.isPresent()) {
+                return state.with((Property) property, (Comparable) value.get());
+            } else {
+                LOGGER.warn("无法解析属性值: {}={}", propName, propValue);
+            }
+        }
+        return state;
+    }
+
+    private static Property<?> findProperty(BlockState state, String name) {
+        for (Property<?> prop : state.getProperties()) {
+            if (prop.getName().equals(name)) {
+                return prop;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 延迟放置的方块记录
+     */
+    private record DeferredBlock(BlockPos pos, BlueprintData.BlockEntry entry, int layerIdx, int row, int col) {}
+}
