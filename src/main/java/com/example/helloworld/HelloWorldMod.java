@@ -204,6 +204,9 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("reload_blueprints")
                     .executes(this::reloadBlueprints)
                 )
+                .then(CommandManager.literal("test_stairs")
+                    .executes(this::executeTestStairs)
+                )
                 .then(CommandManager.argument("message", StringArgumentType.greedyString())
                     .executes(this::executeLze)
                 )
@@ -353,6 +356,46 @@ public class HelloWorldMod implements ModInitializer {
         blueprintRegistry.loadAll();
         ServerCommandSource source = context.getSource();
         source.sendFeedback(() -> Text.literal("§a[蓝图] 已重新加载 " + blueprintRegistry.size() + " 个蓝图"), false);
+        return 1;
+    }
+
+    /**
+     * 测试命令：在玩家前方放置4个楼梯，分别标注 facing 方向。
+     * 用于确认 facing 属性的实际视觉效果。
+     */
+    private int executeTestStairs(CommandContext<ServerCommandSource> context) {
+        ServerPlayerEntity player = context.getSource().getPlayer();
+        if (player == null) return 0;
+
+        net.minecraft.server.world.ServerWorld world = player.getServerWorld();
+        net.minecraft.util.math.BlockPos base = player.getBlockPos().north(3);
+
+        String[] facings = {"north", "south", "east", "west"};
+        for (int i = 0; i < 4; i++) {
+            net.minecraft.util.math.BlockPos pos = base.east(i * 2);
+            net.minecraft.block.BlockState state = net.minecraft.block.Blocks.OAK_STAIRS.getDefaultState();
+            // 设置 facing
+            net.minecraft.state.property.Property<?> facingProp = null;
+            for (var prop : state.getProperties()) {
+                if (prop.getName().equals("facing")) {
+                    facingProp = prop;
+                    break;
+                }
+            }
+            if (facingProp != null) {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                net.minecraft.block.BlockState finalState = state.with(
+                    (net.minecraft.state.property.Property) facingProp,
+                    (Comparable) facingProp.parse(facings[i]).get()
+                );
+                world.setBlockState(pos, finalState);
+            }
+            // 在楼梯上方放一个告示牌...算了，直接在聊天里告诉玩家
+            String facing = facings[i];
+            int idx = i;
+            context.getSource().sendFeedback(() -> Text.literal("§e楼梯 " + (idx + 1) + ": facing=" + facing + " (位置偏东 " + (idx * 2) + ")"), false);
+        }
+        context.getSource().sendFeedback(() -> Text.literal("§a已在北方3格处放置4个楼梯，从左到右: north, south, east, west"), false);
         return 1;
     }
 

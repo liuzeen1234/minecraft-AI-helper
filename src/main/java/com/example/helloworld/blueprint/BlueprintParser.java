@@ -213,11 +213,11 @@ public class BlueprintParser {
             blockName = blockName.substring(0, plusIdx).trim();
 
             // afterPlus 可能包含多个空格分隔的属性，如 "top foot-rot270"
-            // 先提取 -rot
+            // 先提取 -rot，保存原始角度值
             Matcher rotInAttr = rotPattern.matcher(afterPlus);
             if (rotInAttr.find()) {
                 int degrees = Integer.parseInt(rotInAttr.group(1));
-                properties.put("facing", degreesToFacing(degrees));
+                properties.put("_rot", String.valueOf(degrees));
                 afterPlus = afterPlus.substring(0, rotInAttr.start()).trim()
                         + afterPlus.substring(rotInAttr.end()).trim();
                 afterPlus = afterPlus.trim();
@@ -244,7 +244,7 @@ public class BlueprintParser {
         Matcher rotMatcher = rotPattern.matcher(blockName);
         if (rotMatcher.find()) {
             int degrees = Integer.parseInt(rotMatcher.group(1));
-            properties.put("facing", degreesToFacing(degrees));
+            properties.put("_rot", String.valueOf(degrees));
             blockName = blockName.substring(0, rotMatcher.start()).trim();
         }
 
@@ -275,26 +275,25 @@ public class BlueprintParser {
             properties.put("axis", axis);
         }
 
-        // torch 带 facing 属性时应该是 wall_torch
-        if (blockId.equals("torch") && properties.containsKey("facing")) {
+        // torch 带旋转属性时应该是 wall_torch
+        if (blockId.equals("torch") && properties.containsKey("_rot")) {
             blockId = "wall_torch";
+        }
+
+        // 对于需要 facing 的方块，如果没有指定 _rot，默认为 rot0
+        if (!properties.containsKey("_rot") && needsDefaultRot(blockId)) {
+            properties.put("_rot", "0");
         }
 
         return new BlueprintData.BlockEntry(blockId, properties);
     }
 
     /**
-     * 将角度转换为 Minecraft facing 方向。
-     * 0=south, 90=west, 180=north, 270=east
+     * 判断方块是否需要默认的 rot 值（即有 facing 属性的方块）。
+     * 楼梯等方块即使没有 -rot 后缀，也需要设置 _rot=0 来触发正确的 facing 映射。
      */
-    private static String degreesToFacing(int degrees) {
-        return switch (degrees % 360) {
-            case 0 -> "south";
-            case 90 -> "west";
-            case 180 -> "north";
-            case 270 -> "east";
-            default -> "south";
-        };
+    private static boolean needsDefaultRot(String blockId) {
+        return blockId.contains("stairs");
     }
 
     /**

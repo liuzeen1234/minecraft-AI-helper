@@ -290,11 +290,71 @@ public class BlueprintBuilder {
 
         BlockState state = block.getDefaultState();
 
-        for (Map.Entry<String, String> prop : entry.getProperties().entrySet()) {
+        // 处理 _rot → facing 转换（根据方块类型使用不同的映射）
+        Map<String, String> props = new LinkedHashMap<>(entry.getProperties());
+        if (props.containsKey("_rot")) {
+            int rot = Integer.parseInt(props.remove("_rot"));
+            String facing = rotToFacing(blockId, rot);
+            if (facing != null) {
+                props.put("facing", facing);
+            }
+        }
+
+        for (Map.Entry<String, String> prop : props.entrySet()) {
             state = applyProperty(state, prop.getKey(), prop.getValue());
         }
 
         return state;
+    }
+
+    /**
+     * 根据方块类型和 rot 角度计算 facing 方向。
+     * rot 是相对于方块默认 facing 的旋转角度。
+     *
+     * 旋转方向表（顺时针）：north → east → south → west → north
+     *
+     * 不同方块的默认 facing：
+     *   楼梯 (stairs)：默认 facing=north → rot 顺时针旋转后再翻转东西
+     *   墙上火把 (wall_torch)：默认 facing=north
+     *   按钮 (button)：默认 facing=north
+     *   玻璃板 (glass_pane)：无 facing，使用 east/west 连接属性
+     *   门 (door)：默认 facing=north
+     *   其他：默认 facing=north
+     */
+    private static String rotToFacing(String blockId, int rot) {
+        String result;
+        // 楼梯的 rot 映射
+        // facing 表示全面朝向（同时也是台阶低端方向）
+        // 从蓝图验证：rot0(>)=east, rot90(<)=west, rot180(s)=south, rot270(^)=north
+        if (blockId.contains("stairs")) {
+            result = switch (rot % 360) {
+                case 0 -> "west";
+                case 90 -> "east";
+                case 180 -> "north";
+                case 270 -> "south";
+                default -> "north";
+            };
+        } else if (blockId.contains("wall_torch")) {
+            result = switch (rot % 360) {
+                case 0 -> "south";
+                case 90 -> "east";
+                case 180 -> "north";
+                case 270 -> "west";
+                default -> "north";
+            };
+        } else if (blockId.contains("glass_pane")) {
+            return null;
+        } else {
+            result = switch (rot % 360) {
+                case 0 -> "south";
+                case 90 -> "east";
+                case 180 -> "north";
+                case 270 -> "west";
+                default -> "north";
+            };
+        }
+        LOGGER.info("rotToFacing: block={}, rot={}, facing={}", blockId, rot, result);
+        return result;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

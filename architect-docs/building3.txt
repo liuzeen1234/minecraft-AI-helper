@@ -1,0 +1,30 @@
+==== 平面结构图 ====
+{{layered blueprint
+|name=abc'''
+|default=第1层
+|S=Stripped Oak Log+top
+|C=Cobblestone
+|P=Oak Planks
+|B=White Bed+top foot-rot270'''
+|b=White Bed+top head-rot270
+|<=Oak Stairs-rot90
+|^=Oak Stairs-rot270
+|g=glass Pane
+|s=Oak Stairs-rot180
+|T=torch-rot180
+|d=Oak Door+bottom
+|D=Oak Door+top
+|G=glass Pane-rot90
+|>=Oak Stairs
+|----第1层|
+
+  SCPBb<^gsTdDG>
+  SCCCS 
+  CPPPC 
+  CPPPC 
+  CPPPC 
+  SCCCS 
+    s   
+
+
+}}
