@@ -13,7 +13,7 @@
 |s=Oak Stairs-rot180
 |T=torch-rot180
 |d=Oak Door+bottom
-|D=Oak Door+top
+|D=Oak Door+top   
 |G=glass Pane-rot90
 |>=Oak Stairs
 |----第1层|

@@ -300,6 +300,25 @@ public class HelloWorldMod implements ModInitializer {
                     return 1;
                 })
             );
+
+            // /lzepos - 显示当前坐标
+            dispatcher.register(CommandManager.literal("lzepos")
+                .executes(ctx -> {
+                    ServerPlayerEntity p = ctx.getSource().getPlayer();
+                    if (p == null) {
+                        ctx.getSource().sendFeedback(() -> Text.literal("§c[坐标] 只有玩家才能使用此命令"), false);
+                        return 0;
+                    }
+                    double x = Math.round(p.getX() * 100.0) / 100.0;
+                    double y = Math.round(p.getY() * 100.0) / 100.0;
+                    double z = Math.round(p.getZ() * 100.0) / 100.0;
+                    String dim = p.getWorld().getRegistryKey().getValue().toString();
+                    ctx.getSource().sendFeedback(() -> Text.literal(
+                        "§e[坐标] §fX: §a" + x + " §fY: §a" + y + " §fZ: §a" + z + " §f| 维度: §b" + dim
+                    ), false);
+                    return 1;
+                })
+            );
         });
     }
 

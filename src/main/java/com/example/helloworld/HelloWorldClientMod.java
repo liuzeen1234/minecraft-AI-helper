@@ -34,6 +34,9 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // 注册选区渲染器
+        com.example.helloworld.selection.SelectionRenderer.register();
+
         // 注册按键绑定 (默认 K 键)
         openSettingsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.helloworld.settings",

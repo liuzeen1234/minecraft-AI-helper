@@ -54,11 +54,19 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
+        // 选区工具按钮
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("选区工具"),
+                button -> this.client.setScreen(new com.example.helloworld.selection.SelectionScreen(this)))
+                .dimensions(this.width / 2 - 100, this.height / 2 + 38, 200, 20)
+                .build()
+        );
+
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 38, 200, 20)
+                .dimensions(this.width / 2 - 100, this.height / 2 + 62, 200, 20)
                 .build()
         );
     }
