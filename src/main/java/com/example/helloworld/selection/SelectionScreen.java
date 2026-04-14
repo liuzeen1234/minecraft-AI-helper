@@ -113,8 +113,13 @@ public class SelectionScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(Text.literal("保存"), button -> saveToMemory())
                 .dimensions(cx + totalW / 2 - 48, saveY - 1, 48, 20).build());
 
+        // --- 分析导出 ---
+        int analyzeBtnY = saveY + 28;
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("§b分析/导出选区 →"), button -> analyzeAndExport())
+                .dimensions(cx - totalW / 2, analyzeBtnY, totalW, 20).build());
+
         // --- 已保存选区（二级菜单） ---
-        int memBtnY = saveY + 28;
+        int memBtnY = analyzeBtnY + 24;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("已保存选区 →"), button -> {
             saveDraft();
             this.client.setScreen(new SelectionMemoryScreen(this));
@@ -158,6 +163,25 @@ public class SelectionScreen extends Screen {
                 this.client.player.sendMessage(Text.literal("§c[选区] 请先填写有效坐标再保存"), false);
             }
         }
+    }
+
+    private void analyzeAndExport() {
+        SelectionManager mgr = SelectionManager.getInstance();
+        if (!mgr.isComplete()) {
+            if (this.client != null && this.client.player != null) {
+                this.client.player.sendMessage(Text.literal("§c[选区] 请先确认选区再分析"), false);
+            }
+            return;
+        }
+        SelectionAnalyzer.AnalysisResult result = SelectionAnalyzer.analyze(mgr.getPos1(), mgr.getPos2());
+        if (result == null) {
+            if (this.client != null && this.client.player != null) {
+                this.client.player.sendMessage(Text.literal("§c[选区] 分析失败，无法读取世界数据"), false);
+            }
+            return;
+        }
+        saveDraft();
+        this.client.setScreen(new SelectionExportScreen(this, result));
     }
 
     private void applySelection() {
