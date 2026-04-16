@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import com.example.helloworld.blueprint.BlueprintBuilder;
 import com.example.helloworld.blueprint.BlueprintData;
 import com.example.helloworld.blueprint.BlueprintRegistry;
+import com.example.helloworld.nbt.NbtCommands;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -192,6 +193,9 @@ public class HelloWorldMod implements ModInitializer {
         });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            // 注册 NBT 解析命令
+            NbtCommands.register(dispatcher);
+
             dispatcher.register(CommandManager.literal("lze")
                 .then(CommandManager.literal("build")
                     .then(CommandManager.argument("name", StringArgumentType.greedyString())
