@@ -54,6 +54,16 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
+        // 注册接收服务端 NBT 导出结果通知
+        ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.EXPORT_NBT_RESULT_PACKET, (client, handler, buf, responseSender) -> {
+            String resultMsg = buf.readString();
+            client.execute(() -> {
+                if (client.player != null) {
+                    client.player.sendMessage(net.minecraft.text.Text.literal(resultMsg), false);
+                }
+            });
+        });
+
         // 每个客户端 tick 检查是否需要截图
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // 按键打开设置页面

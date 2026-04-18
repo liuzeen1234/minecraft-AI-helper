@@ -1,9 +1,13 @@
 package com.example.helloworld.selection;
 
+import com.example.helloworld.HelloWorldMod;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 
 import java.io.File;
@@ -114,29 +118,20 @@ public class SelectionExportScreen extends Screen {
         String name = nameField.getText().trim();
         if (name.isEmpty()) name = "exported_blueprint";
 
-        // 保存到 nbts/ 目录
-        Path dir = Paths.get("nbts");
-        if (!Files.isDirectory(dir)) {
-            dir = Paths.get("..").resolve("nbts");
-        }
-        if (!Files.isDirectory(dir)) {
-            try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        }
+        // 通过网络包请求服务端导出（服务端可完整读取 BlockEntity 数据）
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeInt(result.min().getX());
+        buf.writeInt(result.min().getY());
+        buf.writeInt(result.min().getZ());
+        buf.writeInt(result.max().getX());
+        buf.writeInt(result.max().getY());
+        buf.writeInt(result.max().getZ());
+        buf.writeString(name);
+        ClientPlayNetworking.send(HelloWorldMod.EXPORT_NBT_PACKET, buf);
 
-        String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".nbt";
-        File file = dir.resolve(fileName).toFile();
-
-        try {
-            SelectionAnalyzer.exportNbt(result, file);
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(
-                        Text.literal("§a[选区] NBT 已导出: " + file.getAbsolutePath()), false);
-            }
-        } catch (IOException e) {
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(
-                        Text.literal("§c[选区] NBT 导出失败: " + e.getMessage()), false);
-            }
+        if (this.client != null && this.client.player != null) {
+            this.client.player.sendMessage(
+                    Text.literal("§7[选区] 正在服务端导出 NBT（含方块实体数据）..."), false);
         }
     }
 

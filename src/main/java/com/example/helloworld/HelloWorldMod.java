@@ -41,6 +41,10 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier SCREENSHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "screenshot_response");
     // 客户端 -> 服务端：请求放置 NBT 结构
     public static final Identifier PLACE_NBT_PACKET = new Identifier(MOD_ID, "place_nbt");
+    // 客户端 -> 服务端：请求导出选区为 NBT（含 BlockEntity 数据）
+    public static final Identifier EXPORT_NBT_PACKET = new Identifier(MOD_ID, "export_nbt");
+    // 服务端 -> 客户端：导出完成通知
+    public static final Identifier EXPORT_NBT_RESULT_PACKET = new Identifier(MOD_ID, "export_nbt_result");
 
     private static final ModConfig CONFIG = new ModConfig();
 
@@ -99,6 +103,30 @@ public class HelloWorldMod implements ModInitializer {
                 } catch (Exception e) {
                     LOGGER.error("放置 NBT 结构失败", e);
                     player.sendMessage(Text.literal("§c[NBT] 放置失败: " + e.getMessage()), false);
+                }
+            });
+        });
+
+        // 注册接收客户端导出 NBT 请求的处理器（服务端执行，可完整读取 BlockEntity）
+        ServerPlayNetworking.registerGlobalReceiver(EXPORT_NBT_PACKET, (server, player, handler, buf, responseSender) -> {
+            int x1 = buf.readInt(), y1 = buf.readInt(), z1 = buf.readInt();
+            int x2 = buf.readInt(), y2 = buf.readInt(), z2 = buf.readInt();
+            String fileName = buf.readString();
+            server.execute(() -> {
+                try {
+                    net.minecraft.server.world.ServerWorld world = player.getServerWorld();
+                    net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
+                    net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName);
+                    // 通知客户端导出完成
+                    PacketByteBuf resultBuf = PacketByteBufs.create();
+                    resultBuf.writeString("§a[选区] NBT 已导出（含方块实体数据）: " + fileName + ".nbt");
+                    ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
+                } catch (Exception e) {
+                    LOGGER.error("服务端导出 NBT 失败", e);
+                    PacketByteBuf resultBuf = PacketByteBufs.create();
+                    resultBuf.writeString("§c[选区] NBT 导出失败: " + e.getMessage());
+                    ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
                 }
             });
         });
