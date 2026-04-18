@@ -55,6 +55,10 @@ public class NbtBrowserScreen extends Screen {
     private int scrollOffset = 0;
     private List<String> detailLines = new ArrayList<>();
 
+    // 删除确认状态
+    private boolean confirmingDelete = false;
+    private ButtonWidget deleteButton;
+
     // 布局
     private int listLeft, listTop, listWidth, listHeight;
     private int detailLeft, detailTop, detailWidth, detailHeight;
@@ -100,10 +104,17 @@ public class NbtBrowserScreen extends Screen {
                 .build()
         );
 
+        deleteButton = ButtonWidget.builder(
+                Text.literal("删除"),
+                button -> onDeleteClicked())
+                .dimensions(listLeft + btnWidth + btnSpacing, btnY, 60, 20)
+                .build();
+        this.addDrawableChild(deleteButton);
+
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("刷新"),
                 button -> refreshCurrentDir())
-                .dimensions(listLeft + btnWidth + btnSpacing, btnY, 60, 20)
+                .dimensions(listLeft + btnWidth + btnSpacing + 60 + btnSpacing, btnY, 60, 20)
                 .build()
         );
 
@@ -276,6 +287,64 @@ public class NbtBrowserScreen extends Screen {
         refreshCurrentDir();
     }
 
+    /** 删除按钮点击处理：第一次点击进入确认状态，第二次点击执行删除 */
+    private void onDeleteClicked() {
+        if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) return;
+
+        if (confirmingDelete) {
+            deleteSelected();
+            confirmingDelete = false;
+            deleteButton.setMessage(Text.literal("删除"));
+        } else {
+            confirmingDelete = true;
+            ListEntry entry = filteredEntries.get(selectedIndex);
+            String typeName = entry.isFolder ? "文件夹" : "文件";
+            deleteButton.setMessage(Text.literal("§c确认删除?"));
+        }
+    }
+
+    /** 重置删除确认状态 */
+    private void resetDeleteConfirm() {
+        if (confirmingDelete) {
+            confirmingDelete = false;
+            deleteButton.setMessage(Text.literal("删除"));
+        }
+    }
+
+    /** 执行删除选中的文件或文件夹 */
+    private void deleteSelected() {
+        if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) return;
+        ListEntry entry = filteredEntries.get(selectedIndex);
+        Path targetPath = NBTS_DIR.resolve(entry.fullPath);
+
+        try {
+            if (entry.isFolder) {
+                deleteDirectoryRecursively(targetPath);
+            } else {
+                Files.deleteIfExists(targetPath);
+            }
+            refreshCurrentDir();
+        } catch (IOException e) {
+            detailLines.clear();
+            detailLines.add("§c删除失败: " + e.getMessage());
+        }
+    }
+
+    /** 递归删除目录及其内容 */
+    private void deleteDirectoryRecursively(Path dir) throws IOException {
+        if (!Files.exists(dir)) return;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.delete(p);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+        }
+    }
+
     private void placeSelected() {
         if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) return;
         ListEntry entry = filteredEntries.get(selectedIndex);
@@ -417,6 +486,7 @@ public class NbtBrowserScreen extends Screen {
                     enterFolder();
                     return true;
                 }
+                if (clickedIdx != selectedIndex) resetDeleteConfirm();
                 selectedIndex = clickedIdx;
                 updateDetail();
                 return true;
@@ -445,6 +515,7 @@ public class NbtBrowserScreen extends Screen {
         if (keyCode == 265) { // UP
             if (selectedIndex > 0) {
                 selectedIndex--;
+                resetDeleteConfirm();
                 ensureVisible();
                 updateDetail();
             }
@@ -453,9 +524,15 @@ public class NbtBrowserScreen extends Screen {
         if (keyCode == 264) { // DOWN
             if (selectedIndex < filteredEntries.size() - 1) {
                 selectedIndex++;
+                resetDeleteConfirm();
                 ensureVisible();
                 updateDetail();
             }
+            return true;
+        }
+        // Delete 键触发删除
+        if (keyCode == 261 && !searchField.isFocused()) { // DELETE key
+            onDeleteClicked();
             return true;
         }
         // Enter：文件夹则进入，文件则放置
