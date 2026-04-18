@@ -4,10 +4,17 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtInt;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -258,6 +265,97 @@ public class SelectionAnalyzer {
         for (String part : parts) {
             if (!sb.isEmpty()) sb.append(" ");
             sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 将分析结果导出为 Minecraft 原版 NBT 结构文件（.nbt）。
+     * 格式与结构方块保存的文件一致，可被 /lzenbt place 命令加载。
+     *
+     * @param result 分析结果
+     * @param file   目标文件
+     * @throws IOException 写入失败时抛出
+     */
+    public static void exportNbt(AnalysisResult result, File file) throws IOException {
+        NbtCompound root = new NbtCompound();
+
+        // DataVersion（1.20.x 对应 3463+，这里用一个通用值）
+        root.putInt("DataVersion", 3465);
+
+        // size
+        NbtList sizeList = new NbtList();
+        sizeList.add(NbtInt.of(result.sizeX));
+        sizeList.add(NbtInt.of(result.sizeY));
+        sizeList.add(NbtInt.of(result.sizeZ));
+        root.put("size", sizeList);
+
+        // 构建调色板：为每种 blockId+properties 组合分配索引
+        Map<String, Integer> paletteIndexMap = new LinkedHashMap<>();
+        NbtList paletteList = new NbtList();
+
+        // 先加入空气（索引 0），用于填充空位
+        NbtCompound airEntry = new NbtCompound();
+        airEntry.putString("Name", "minecraft:air");
+        paletteList.add(airEntry);
+        paletteIndexMap.put("minecraft:air", 0);
+
+        for (BlockInfo block : result.blocks) {
+            String fullId = "minecraft:" + block.blockId();
+            String key = buildPaletteKey(fullId, block.properties());
+            if (!paletteIndexMap.containsKey(key)) {
+                int idx = paletteList.size();
+                paletteIndexMap.put(key, idx);
+
+                NbtCompound pe = new NbtCompound();
+                pe.putString("Name", fullId);
+                if (!block.properties().isEmpty()) {
+                    NbtCompound props = new NbtCompound();
+                    for (Map.Entry<String, String> e : block.properties().entrySet()) {
+                        props.putString(e.getKey(), e.getValue());
+                    }
+                    pe.put("Properties", props);
+                }
+                paletteList.add(pe);
+            }
+        }
+        root.put("palette", paletteList);
+
+        // blocks
+        NbtList blocksList = new NbtList();
+        for (BlockInfo block : result.blocks) {
+            String fullId = "minecraft:" + block.blockId();
+            String key = buildPaletteKey(fullId, block.properties());
+            int stateIdx = paletteIndexMap.get(key);
+
+            NbtCompound blockNbt = new NbtCompound();
+            NbtList pos = new NbtList();
+            pos.add(NbtInt.of(block.relX()));
+            pos.add(NbtInt.of(block.relY()));
+            pos.add(NbtInt.of(block.relZ()));
+            blockNbt.put("pos", pos);
+            blockNbt.putInt("state", stateIdx);
+            blocksList.add(blockNbt);
+        }
+        root.put("blocks", blocksList);
+
+        // entities（空列表）
+        root.put("entities", new NbtList());
+
+        // 写入压缩 NBT 文件
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            NbtIo.writeCompressed(root, fos);
+        }
+    }
+
+    /**
+     * 构建调色板的唯一键（包含所有属性）
+     */
+    private static String buildPaletteKey(String fullBlockId, Map<String, String> properties) {
+        if (properties.isEmpty()) return fullBlockId;
+        StringBuilder sb = new StringBuilder(fullBlockId);
+        for (Map.Entry<String, String> e : properties.entrySet()) {
+            sb.append("|").append(e.getKey()).append("=").append(e.getValue());
         }
         return sb.toString();
     }

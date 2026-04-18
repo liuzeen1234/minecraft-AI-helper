@@ -14,11 +14,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * 解析 Minecraft 原版结构 NBT 文件（由结构方块保存的 .nbt 文件）。
@@ -164,7 +167,7 @@ public class NbtStructureParser {
     }
 
     /**
-     * 扫描目录下所有 .nbt 文件并解析
+     * 递归扫描目录下所有 .nbt 文件并解析（包括子文件夹）
      */
     public static List<StructureData> parseAll(Path directory) {
         List<StructureData> results = new ArrayList<>();
@@ -174,16 +177,26 @@ public class NbtStructureParser {
             return results;
         }
 
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".nbt"));
-        if (files == null) return results;
+        try (Stream<Path> walk = Files.walk(directory)) {
+            List<Path> nbtFiles = walk
+                    .filter(p -> p.toString().endsWith(".nbt"))
+                    .filter(Files::isRegularFile)
+                    .toList();
 
-        for (File file : files) {
-            try {
-                results.add(parse(file));
-            } catch (Exception e) {
-                LOGGER.error("解析 NBT 文件失败: {}", file.getName(), e);
+            for (Path p : nbtFiles) {
+                try {
+                    StructureData data = parse(p.toFile());
+                    // 用相对路径作为文件名，方便识别子文件夹来源
+                    data.fileName = directory.relativize(p).toString().replace('\\', '/');
+                    results.add(data);
+                } catch (Exception e) {
+                    LOGGER.error("解析 NBT 文件失败: {}", p.getFileName(), e);
+                }
             }
+        } catch (IOException e) {
+            LOGGER.error("扫描 NBT 目录失败: {}", directory, e);
         }
+
         return results;
     }
 

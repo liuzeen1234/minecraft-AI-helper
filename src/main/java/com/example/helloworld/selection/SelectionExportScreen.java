@@ -6,6 +6,7 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -44,15 +45,19 @@ public class SelectionExportScreen extends Screen {
         blockList = new ArrayList<>(result.blockCounts().entrySet());
 
         // 蓝图名称输入
-        int nameY = this.height - 58;
-        nameField = new TextFieldWidget(this.textRenderer, leftX, nameY, totalW - 60, 18, Text.literal("名称"));
+        int nameY = this.height - 80;
+        nameField = new TextFieldWidget(this.textRenderer, leftX, nameY, totalW, 18, Text.literal("名称"));
         nameField.setText("exported_blueprint");
         nameField.setMaxLength(64);
         this.addDrawableChild(nameField);
 
-        // 导出按钮
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§a导出"), button -> doExport())
-                .dimensions(leftX + totalW - 56, nameY - 1, 56, 20).build());
+        // 导出按钮行
+        int exportY = nameY + 22;
+        int halfW = totalW / 2 - 2;
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("§a导出蓝图"), button -> doExport())
+                .dimensions(leftX, exportY, halfW, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("§b导出NBT"), button -> doExportNbt())
+                .dimensions(cx + 2, exportY, halfW, 20).build());
 
         // 翻页按钮
         int pageY = nameY - 26;
@@ -101,6 +106,36 @@ public class SelectionExportScreen extends Screen {
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(
                         Text.literal("§c[选区] 导出失败: " + e.getMessage()), false);
+            }
+        }
+    }
+
+    private void doExportNbt() {
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) name = "exported_blueprint";
+
+        // 保存到 nbts/ 目录
+        Path dir = Paths.get("nbts");
+        if (!Files.isDirectory(dir)) {
+            dir = Paths.get("..").resolve("nbts");
+        }
+        if (!Files.isDirectory(dir)) {
+            try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        }
+
+        String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".nbt";
+        File file = dir.resolve(fileName).toFile();
+
+        try {
+            SelectionAnalyzer.exportNbt(result, file);
+            if (this.client != null && this.client.player != null) {
+                this.client.player.sendMessage(
+                        Text.literal("§a[选区] NBT 已导出: " + file.getAbsolutePath()), false);
+            }
+        } catch (IOException e) {
+            if (this.client != null && this.client.player != null) {
+                this.client.player.sendMessage(
+                        Text.literal("§c[选区] NBT 导出失败: " + e.getMessage()), false);
             }
         }
     }

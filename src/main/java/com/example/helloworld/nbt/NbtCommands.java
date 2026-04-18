@@ -10,9 +10,12 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 /**
  * 注册 /lzenbt 命令，用于在游戏内解析和查看 NBT 结构文件。
@@ -61,33 +64,75 @@ public class NbtCommands {
             return 0;
         }
 
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".nbt"));
-        if (files == null || files.length == 0) {
+        // 递归扫描所有子文件夹中的 .nbt 文件
+        List<Path> nbtFiles;
+        try (Stream<Path> walk = Files.walk(NBTS_DIR)) {
+            nbtFiles = walk
+                    .filter(p -> p.toString().endsWith(".nbt"))
+                    .filter(p -> Files.isRegularFile(p))
+                    .toList();
+        } catch (IOException e) {
+            source.sendFeedback(() -> Text.literal("§c扫描目录失败: " + e.getMessage()), false);
+            return 0;
+        }
+
+        if (nbtFiles.isEmpty()) {
             source.sendFeedback(() -> Text.literal("§enbts/ 目录下没有 .nbt 文件"), false);
             return 0;
         }
 
-        source.sendFeedback(() -> Text.literal("§e找到 " + files.length + " 个 NBT 文件:"), false);
-        for (File f : files) {
-            String name = f.getName();
-            long size = f.length();
-            source.sendFeedback(() -> Text.literal("§a  - §f" + name + " §7(" + size + " bytes)"), false);
+        source.sendFeedback(() -> Text.literal("§e找到 " + nbtFiles.size() + " 个 NBT 文件:"), false);
+        for (Path p : nbtFiles) {
+            // 显示相对于 nbts/ 的路径，方便用户复制使用
+            String relativePath = NBTS_DIR.relativize(p).toString().replace('\\', '/');
+            long size = p.toFile().length();
+            source.sendFeedback(() -> Text.literal("§a  - §f" + relativePath + " §7(" + size + " bytes)"), false);
         }
         return 1;
+    }
+
+    /**
+     * 解析用户输入的文件名，支持以下格式：
+     *   - roof                          → 先找 nbts/roof.nbt，再递归搜索子文件夹
+     *   - woodland_mansion/roof         → nbts/woodland_mansion/roof.nbt
+     *   - woodland_mansion roof         → 空格转为 /，等同上面
+     *   - woodland_mansion/roof.nbt     → 直接使用
+     */
+    public static File resolveNbtFile(String input) {
+        // 空格转为路径分隔符，支持 "woodland_mansion roof" 写法
+        String normalized = input.trim().replace(' ', '/');
+        if (!normalized.endsWith(".nbt")) {
+            normalized = normalized + ".nbt";
+        }
+
+        // 1. 先尝试精确路径
+        File file = NBTS_DIR.resolve(normalized).toFile();
+        if (file.exists()) return file;
+
+        // 2. 回退：递归搜索文件名匹配的文件
+        String targetName = normalized.contains("/")
+                ? normalized.substring(normalized.lastIndexOf('/') + 1)
+                : normalized;
+        try (Stream<Path> walk = Files.walk(NBTS_DIR)) {
+            return walk
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().equals(targetName))
+                    .findFirst()
+                    .map(Path::toFile)
+                    .orElse(null);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private static int showInfo(CommandContext<ServerCommandSource> ctx) {
         ServerCommandSource source = ctx.getSource();
         String filename = StringArgumentType.getString(ctx, "filename");
 
-        if (!filename.endsWith(".nbt")) {
-            filename = filename + ".nbt";
-        }
-
-        File file = NBTS_DIR.resolve(filename).toFile();
-        if (!file.exists()) {
+        File file = resolveNbtFile(filename);
+        if (file == null || !file.exists()) {
             String fn = filename;
-            source.sendFeedback(() -> Text.literal("§c文件不存在: nbts/" + fn), false);
+            source.sendFeedback(() -> Text.literal("§c文件不存在: " + fn + " (提示: 子文件夹用空格分隔，如 woodland_mansion roof)"), false);
             return 0;
         }
 
@@ -135,18 +180,15 @@ public class NbtCommands {
         }
 
         String filename = StringArgumentType.getString(ctx, "filename");
-        if (!filename.endsWith(".nbt")) {
-            filename = filename + ".nbt";
-        }
 
-        File file = NBTS_DIR.resolve(filename).toFile();
-        if (!file.exists()) {
+        File file = resolveNbtFile(filename);
+        if (file == null || !file.exists()) {
             String fn = filename;
-            source.sendFeedback(() -> Text.literal("§c文件不存在: nbts/" + fn), false);
+            source.sendFeedback(() -> Text.literal("§c文件不存在: " + fn + " (提示: 子文件夹用空格分隔，如 woodland_mansion roof)"), false);
             return 0;
         }
 
-        String fn = filename;
+        String fn = file.getName();
         BlockPos origin = player.getBlockPos();
         source.sendFeedback(() -> Text.literal("§e[NBT] 正在放置结构: " + fn + " ..."), false);
 

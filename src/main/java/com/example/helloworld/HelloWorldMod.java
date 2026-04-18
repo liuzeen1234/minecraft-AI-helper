@@ -39,6 +39,8 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier TAKE_SCREENSHOT_PACKET = new Identifier(MOD_ID, "take_screenshot");
     // 客户端 -> 服务端：回传截图数据
     public static final Identifier SCREENSHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "screenshot_response");
+    // 客户端 -> 服务端：请求放置 NBT 结构
+    public static final Identifier PLACE_NBT_PACKET = new Identifier(MOD_ID, "place_nbt");
 
     private static final ModConfig CONFIG = new ModConfig();
 
@@ -73,6 +75,32 @@ public class HelloWorldMod implements ModInitializer {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
             player.sendMessage(Text.literal("Hello World! 输入 /lze <问题> 来和 AI 对话"), false);
+        });
+
+        // 注册接收客户端 NBT 放置请求的处理器
+        ServerPlayNetworking.registerGlobalReceiver(PLACE_NBT_PACKET, (server, player, handler, buf, responseSender) -> {
+            String filename = buf.readString();
+            server.execute(() -> {
+                try {
+                    java.io.File file = com.example.helloworld.nbt.NbtCommands.resolveNbtFile(filename);
+                    if (file == null || !file.exists()) {
+                        player.sendMessage(Text.literal("§c[NBT] 文件不存在: " + filename), false);
+                        return;
+                    }
+                    com.example.helloworld.nbt.NbtStructureParser.StructureData data =
+                            com.example.helloworld.nbt.NbtStructureParser.parse(file);
+                    net.minecraft.util.math.BlockPos origin = player.getBlockPos();
+                    int count = com.example.helloworld.nbt.NbtStructurePlacer.place(
+                            data, player.getServerWorld(), origin);
+                    player.sendMessage(Text.literal(
+                            "§a[NBT] " + file.getName() + " 放置完成! 共 " + count + " 个方块 (原点: "
+                                    + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")"
+                    ), false);
+                } catch (Exception e) {
+                    LOGGER.error("放置 NBT 结构失败", e);
+                    player.sendMessage(Text.literal("§c[NBT] 放置失败: " + e.getMessage()), false);
+                }
+            });
         });
 
         // 注册接收客户端截图完成通知的处理器
