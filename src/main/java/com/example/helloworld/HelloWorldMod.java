@@ -112,15 +112,17 @@ public class HelloWorldMod implements ModInitializer {
             int x1 = buf.readInt(), y1 = buf.readInt(), z1 = buf.readInt();
             int x2 = buf.readInt(), y2 = buf.readInt(), z2 = buf.readInt();
             String fileName = buf.readString();
+            String subPath = buf.isReadable() ? buf.readString() : "";
             server.execute(() -> {
                 try {
                     net.minecraft.server.world.ServerWorld world = player.getServerWorld();
                     net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
                     net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
-                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName, subPath);
+                    String displayPath = subPath.isEmpty() ? fileName + ".nbt" : subPath + "/" + fileName + ".nbt";
                     // 通知客户端导出完成
                     PacketByteBuf resultBuf = PacketByteBufs.create();
-                    resultBuf.writeString("§a[选区] NBT 已导出（含方块实体数据）: " + fileName + ".nbt");
+                    resultBuf.writeString("§a[选区] NBT 已导出（含方块实体数据）: " + displayPath);
                     ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
                 } catch (Exception e) {
                     LOGGER.error("服务端导出 NBT 失败", e);

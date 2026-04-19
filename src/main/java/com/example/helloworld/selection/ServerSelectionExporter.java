@@ -32,6 +32,14 @@ public class ServerSelectionExporter {
      */
     @SuppressWarnings("unchecked")
     public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name) throws IOException {
+        exportNbt(world, pos1, pos2, name, "");
+    }
+
+    /**
+     * 在服务端扫描选区并导出为 NBT 文件（含完整 BlockEntity 数据），可指定子目录。
+     */
+    @SuppressWarnings("unchecked")
+    public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath) throws IOException {
         BlockPos min = new BlockPos(
                 Math.min(pos1.getX(), pos2.getX()),
                 Math.min(pos1.getY(), pos2.getY()),
@@ -139,6 +147,14 @@ public class ServerSelectionExporter {
         }
         if (!Files.isDirectory(dir)) {
             Files.createDirectories(dir);
+        }
+
+        // 如果指定了子目录，追加到路径
+        if (subPath != null && !subPath.isEmpty()) {
+            dir = dir.resolve(subPath);
+            if (!Files.isDirectory(dir)) {
+                Files.createDirectories(dir);
+            }
         }
 
         String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".nbt";

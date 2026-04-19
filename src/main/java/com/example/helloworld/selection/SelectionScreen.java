@@ -16,7 +16,6 @@ public class SelectionScreen extends Screen {
     private final Screen parent;
     private TextFieldWidget x1Field, y1Field, z1Field;
     private TextFieldWidget x2Field, y2Field, z2Field;
-    private TextFieldWidget nameField;
 
     public SelectionScreen(Screen parent) {
         super(Text.literal("选区工具"));
@@ -103,31 +102,14 @@ public class SelectionScreen extends Screen {
             x2Field.setText(""); y2Field.setText(""); z2Field.setText("");
         }).dimensions(cx + 2, actionY, totalW / 2 - 2, 20).build());
 
-        // --- 保存到记忆 ---
-        int saveY = actionY + 30;
-        nameField = new TextFieldWidget(this.textRenderer, cx - totalW / 2, saveY, totalW - 52, 18, Text.literal("名称"));
-        nameField.setSuggestion("输入选区名称...");
-        nameField.setChangedListener(s -> nameField.setSuggestion(s.isEmpty() ? "输入选区名称..." : ""));
-        this.addDrawableChild(nameField);
-
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("保存"), button -> saveToMemory())
-                .dimensions(cx + totalW / 2 - 48, saveY - 1, 48, 20).build());
-
         // --- 分析导出 ---
-        int analyzeBtnY = saveY + 28;
+        int analyzeBtnY = actionY + 30;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b分析/导出选区 →"), button -> analyzeAndExport())
                 .dimensions(cx - totalW / 2, analyzeBtnY, totalW, 20).build());
 
-        // --- 已保存选区（二级菜单） ---
-        int memBtnY = analyzeBtnY + 24;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("已保存选区 →"), button -> {
-            saveDraft();
-            this.client.setScreen(new SelectionMemoryScreen(this));
-        }).dimensions(cx - totalW / 2, memBtnY, totalW, 20).build());
-
         // --- 返回 ---
         this.addDrawableChild(ButtonWidget.builder(Text.literal("返回"), button -> goBack())
-                .dimensions(cx - 50, memBtnY + 28, 100, 20).build());
+                .dimensions(cx - 50, analyzeBtnY + 28, 100, 20).build());
     }
 
     /** 退出前保存草稿 */
@@ -141,28 +123,6 @@ public class SelectionScreen extends Screen {
     private void goBack() {
         saveDraft();
         this.client.setScreen(this.parent);
-    }
-
-    private void saveToMemory() {
-        String name = nameField.getText().trim();
-        if (name.isEmpty()) name = "未命名";
-        try {
-            int x1 = Integer.parseInt(x1Field.getText().trim());
-            int y1 = Integer.parseInt(y1Field.getText().trim());
-            int z1 = Integer.parseInt(z1Field.getText().trim());
-            int x2 = Integer.parseInt(x2Field.getText().trim());
-            int y2 = Integer.parseInt(y2Field.getText().trim());
-            int z2 = Integer.parseInt(z2Field.getText().trim());
-            SelectionMemory.addEntry(name, new BlockPos(x1, y1, z1), new BlockPos(x2, y2, z2));
-            nameField.setText("");
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("§a[选区] 已保存: " + name), false);
-            }
-        } catch (NumberFormatException e) {
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("§c[选区] 请先填写有效坐标再保存"), false);
-            }
-        }
     }
 
     private void analyzeAndExport() {

@@ -17,8 +17,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * 选区分析与导出界面：显示选区内方块统计信息，支持导出为蓝图文件。
@@ -28,11 +30,16 @@ public class SelectionExportScreen extends Screen {
     private final Screen parent;
     private final SelectionAnalyzer.AnalysisResult result;
     private TextFieldWidget nameField;
+    private TextFieldWidget pathField;
 
     // 分页显示方块列表
     private int scrollOffset = 0;
     private static final int ITEMS_PER_PAGE = 8;
     private List<Map.Entry<String, Integer>> blockList;
+
+    // NBT 保存路径下的可用文件夹
+    private static final Path NBTS_DIR = Path.of("../nbts");
+    private List<String> availableFolders = new ArrayList<>();
 
     public SelectionExportScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
         super(Text.literal("选区分析"));
@@ -47,6 +54,17 @@ public class SelectionExportScreen extends Screen {
         int leftX = cx - totalW / 2;
 
         blockList = new ArrayList<>(result.blockCounts().entrySet());
+        scanAvailableFolders();
+
+        // 保存路径输入
+        int pathY = this.height - 104;
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("📁"), button -> cycleFolder())
+                .dimensions(leftX, pathY, 20, 18).build());
+        pathField = new TextFieldWidget(this.textRenderer, leftX + 22, pathY, totalW - 22, 18, Text.literal("路径"));
+        pathField.setText("");
+        pathField.setPlaceholder(Text.literal("§7保存路径（留空=nbts根目录）"));
+        pathField.setMaxLength(128);
+        this.addDrawableChild(pathField);
 
         // 蓝图名称输入
         int nameY = this.height - 80;
@@ -62,18 +80,6 @@ public class SelectionExportScreen extends Screen {
                 .dimensions(leftX, exportY, halfW, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b导出NBT"), button -> doExportNbt())
                 .dimensions(cx + 2, exportY, halfW, 20).build());
-
-        // 翻页按钮
-        int pageY = nameY - 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("▲ 上翻"), button -> {
-            scrollOffset = Math.max(0, scrollOffset - ITEMS_PER_PAGE);
-        }).dimensions(leftX, pageY, totalW / 2 - 2, 20).build());
-
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("▼ 下翻"), button -> {
-            if (scrollOffset + ITEMS_PER_PAGE < blockList.size()) {
-                scrollOffset += ITEMS_PER_PAGE;
-            }
-        }).dimensions(cx + 2, pageY, totalW / 2 - 2, 20).build());
 
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(Text.literal("返回"), button -> {
@@ -117,6 +123,7 @@ public class SelectionExportScreen extends Screen {
     private void doExportNbt() {
         String name = nameField.getText().trim();
         if (name.isEmpty()) name = "exported_blueprint";
+        String subPath = pathField.getText().trim();
 
         // 通过网络包请求服务端导出（服务端可完整读取 BlockEntity 数据）
         PacketByteBuf buf = PacketByteBufs.create();
@@ -127,12 +134,36 @@ public class SelectionExportScreen extends Screen {
         buf.writeInt(result.max().getY());
         buf.writeInt(result.max().getZ());
         buf.writeString(name);
+        buf.writeString(subPath);
         ClientPlayNetworking.send(HelloWorldMod.EXPORT_NBT_PACKET, buf);
 
+        String displayPath = subPath.isEmpty() ? name + ".nbt" : subPath + "/" + name + ".nbt";
         if (this.client != null && this.client.player != null) {
             this.client.player.sendMessage(
-                    Text.literal("§7[选区] 正在服务端导出 NBT（含方块实体数据）..."), false);
+                    Text.literal("§7[选区] 正在服务端导出 NBT 到 " + displayPath + " ..."), false);
         }
+    }
+
+    /** 扫描 nbts 目录下的所有子文件夹 */
+    private void scanAvailableFolders() {
+        availableFolders.clear();
+        availableFolders.add(""); // 根目录
+        Path dir = NBTS_DIR;
+        if (!Files.isDirectory(dir)) return;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.filter(Files::isDirectory)
+                .filter(p -> !p.equals(dir))
+                .forEach(p -> availableFolders.add(dir.relativize(p).toString().replace('\\', '/')));
+        } catch (IOException ignored) {}
+        Collections.sort(availableFolders);
+    }
+
+    /** 点击文件夹按钮循环切换可用路径 */
+    private void cycleFolder() {
+        String current = pathField.getText().trim();
+        int idx = availableFolders.indexOf(current);
+        int next = (idx + 1) % availableFolders.size();
+        pathField.setText(availableFolders.get(next));
     }
 
     @Override
@@ -161,11 +192,14 @@ public class SelectionExportScreen extends Screen {
 
         // 方块列表
         int listY = infoY + 42;
+        int listMaxY = this.height - 110; // 路径输入框上方留出空间
         context.drawTextWithShadow(this.textRenderer, "--- 方块统计 ---", leftX, listY, 0xFFFF55);
         listY += 12;
 
-        int end = Math.min(scrollOffset + ITEMS_PER_PAGE, blockList.size());
+        int maxVisible = Math.max(1, (listMaxY - listY) / 11);
+        int end = Math.min(scrollOffset + maxVisible, blockList.size());
         for (int i = scrollOffset; i < end; i++) {
+            if (listY + 11 > listMaxY) break;
             Map.Entry<String, Integer> entry = blockList.get(i);
             String line = String.format("%-30s x%d", entry.getKey(), entry.getValue());
             // 截断过长的行
@@ -174,16 +208,18 @@ public class SelectionExportScreen extends Screen {
             listY += 11;
         }
 
-        // 页码
-        int totalPages = (blockList.size() + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE;
-        int currentPage = scrollOffset / ITEMS_PER_PAGE + 1;
-        if (totalPages > 1) {
-            context.drawCenteredTextWithShadow(this.textRenderer,
-                    String.format("第 %d/%d 页", currentPage, totalPages),
-                    cx, listY + 4, 0x888888);
-        }
-
         super.render(context, mouseX, mouseY, delta);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        int maxScroll = Math.max(0, blockList.size() - 1);
+        if (verticalAmount > 0) {
+            scrollOffset = Math.max(0, scrollOffset - 1);
+        } else if (verticalAmount < 0) {
+            scrollOffset = Math.min(maxScroll, scrollOffset + 1);
+        }
+        return true;
     }
 
     @Override
