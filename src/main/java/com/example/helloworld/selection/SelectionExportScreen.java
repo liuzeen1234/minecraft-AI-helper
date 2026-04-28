@@ -76,7 +76,7 @@ public class SelectionExportScreen extends Screen {
         // 导出按钮行
         int exportY = nameY + 22;
         int halfW = totalW / 2 - 2;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§a导出蓝图"), button -> doExport())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("§a导出TXT"), button -> doExport())
                 .dimensions(leftX, exportY, halfW, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b导出NBT"), button -> doExportNbt())
                 .dimensions(cx + 2, exportY, halfW, 20).build());
