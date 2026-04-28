@@ -5,6 +5,9 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.property.Property;
@@ -59,13 +62,21 @@ public class NbtStructurePlacer {
             if (block.blockEntityNbt != null) {
                 BlockEntity be = world.getBlockEntity(targetPos);
                 if (be != null) {
-                    NbtCompound nbt = block.blockEntityNbt.copy();
-                    // 更新坐标到实际位置
-                    nbt.putInt("x", targetPos.getX());
-                    nbt.putInt("y", targetPos.getY());
-                    nbt.putInt("z", targetPos.getZ());
-                    be.readNbt(nbt);
-                    be.markDirty();
+                    try {
+                        NbtCompound nbt = block.blockEntityNbt.copy();
+                        // 更新坐标到实际位置
+                        nbt.putInt("x", targetPos.getX());
+                        nbt.putInt("y", targetPos.getY());
+                        nbt.putInt("z", targetPos.getZ());
+                        // 转换旧版告示牌 NBT 格式为 1.20+ 格式
+                        if (palette.blockName.contains("sign")) {
+                            upgradeSignNbt(nbt);
+                        }
+                        be.readNbt(nbt);
+                        be.markDirty();
+                    } catch (Exception e) {
+                        LOGGER.debug("方块实体 NBT 写入跳过 ({}): {}", palette.blockName, e.getMessage());
+                    }
                 }
             }
 
@@ -113,5 +124,82 @@ public class NbtStructurePlacer {
             }
         }
         return null;
+    }
+
+    /**
+     * 修复告示牌 NBT 数据，确保 front_text/back_text 的 messages 列表格式正确。
+     * 1.20+ 要求 messages 是一个包含 4 个 JSON 字符串的列表。
+     * 同时兼容旧版 Text1~Text4 格式的转换。
+     */
+    private static void upgradeSignNbt(NbtCompound nbt) {
+        // 新格式：修复 front_text 和 back_text 中的 messages
+        if (nbt.contains("front_text", NbtElement.COMPOUND_TYPE)) {
+            fixSignTextNbt(nbt.getCompound("front_text"));
+            if (nbt.contains("back_text", NbtElement.COMPOUND_TYPE)) {
+                fixSignTextNbt(nbt.getCompound("back_text"));
+            } else {
+                nbt.put("back_text", buildEmptySignTextNbt());
+            }
+            return;
+        }
+
+        // 旧格式：提取 Text1~Text4 并转换
+        String[] texts = new String[4];
+        for (int i = 0; i < 4; i++) {
+            String key = "Text" + (i + 1);
+            if (nbt.contains(key, NbtElement.STRING_TYPE)) {
+                texts[i] = nbt.getString(key);
+                nbt.remove(key);
+            } else {
+                texts[i] = "{\"text\":\"\"}";
+            }
+        }
+
+        NbtCompound frontText = new NbtCompound();
+        NbtList messages = new NbtList();
+        for (String text : texts) {
+            messages.add(NbtString.of(text));
+        }
+        frontText.put("messages", messages);
+        frontText.putString("color", "black");
+        frontText.putBoolean("has_glowing_text", false);
+        nbt.put("front_text", frontText);
+        nbt.put("back_text", buildEmptySignTextNbt());
+
+        nbt.remove("GlowingText");
+        nbt.remove("Color");
+    }
+
+    /**
+     * 修复单个 front_text/back_text 的 messages 列表，
+     * 确保是恰好 4 个 NbtString 元素。
+     */
+    private static void fixSignTextNbt(NbtCompound textNbt) {
+        boolean needsFix = true;
+        if (textNbt.contains("messages", NbtElement.LIST_TYPE)) {
+            NbtList original = textNbt.getList("messages", NbtElement.STRING_TYPE);
+            if (original.size() == 4) {
+                needsFix = false;
+            }
+        }
+        if (needsFix) {
+            NbtList fixed = new NbtList();
+            for (int i = 0; i < 4; i++) {
+                fixed.add(NbtString.of("{\"text\":\"\"}"));
+            }
+            textNbt.put("messages", fixed);
+        }
+    }
+
+    private static NbtCompound buildEmptySignTextNbt() {
+        NbtCompound textNbt = new NbtCompound();
+        NbtList messages = new NbtList();
+        for (int i = 0; i < 4; i++) {
+            messages.add(NbtString.of("{\"text\":\"\"}"));
+        }
+        textNbt.put("messages", messages);
+        textNbt.putString("color", "black");
+        textNbt.putBoolean("has_glowing_text", false);
+        return textNbt;
     }
 }
