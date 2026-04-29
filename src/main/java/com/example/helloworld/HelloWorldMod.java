@@ -381,6 +381,79 @@ public class HelloWorldMod implements ModInitializer {
                     return 1;
                 })
             );
+
+            // /lzelog - 控制日志转发到聊天框
+            dispatcher.register(CommandManager.literal("lzelog")
+                // /lzelog - 切换开关
+                .executes(ctx -> {
+                    InGameLogAppender.toggleEnabled();
+                    boolean on = InGameLogAppender.isEnabled();
+                    ctx.getSource().sendFeedback(() -> Text.literal(
+                        "§e[日志] 聊天框日志显示已" + (on ? "§a开启" : "§c关闭")
+                    ), false);
+                    return 1;
+                })
+                // /lzelog on
+                .then(CommandManager.literal("on")
+                    .executes(ctx -> {
+                        InGameLogAppender.setEnabled(true);
+                        ctx.getSource().sendFeedback(() -> Text.literal("§a[日志] 聊天框日志显示已开启"), false);
+                        return 1;
+                    })
+                )
+                // /lzelog off
+                .then(CommandManager.literal("off")
+                    .executes(ctx -> {
+                        InGameLogAppender.setEnabled(false);
+                        ctx.getSource().sendFeedback(() -> Text.literal("§c[日志] 聊天框日志显示已关闭"), false);
+                        return 1;
+                    })
+                )
+                // /lzelog level <error|warn|info|debug>
+                .then(CommandManager.literal("level")
+                    .then(CommandManager.literal("error")
+                        .executes(ctx -> {
+                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.ERROR);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[日志] 最低显示级别: §cERROR"), false);
+                            return 1;
+                        })
+                    )
+                    .then(CommandManager.literal("warn")
+                        .executes(ctx -> {
+                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.WARN);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[日志] 最低显示级别: §eWARN"), false);
+                            return 1;
+                        })
+                    )
+                    .then(CommandManager.literal("info")
+                        .executes(ctx -> {
+                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.INFO);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[日志] 最低显示级别: §fINFO"), false);
+                            return 1;
+                        })
+                    )
+                    .then(CommandManager.literal("debug")
+                        .executes(ctx -> {
+                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.DEBUG);
+                            ctx.getSource().sendFeedback(() -> Text.literal("§a[日志] 最低显示级别: §7DEBUG"), false);
+                            return 1;
+                        })
+                    )
+                )
+            );
+
+            // /lzetest - 故意触发测试日志，验证聊天框日志显示
+            dispatcher.register(CommandManager.literal("lzetest")
+                .executes(ctx -> {
+                    ctx.getSource().sendFeedback(() -> Text.literal("§e[测试] 正在生成测试日志..."), false);
+                    LOGGER.warn("这是一条测试 WARN 日志 - 来自 /lzetest 命令");
+                    LOGGER.error("这是一条测试 ERROR 日志 - 来自 /lzetest 命令");
+                    LOGGER.error("模拟异常: NullPointerException at FakeClass.fakeMethod(FakeClass.java:42)");
+                    LOGGER.info("这是一条测试 INFO 日志（默认级别下不会显示在聊天框）");
+                    ctx.getSource().sendFeedback(() -> Text.literal("§a[测试] 已生成 2 条 WARN/ERROR + 1 条 INFO 日志，检查聊天框!"), false);
+                    return 1;
+                })
+            );
         });
     }
 

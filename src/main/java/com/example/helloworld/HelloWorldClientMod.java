@@ -37,6 +37,9 @@ public class HelloWorldClientMod implements ClientModInitializer {
         // 注册选区渲染器
         com.example.helloworld.selection.SelectionRenderer.register();
 
+        // 安装日志转发到聊天框的 Appender
+        InGameLogAppender.install();
+
         // 注册按键绑定 (默认 K 键)
         openSettingsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.helloworld.settings",
@@ -64,12 +67,15 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
-        // 每个客户端 tick 检查是否需要截图
+        // 每个客户端 tick 检查是否需要截图 & 刷新日志到聊天框
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // 按键打开设置页面
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new ModSettingsScreen(client.currentScreen));
             }
+
+            // 将捕获的日志消息发送到聊天框
+            InGameLogAppender.flushToChat();
 
             if (pendingMessage != null && delayTicks > 0) {
                 delayTicks--;
