@@ -28,7 +28,8 @@ import java.util.stream.Stream;
  *
  * NBT 结构文件的格式：
  * - size: [x, y, z] 结构尺寸
- * - palette: 方块状态调色板列表
+ * - palette: 方块状态调色板列表（单调色板格式）
+ * - palettes: 多调色板列表（多调色板格式，如 shipwreck 等原版结构使用）
  * - blocks: 方块列表，每个包含 pos、state（调色板索引）、nbt（可选的方块实体数据）
  * - entities: 实体列表（可选）
  * - DataVersion: 数据版本号
@@ -119,9 +120,23 @@ public class NbtStructureParser {
             data.dataVersion = root.getInt("DataVersion");
         }
 
-        // 解析调色板
+        // 解析调色板（支持 palette 单调色板和 palettes 多调色板两种格式）
+        NbtList paletteList = null;
         if (root.contains("palette", NbtElement.LIST_TYPE)) {
-            NbtList paletteList = root.getList("palette", NbtElement.COMPOUND_TYPE);
+            // 单调色板格式：palette 直接是一个 Compound 列表
+            paletteList = root.getList("palette", NbtElement.COMPOUND_TYPE);
+        } else if (root.contains("palettes", NbtElement.LIST_TYPE)) {
+            // 多调色板格式：palettes 是一个列表的列表，取第一个调色板
+            NbtList palettesList = root.getList("palettes", NbtElement.LIST_TYPE);
+            if (!palettesList.isEmpty()) {
+                // palettes 中的每个元素本身是一个 List<Compound>
+                paletteList = palettesList.getList(0);
+                LOGGER.info("使用多调色板格式 (palettes)，共 {} 个变体，取第一个 ({} 种方块)",
+                        palettesList.size(), paletteList.size());
+            }
+        }
+
+        if (paletteList != null) {
             for (int i = 0; i < paletteList.size(); i++) {
                 NbtCompound entry = paletteList.getCompound(i);
                 PaletteEntry pe = new PaletteEntry();
