@@ -10,19 +10,19 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 蓝图注册表，从 architect-docs/ 目录加载所有 .txt 蓝图文件。
+ * 蓝图注册表，从 txts/ 目录加载所有 .txt 蓝图文件。
  * 支持按建筑名称模糊匹配。
  */
 public class BlueprintRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("BlueprintRegistry");
-    private static final String BLUEPRINT_DIR = "architect-docs";
+    private static final String BLUEPRINT_DIR = "txts";
 
     // key = 蓝图名称（小写），value = 解析后的蓝图数据
     private final Map<String, BlueprintData> blueprints = new LinkedHashMap<>();
 
     /**
-     * 扫描 architect-docs/ 目录，加载所有 .txt 蓝图文件。
+     * 扫描 txts/ 目录，加载所有 .txt 蓝图文件。
      * Minecraft 运行时工作目录是 run/，所以需要向上一级找项目根目录。
      */
     public void loadAll() {

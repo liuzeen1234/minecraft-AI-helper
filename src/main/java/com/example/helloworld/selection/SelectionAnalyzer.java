@@ -96,7 +96,7 @@ public class SelectionAnalyzer {
 
     /**
      * 将分析结果导出为兼容 BlueprintParser 的蓝图文本。
-     * 格式与 architect-docs/ 下的 .txt 文件一致。
+     * 格式与 txts/ 下的 .txt 文件一致。
      */
     public static String exportBlueprint(AnalysisResult result, String name) {
         if (result == null || result.blocks.isEmpty()) return "";

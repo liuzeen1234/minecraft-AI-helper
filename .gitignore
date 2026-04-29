@@ -13,9 +13,9 @@ gradle-8.5-bin.zip
 # Minecraft run directory
 run/
 
-# NBT and architect docs
+# NBT and txts
 nbts/
-architect-docs/
+txts/
 
 # OS files
 .DS_Store

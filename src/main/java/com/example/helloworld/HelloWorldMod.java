@@ -496,7 +496,7 @@ public class HelloWorldMod implements ModInitializer {
     private int listBlueprints(CommandContext<ServerCommandSource> context) {
         ServerCommandSource source = context.getSource();
         if (blueprintRegistry.size() == 0) {
-            source.sendFeedback(() -> Text.literal("§e没有已加载的蓝图。将 .txt 蓝图文件放入 architect-docs/ 目录"), false);
+            source.sendFeedback(() -> Text.literal("§e没有已加载的蓝图。将 .txt 蓝图文件放入 txts/ 目录"), false);
         } else {
             source.sendFeedback(() -> Text.literal("§e已加载 " + blueprintRegistry.size() + " 个蓝图:"), false);
             for (String name : blueprintRegistry.getNames()) {
