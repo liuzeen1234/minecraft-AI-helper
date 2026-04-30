@@ -3,6 +3,9 @@
 build/
 gradle-8.5-bin.zip
 
+# Kiro settings (contains tokens)
+.kiro/settings/
+
 # IDE
 .vscode/
 .idea/
