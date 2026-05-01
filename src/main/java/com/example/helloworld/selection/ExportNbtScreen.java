@@ -9,14 +9,10 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Stream;
 
 /**
  * P3 - 导出 NBT 页面：填写保存路径和文件名，点击"导出.nbt"执行导出。
@@ -30,7 +26,6 @@ public class ExportNbtScreen extends Screen {
     private TextFieldWidget nameField;
 
     private static final Path NBTS_DIR = Path.of("../nbts");
-    private List<String> availableFolders = new ArrayList<>();
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
@@ -44,8 +39,6 @@ public class ExportNbtScreen extends Screen {
 
     @Override
     protected void init() {
-        scanAvailableFolders();
-
         int cx = this.width / 2;
         int cy = this.height / 2;
         int popLeft = cx - POPUP_WIDTH / 2;
@@ -56,12 +49,12 @@ public class ExportNbtScreen extends Screen {
 
         // 保存路径输入
         int pathY = popTop + 28;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("📁"), button -> cycleFolder())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("📁"), button -> openFolderChooser())
                 .dimensions(fieldLeft, pathY, 20, 18).build());
         pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal("路径"));
         pathField.setText("");
         pathField.setPlaceholder(Text.literal("§7保存路径（留空=nbts根目录）"));
-        pathField.setMaxLength(128);
+        pathField.setMaxLength(512);
         this.addDrawableChild(pathField);
 
         // 文件名输入
@@ -104,7 +97,7 @@ public class ExportNbtScreen extends Screen {
     private void doExportNbt() {
         String name = nameField.getText().trim();
         if (name.isEmpty()) name = "exported_structure";
-        String subPath = pathField.getText().trim();
+        String pathText = pathField.getText().trim();
 
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeInt(result.min().getX());
@@ -114,10 +107,12 @@ public class ExportNbtScreen extends Screen {
         buf.writeInt(result.max().getY());
         buf.writeInt(result.max().getZ());
         buf.writeString(name);
-        buf.writeString(subPath);
+        buf.writeString(pathText);
         ClientPlayNetworking.send(HelloWorldMod.EXPORT_NBT_PACKET, buf);
 
-        String displayPath = subPath.isEmpty() ? name + ".nbt" : subPath + "/" + name + ".nbt";
+        String displayPath = pathText.isEmpty()
+                ? name + ".nbt"
+                : pathText + "/" + name + ".nbt";
         if (this.client != null && this.client.player != null) {
             this.client.player.sendMessage(
                     Text.literal("§7[选区] 正在服务端导出 NBT 到 " + displayPath + " ..."), false);
@@ -125,24 +120,20 @@ public class ExportNbtScreen extends Screen {
         close();
     }
 
-    private void scanAvailableFolders() {
-        availableFolders.clear();
-        availableFolders.add("");
-        Path dir = NBTS_DIR;
-        if (!Files.isDirectory(dir)) return;
-        try (Stream<Path> walk = Files.walk(dir)) {
-            walk.filter(Files::isDirectory)
-                .filter(p -> !p.equals(dir))
-                .forEach(p -> availableFolders.add(dir.relativize(p).toString().replace('\\', '/')));
-        } catch (IOException ignored) {}
-        Collections.sort(availableFolders);
-    }
-
-    private void cycleFolder() {
-        String current = pathField.getText().trim();
-        int idx = availableFolders.indexOf(current);
-        int next = (idx + 1) % availableFolders.size();
-        pathField.setText(availableFolders.get(next));
+    /**
+     * 打开原生文件夹选择对话框，选中后将路径填入 pathField。
+     */
+    private void openFolderChooser() {
+        // 默认打开 nbts 目录
+        Path defaultDir = NBTS_DIR.toAbsolutePath().normalize();
+        if (!Files.isDirectory(defaultDir)) {
+            defaultDir = Path.of(System.getProperty("user.home"));
+        }
+        String selected = TinyFileDialogs.tinyfd_selectFolderDialog(
+                "选择保存文件夹", defaultDir.toString());
+        if (selected != null) {
+            pathField.setText(selected);
+        }
     }
 
     @Override
