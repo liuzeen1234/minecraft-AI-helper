@@ -10,11 +10,11 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -59,18 +59,6 @@ public class NbtBrowserScreen extends Screen {
     // 删除确认状态
     private boolean confirmingDelete = false;
     private ButtonWidget deleteButton;
-
-    // 新建文件夹状态
-    private boolean creatingFolder = false;
-    private TextFieldWidget folderNameField;
-    private ButtonWidget createFolderButton;
-    private ButtonWidget confirmCreateButton;
-    private ButtonWidget cancelCreateButton;
-
-    // 移动文件状态
-    private boolean movingFile = false;
-    private ButtonWidget moveButton;
-    private String moveSourcePath = null; // 被移动的文件路径
 
     // 布局
     private int listLeft, listTop, listWidth, listHeight;
@@ -132,44 +120,13 @@ public class NbtBrowserScreen extends Screen {
         );
 
         int createFolderX = listLeft + btnWidth + btnSpacing + 60 + btnSpacing + 60 + btnSpacing;
-        createFolderButton = ButtonWidget.builder(
-                Text.literal("新建文件夹"),
-                button -> startCreatingFolder())
+
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("管理文件"),
+                button -> openNbtsFolder())
                 .dimensions(createFolderX, btnY, 70, 20)
-                .build();
-        this.addDrawableChild(createFolderButton);
-
-        // 新建文件夹输入框和确认/取消按钮（初始隐藏）
-        folderNameField = new TextFieldWidget(this.textRenderer, createFolderX, btnY, 100, 20, Text.literal("文件夹名"));
-        folderNameField.setPlaceholder(Text.literal("§7输入文件夹名..."));
-        folderNameField.setMaxLength(64);
-        folderNameField.setVisible(false);
-        this.addDrawableChild(folderNameField);
-
-        confirmCreateButton = ButtonWidget.builder(
-                Text.literal("§a✔"),
-                button -> confirmCreateFolder())
-                .dimensions(createFolderX + 102, btnY, 20, 20)
-                .build();
-        confirmCreateButton.visible = false;
-        this.addDrawableChild(confirmCreateButton);
-
-        cancelCreateButton = ButtonWidget.builder(
-                Text.literal("§c✘"),
-                button -> cancelCreatingFolder())
-                .dimensions(createFolderX + 124, btnY, 20, 20)
-                .build();
-        cancelCreateButton.visible = false;
-        this.addDrawableChild(cancelCreateButton);
-
-        // 移动文件按钮（返回按钮左侧）
-        moveButton = ButtonWidget.builder(
-                Text.literal("移入文件夹"),
-                button -> onMoveClicked())
-                .dimensions(this.width - margin - btnWidth - btnSpacing - 80, btnY, 80, 20)
-                .build();
-        moveButton.visible = false;
-        this.addDrawableChild(moveButton);
+                .build()
+        );
 
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
@@ -259,26 +216,12 @@ public class NbtBrowserScreen extends Screen {
 
     private void updateDetail() {
         detailLines.clear();
-        updateMoveButtonVisibility();
         if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) {
             detailLines.add("§7未选择文件");
             return;
         }
 
         ListEntry entry = filteredEntries.get(selectedIndex);
-
-        // 移动模式下显示提示
-        if (movingFile) {
-            detailLines.add("§e[移动模式] §f正在移动: " + moveSourcePath);
-            detailLines.add("");
-            if (entry.isFolder) {
-                detailLines.add("§a点击「确认移入」将文件移入此文件夹");
-            } else {
-                detailLines.add("§7请选择一个目标文件夹");
-            }
-            detailLines.add("§7按 Esc 取消移动");
-            return;
-        }
 
         if (entry.isFolder) {
             detailLines.add("§e文件夹:");
@@ -413,126 +356,29 @@ public class NbtBrowserScreen extends Screen {
     }
 
     /** 开始新建文件夹：显示输入框 */
-    private void startCreatingFolder() {
-        creatingFolder = true;
-        createFolderButton.visible = false;
-        folderNameField.setVisible(true);
-        folderNameField.setText("");
-        // 先取消搜索框焦点，再聚焦到文件夹名输入框
-        searchField.setFocused(false);
-        this.setFocused(folderNameField);
-        folderNameField.setFocused(true);
-        confirmCreateButton.visible = true;
-        cancelCreateButton.visible = true;
-    }
-
-    /** 确认创建文件夹 */
-    private void confirmCreateFolder() {
-        String name = folderNameField.getText().trim();
-        if (!name.isEmpty() && isValidFolderName(name)) {
-            Path dirPath = currentDir.isEmpty() ? NBTS_DIR : NBTS_DIR.resolve(currentDir);
-            Path newFolder = dirPath.resolve(name);
-            try {
-                Files.createDirectories(newFolder);
-                cancelCreatingFolder();
-                refreshCurrentDir();
-                // 提示创建成功
-                detailLines.clear();
-                detailLines.add("§a文件夹已创建: " + name);
-            } catch (IOException e) {
-                detailLines.clear();
-                detailLines.add("§c创建失败: " + e.getMessage());
+    /** 用系统文件管理器打开 nbts 文件夹 */
+    private void openNbtsFolder() {
+        try {
+            File folder = NBTS_DIR.toAbsolutePath().normalize().toFile();
+            if (!folder.exists()) {
+                folder.mkdirs();
             }
-        } else if (name.isEmpty()) {
-            detailLines.clear();
-            detailLines.add("§c请输入文件夹名称");
-        } else {
-            detailLines.clear();
-            detailLines.add("§c文件夹名称包含非法字符");
-        }
-    }
-
-    /** 取消新建文件夹 */
-    private void cancelCreatingFolder() {
-        creatingFolder = false;
-        createFolderButton.visible = true;
-        folderNameField.setVisible(false);
-        confirmCreateButton.visible = false;
-        cancelCreateButton.visible = false;
-    }
-
-    /** 检查文件夹名是否合法 */
-    private boolean isValidFolderName(String name) {
-        return !name.contains("/") && !name.contains("\\") && !name.contains("..")
-                && !name.contains(":") && !name.contains("*") && !name.contains("?")
-                && !name.contains("\"") && !name.contains("<") && !name.contains(">")
-                && !name.contains("|");
-    }
-
-    /** 移动按钮点击处理 */
-    private void onMoveClicked() {
-        if (movingFile) {
-            // 正在移动模式：将文件移入当前选中的文件夹
-            if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) return;
-            ListEntry target = filteredEntries.get(selectedIndex);
-            if (!target.isFolder) return;
-
-            Path sourcePath = NBTS_DIR.resolve(moveSourcePath);
-            Path targetDir = NBTS_DIR.resolve(target.fullPath);
-            Path destPath = targetDir.resolve(sourcePath.getFileName());
-
-            try {
-                Files.move(sourcePath, destPath);
-                cancelMove();
-                refreshCurrentDir();
-                detailLines.clear();
-                detailLines.add("§a文件已移动到: " + target.fullPath);
-            } catch (IOException e) {
-                detailLines.clear();
-                detailLines.add("§c移动失败: " + e.getMessage());
-            }
-        } else {
-            // 开始移动模式：记录选中的文件
-            if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) return;
-            ListEntry entry = filteredEntries.get(selectedIndex);
-            if (entry.isFolder) return; // 只能移动文件
-
-            movingFile = true;
-            moveSourcePath = entry.fullPath;
-            moveButton.setMessage(Text.literal("§e确认移入"));
-            detailLines.clear();
-            detailLines.add("§e移动模式");
-            detailLines.add("§f正在移动: " + entry.name);
-            detailLines.add("");
-            detailLines.add("§7选择目标文件夹后点击「确认移入」");
-            detailLines.add("§7按 Esc 取消");
-        }
-    }
-
-    /** 取消移动 */
-    private void cancelMove() {
-        movingFile = false;
-        moveSourcePath = null;
-        moveButton.setMessage(Text.literal("移入文件夹"));
-        updateMoveButtonVisibility();
-    }
-
-    /** 根据选中项更新移动按钮的可见性 */
-    private void updateMoveButtonVisibility() {
-        if (movingFile) {
-            // 移动模式下：选中文件夹时显示确认按钮
-            if (selectedIndex >= 0 && selectedIndex < filteredEntries.size()) {
-                moveButton.visible = filteredEntries.get(selectedIndex).isFolder;
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(folder);
             } else {
-                moveButton.visible = false;
+                // 备用方案：直接调用系统命令
+                String os = System.getProperty("os.name").toLowerCase();
+                if (os.contains("win")) {
+                    Runtime.getRuntime().exec(new String[]{"explorer", folder.getAbsolutePath()});
+                } else if (os.contains("mac")) {
+                    Runtime.getRuntime().exec(new String[]{"open", folder.getAbsolutePath()});
+                } else {
+                    Runtime.getRuntime().exec(new String[]{"xdg-open", folder.getAbsolutePath()});
+                }
             }
-        } else {
-            // 非移动模式：选中文件时显示移动按钮
-            if (selectedIndex >= 0 && selectedIndex < filteredEntries.size()) {
-                moveButton.visible = !filteredEntries.get(selectedIndex).isFolder;
-            } else {
-                moveButton.visible = false;
-            }
+        } catch (IOException e) {
+            detailLines.clear();
+            detailLines.add("§c无法打开文件管理器: " + e.getMessage());
         }
     }
 
@@ -702,24 +548,6 @@ public class NbtBrowserScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // 新建文件夹模式下的按键处理
-        if (creatingFolder) {
-            if (keyCode == 257) { // ENTER
-                confirmCreateFolder();
-                return true;
-            }
-            if (keyCode == 256) { // ESCAPE
-                cancelCreatingFolder();
-                return true;
-            }
-            return super.keyPressed(keyCode, scanCode, modifiers);
-        }
-        // 移动模式下 Escape 取消
-        if (movingFile && keyCode == 256) {
-            cancelMove();
-            updateDetail();
-            return true;
-        }
         // 上下键
         if (keyCode == 265) { // UP
             if (selectedIndex > 0) {
