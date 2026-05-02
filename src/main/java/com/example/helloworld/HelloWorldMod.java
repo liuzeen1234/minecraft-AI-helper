@@ -41,6 +41,8 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier SCREENSHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "screenshot_response");
     // 客户端 -> 服务端：请求放置 NBT 结构
     public static final Identifier PLACE_NBT_PACKET = new Identifier(MOD_ID, "place_nbt");
+    // 客户端 -> 服务端：请求放置 TXT 结构设计图
+    public static final Identifier PLACE_TXT_PACKET = new Identifier(MOD_ID, "place_txt");
     // 客户端 -> 服务端：请求导出选区为 NBT（含 BlockEntity 数据）
     public static final Identifier EXPORT_NBT_PACKET = new Identifier(MOD_ID, "export_nbt");
     // 服务端 -> 客户端：导出完成通知
@@ -103,6 +105,38 @@ public class HelloWorldMod implements ModInitializer {
                 } catch (Exception e) {
                     LOGGER.error("放置 NBT 结构失败", e);
                     player.sendMessage(Text.literal("§c[NBT] 放置失败: " + e.getMessage()), false);
+                }
+            });
+        });
+
+        // 注册接收客户端 TXT 结构放置请求的处理器
+        ServerPlayNetworking.registerGlobalReceiver(PLACE_TXT_PACKET, (server, player, handler, buf, responseSender) -> {
+            String relativePath = buf.readString();
+            server.execute(() -> {
+                try {
+                    // 解析 txts/ 目录下的文件路径
+                    java.nio.file.Path txtsDir = java.nio.file.Paths.get("txts");
+                    if (!java.nio.file.Files.isDirectory(txtsDir)) {
+                        txtsDir = java.nio.file.Paths.get("..").resolve("txts");
+                    }
+                    java.io.File file = txtsDir.resolve(relativePath).toFile();
+                    if (!file.exists()) {
+                        player.sendMessage(Text.literal("§c[TXT] 文件不存在: " + relativePath), false);
+                        return;
+                    }
+                    String content = java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+                    com.example.helloworld.blueprint.BlueprintData data =
+                            com.example.helloworld.blueprint.BlueprintParser.parse(content);
+                    net.minecraft.util.math.BlockPos origin = player.getBlockPos();
+                    int count = com.example.helloworld.blueprint.BlueprintBuilder.build(
+                            data, player, player.getServerWorld());
+                    player.sendMessage(Text.literal(
+                            "§a[TXT] " + data.getName() + " 放置完成! 共 " + count + " 个方块 (原点: "
+                                    + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")"
+                    ), false);
+                } catch (Exception e) {
+                    LOGGER.error("放置 TXT 结构失败", e);
+                    player.sendMessage(Text.literal("§c[TXT] 放置失败: " + e.getMessage()), false);
                 }
             });
         });

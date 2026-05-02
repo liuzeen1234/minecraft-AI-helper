@@ -70,11 +70,19 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
+        // TXT 结构设计图浏览器按钮
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("加载结构 (TXT)"),
+                button -> this.client.setScreen(new com.example.helloworld.blueprint.TxtBrowserScreen(this)))
+                .dimensions(this.width / 2 - 100, this.height / 2 + 86, 200, 20)
+                .build()
+        );
+
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 86, 200, 20)
+                .dimensions(this.width / 2 - 100, this.height / 2 + 110, 200, 20)
                 .build()
         );
     }
