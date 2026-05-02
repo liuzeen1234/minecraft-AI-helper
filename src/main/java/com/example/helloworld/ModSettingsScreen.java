@@ -21,6 +21,12 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
+        // 7 个按钮，每个高 20px，间距 4px，总高 164px，垂直居中起始 Y = height/2 - 82
+        int startX = this.width / 2 - 100;
+        int startY = this.height / 2 - 82;
+        int btnH = 20;
+        int gap = 4;
+
         // 截图开关按钮
         this.addDrawableChild(ButtonWidget.builder(
                 getScreenshotButtonText(),
@@ -28,7 +34,7 @@ public class ModSettingsScreen extends Screen {
                     config.setScreenshotEnabled(!config.isScreenshotEnabled());
                     button.setMessage(getScreenshotButtonText());
                 })
-                .dimensions(this.width / 2 - 100, this.height / 2 - 34, 200, 20)
+                .dimensions(startX, startY, 200, btnH)
                 .build()
         );
 
@@ -39,7 +45,7 @@ public class ModSettingsScreen extends Screen {
                     config.setContextEnabled(!config.isContextEnabled());
                     button.setMessage(getContextButtonText());
                 })
-                .dimensions(this.width / 2 - 100, this.height / 2 - 10, 200, 20)
+                .dimensions(startX, startY + (btnH + gap), 200, btnH)
                 .build()
         );
 
@@ -50,7 +56,7 @@ public class ModSettingsScreen extends Screen {
                     config.setWebSearchEnabled(!config.isWebSearchEnabled());
                     button.setMessage(getWebSearchButtonText());
                 })
-                .dimensions(this.width / 2 - 100, this.height / 2 + 14, 200, 20)
+                .dimensions(startX, startY + (btnH + gap) * 2, 200, btnH)
                 .build()
         );
 
@@ -58,7 +64,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("选区工具"),
                 button -> this.client.setScreen(new com.example.helloworld.selection.SelectionScreen(this)))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 38, 200, 20)
+                .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
                 .build()
         );
 
@@ -66,7 +72,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("加载结构 (NBT)"),
                 button -> this.client.setScreen(new com.example.helloworld.nbt.NbtBrowserScreen(this)))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 62, 200, 20)
+                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
         );
 
@@ -74,7 +80,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("加载结构 (TXT)"),
                 button -> this.client.setScreen(new com.example.helloworld.blueprint.TxtBrowserScreen(this)))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 86, 200, 20)
+                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
         );
 
@@ -82,7 +88,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(this.width / 2 - 100, this.height / 2 + 110, 200, 20)
+                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
                 .build()
         );
     }
