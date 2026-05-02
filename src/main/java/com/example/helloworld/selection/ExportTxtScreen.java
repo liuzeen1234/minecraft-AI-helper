@@ -98,7 +98,7 @@ public class ExportTxtScreen extends Screen {
         if (name.isEmpty()) name = "exported_blueprint";
         String pathText = pathField.getText().trim();
 
-        String blueprintText = SelectionAnalyzer.exportBlueprint(result, name);
+        String blueprintText = SelectionAnalyzer.exportBlueprintV2(result, name);
 
         // 确定保存目录：如果用户通过文件夹选择器选了绝对路径就直接用，否则用默认 txts 目录
         Path dir;

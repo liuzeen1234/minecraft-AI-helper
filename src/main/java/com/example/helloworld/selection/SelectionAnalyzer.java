@@ -95,9 +95,74 @@ public class SelectionAnalyzer {
     }
 
     /**
-     * 将分析结果导出为兼容 BlueprintParser 的蓝图文本。
-     * 格式与 txts/ 下的 .txt 文件一致。
+     * 将分析结果导出为 V2 格式蓝图文本（MCBLUEPRINT v2）。
+     *
+     * 格式特点：
+     *   - 每个方块一行，格式：x,y,z   block_id   [key=value ...]
+     *   - 坐标显式指定，无字符数量限制
+     *   - 所有 block state 属性完整保留（facing、waterlogged、powered 等）
+     *   - 空气方块省略不写
+     *   - 支持行内注释（# 开头）
      */
+    public static String exportBlueprintV2(AnalysisResult result, String name) {
+        if (result == null || result.blocks.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder();
+
+        // 文件头
+        sb.append("# MCBLUEPRINT v2\n");
+        sb.append("# name: ").append(name).append("\n");
+        sb.append("# size: ").append(result.sizeX).append("x")
+          .append(result.sizeY).append("x").append(result.sizeZ).append("\n");
+        sb.append("# origin: 0,0,0\n");
+        sb.append("# 坐标原点在结构西北角最低层，x向东，y向上，z向南\n");
+        sb.append("# 格式：x,y,z  block_id  [key=value ...]\n");
+        sb.append("\n");
+        sb.append("## BLOCKS\n");
+        sb.append("\n");
+
+        // 按 y 层分组输出，便于阅读
+        // 先按 y 分组
+        Map<Integer, List<BlockInfo>> byLayer = new TreeMap<>();
+        for (BlockInfo block : result.blocks) {
+            byLayer.computeIfAbsent(block.relY(), k -> new ArrayList<>()).add(block);
+        }
+
+        for (Map.Entry<Integer, List<BlockInfo>> layerEntry : byLayer.entrySet()) {
+            int y = layerEntry.getKey();
+            sb.append("# --- 第 ").append(y + 1).append(" 层 (y=").append(y).append(") ---\n");
+
+            // 层内按 z 再按 x 排序
+            List<BlockInfo> layerBlocks = layerEntry.getValue();
+            layerBlocks.sort(Comparator.comparingInt(BlockInfo::relZ)
+                    .thenComparingInt(BlockInfo::relX));
+
+            for (BlockInfo block : layerBlocks) {
+                sb.append(block.relX()).append(",")
+                  .append(block.relY()).append(",")
+                  .append(block.relZ()).append("   ")
+                  .append(block.blockId());
+
+                // 输出所有属性
+                if (!block.properties().isEmpty()) {
+                    for (Map.Entry<String, String> prop : block.properties().entrySet()) {
+                        sb.append("   ").append(prop.getKey()).append("=").append(prop.getValue());
+                    }
+                }
+                sb.append("\n");
+            }
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * 将分析结果导出为兼容 BlueprintParser 的蓝图文本（V1 旧格式）。
+     * 格式与 txts/ 下的 .txt 文件一致。
+     * @deprecated 建议使用 {@link #exportBlueprintV2} 以获得完整的方块状态支持。
+     */
+    @Deprecated
     public static String exportBlueprint(AnalysisResult result, String name) {
         if (result == null || result.blocks.isEmpty()) return "";
 

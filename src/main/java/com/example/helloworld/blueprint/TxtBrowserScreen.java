@@ -255,40 +255,68 @@ public class TxtBrowserScreen extends Screen {
             detailLines.add("§e文件路径:");
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
-            detailLines.add("§e层数: §f" + data.getLayers().size());
-            detailLines.add("§e图例数: §f" + data.getLegend().size() + " 种方块");
             detailLines.add("§e文件大小: §f" + file.length() + " bytes");
 
-            // 计算总方块数（非空格字符）
-            int totalBlocks = 0;
-            for (char[][] layer : data.getLayers()) {
-                for (char[] row : layer) {
-                    for (char c : row) {
-                        if (c != ' ' && data.getLegend().containsKey(c)) {
-                            totalBlocks++;
+            if (data.isV2()) {
+                // ---- V2 格式详情 ----
+                detailLines.add("§e格式: §fMCBLUEPRINT v2");
+                detailLines.add("§e尺寸: §f" + data.getSizeX() + " x " + data.getSizeY() + " x " + data.getSizeZ());
+                detailLines.add("§e方块总数: §f" + data.getBlocks3d().size());
+
+                // 统计不同方块种类
+                java.util.Set<String> blockTypes = new java.util.LinkedHashSet<>();
+                for (BlueprintData.BlockEntry3D b : data.getBlocks3d()) {
+                    blockTypes.add(b.getBlockId());
+                }
+                detailLines.add("§e方块种类: §f" + blockTypes.size() + " 种");
+
+                detailLines.add("");
+                detailLines.add("§e方块列表:");
+                int shown = 0;
+                for (String blockId : blockTypes) {
+                    detailLines.add("§7  §f" + blockId.replace("_", " "));
+                    if (++shown >= 20) {
+                        detailLines.add("§7  ...");
+                        break;
+                    }
+                }
+            } else {
+                // ---- V1 格式详情 ----
+                detailLines.add("§e格式: §f旧版字符网格");
+                detailLines.add("§e层数: §f" + data.getLayers().size());
+                detailLines.add("§e图例数: §f" + data.getLegend().size() + " 种方块");
+
+                // 计算总方块数（非空格字符）
+                int totalBlocks = 0;
+                for (char[][] layer : data.getLayers()) {
+                    for (char[] row : layer) {
+                        for (char c : row) {
+                            if (c != ' ' && data.getLegend().containsKey(c)) {
+                                totalBlocks++;
+                            }
                         }
                     }
                 }
-            }
-            detailLines.add("§e方块总数: §f" + totalBlocks);
+                detailLines.add("§e方块总数: §f" + totalBlocks);
 
-            // 显示尺寸（宽x高x深）
-            if (!data.getLayers().isEmpty()) {
-                char[][] firstLayer = data.getLayers().get(0);
-                int depth = firstLayer.length;
-                int width = depth > 0 ? firstLayer[0].length : 0;
-                int height = data.getLayers().size();
-                detailLines.add("§e尺寸: §f" + width + " x " + height + " x " + depth);
-            }
+                // 显示尺寸（宽x高x深）
+                if (!data.getLayers().isEmpty()) {
+                    char[][] firstLayer = data.getLayers().get(0);
+                    int depth = firstLayer.length;
+                    int width = depth > 0 ? firstLayer[0].length : 0;
+                    int height = data.getLayers().size();
+                    detailLines.add("§e尺寸: §f" + width + " x " + height + " x " + depth);
+                }
 
-            detailLines.add("");
-            detailLines.add("§e图例:");
-            for (Map.Entry<Character, BlueprintData.BlockEntry> legendEntry : data.getLegend().entrySet()) {
-                String blockName = legendEntry.getValue().getBlockId().replace("_", " ");
-                detailLines.add("§7  '" + legendEntry.getKey() + "' §8= §f" + blockName);
-                if (detailLines.size() > 25) {
-                    detailLines.add("§7  ...");
-                    break;
+                detailLines.add("");
+                detailLines.add("§e图例:");
+                for (Map.Entry<Character, BlueprintData.BlockEntry> legendEntry : data.getLegend().entrySet()) {
+                    String blockName = legendEntry.getValue().getBlockId().replace("_", " ");
+                    detailLines.add("§7  '" + legendEntry.getKey() + "' §8= §f" + blockName);
+                    if (detailLines.size() > 25) {
+                        detailLines.add("§7  ...");
+                        break;
+                    }
                 }
             }
         } catch (Exception e) {

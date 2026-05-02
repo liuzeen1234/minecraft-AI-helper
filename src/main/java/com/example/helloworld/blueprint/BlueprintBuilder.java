@@ -35,10 +35,89 @@ public class BlueprintBuilder {
     );
 
     /**
-     * 在玩家位置建造蓝图建筑。
+     * 在玩家位置建造蓝图建筑。自动识别 V1/V2 格式。
      * @return 放置的方块数量
      */
     public static int build(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world) {
+        if (blueprint.isV2()) {
+            return buildV2(blueprint, player.getBlockPos(), world);
+        }
+        return buildV1(blueprint, player, world);
+    }
+
+    /**
+     * V2 格式建造：直接按显式坐标放置方块，所有 block state 属性完整还原。
+     * 分两阶段：先放实体方块，再放附着方块（按钮、火把等）。
+     */
+    private static int buildV2(BlueprintData blueprint, BlockPos origin, ServerWorld world) {
+        List<BlueprintData.BlockEntry3D> blocks = blueprint.getBlocks3d();
+        int placedCount = 0;
+        List<BlueprintData.BlockEntry3D> deferred = new ArrayList<>();
+
+        // 第一阶段：放置实体方块，收集附着方块
+        for (BlueprintData.BlockEntry3D block : blocks) {
+            BlockPos pos = new BlockPos(
+                    origin.getX() + block.getX(),
+                    origin.getY() + block.getY(),
+                    origin.getZ() + block.getZ());
+
+            if (ATTACHABLE_BLOCKS.contains(block.getBlockId())) {
+                deferred.add(block);
+                continue;
+            }
+
+            BlockState state = resolveBlockStateV2(block);
+            if (state != null) {
+                world.setBlockState(pos, state);
+                placedCount++;
+            }
+        }
+
+        // 第二阶段：放置附着方块
+        for (BlueprintData.BlockEntry3D block : deferred) {
+            BlockPos pos = new BlockPos(
+                    origin.getX() + block.getX(),
+                    origin.getY() + block.getY(),
+                    origin.getZ() + block.getZ());
+
+            BlockState state = resolveBlockStateV2(block);
+            if (state != null) {
+                world.setBlockState(pos, state);
+                placedCount++;
+            }
+        }
+
+        LOGGER.info("V2 蓝图 '{}' 建造完成，放置 {} 个方块", blueprint.getName(), placedCount);
+        return placedCount;
+    }
+
+    /**
+     * 根据 V2 BlockEntry3D 解析 BlockState。
+     * V2 格式中属性已经是标准 block state 键值对，直接应用，无需 _rot 转换。
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static BlockState resolveBlockStateV2(BlueprintData.BlockEntry3D entry) {
+        String blockId = entry.getBlockId();
+        Identifier id = new Identifier("minecraft", blockId);
+        Block block = Registries.BLOCK.get(id);
+
+        if (block == Blocks.AIR && !"air".equals(blockId)) {
+            LOGGER.warn("未知方块ID: {}", blockId);
+            return null;
+        }
+
+        BlockState state = block.getDefaultState();
+        for (Map.Entry<String, String> prop : entry.getProperties().entrySet()) {
+            state = applyProperty(state, prop.getKey(), prop.getValue());
+        }
+        return state;
+    }
+
+    // =========================================================================
+    // V1 建造逻辑（原有逻辑，重命名为 buildV1）
+    // =========================================================================
+
+    private static int buildV1(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world) {
         BlockPos origin = player.getBlockPos();
         Map<Character, BlueprintData.BlockEntry> legend = blueprint.getLegend();
         List<char[][]> layers = blueprint.getLayers();
