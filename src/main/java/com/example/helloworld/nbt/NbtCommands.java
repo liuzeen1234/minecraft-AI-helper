@@ -18,35 +18,35 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 /**
- * 注册 /lzenbt 命令，用于在游戏内解析和查看 NBT 结构文件。
+ * 注册 /ainbt 命令，用于在游戏内解析和查看 NBT 结构文件。
  *
  * 用法：
- *   /lzenbt list          - 列出 nbts/ 目录下所有 .nbt 文件
- *   /lzenbt info <文件名>  - 查看指定 NBT 文件的详细信息
- *   /lzenbt all           - 查看所有 NBT 文件的摘要
- *   /lzenbt place <文件名> - 在玩家脚下位置放置 NBT 结构
+ *   /ainbt list          - 列出 nbts/ 目录下所有 .nbt 文件
+ *   /ainbt info <文件名>  - 查看指定 NBT 文件的详细信息
+ *   /ainbt all           - 查看所有 NBT 文件的摘要
+ *   /ainbt place <文件名> - 在玩家脚下位置放置 NBT 结构
  */
 public class NbtCommands {
 
     private static final Path NBTS_DIR = Path.of("../nbts");
 
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
-        dispatcher.register(CommandManager.literal("lzenbt")
-            // /lzenbt list
+        dispatcher.register(CommandManager.literal("ainbt")
+            // /ainbt list
             .then(CommandManager.literal("list")
                 .executes(NbtCommands::listFiles)
             )
-            // /lzenbt info <filename>
+            // /ainbt info <filename>
             .then(CommandManager.literal("info")
                 .then(CommandManager.argument("filename", StringArgumentType.greedyString())
                     .executes(NbtCommands::showInfo)
                 )
             )
-            // /lzenbt all
+            // /ainbt all
             .then(CommandManager.literal("all")
                 .executes(NbtCommands::showAll)
             )
-            // /lzenbt place <filename>
+            // /ainbt place <filename>
             .then(CommandManager.literal("place")
                 .then(CommandManager.argument("filename", StringArgumentType.greedyString())
                     .executes(NbtCommands::placeStructure)

@@ -14,7 +14,7 @@ public class ModSettingsScreen extends Screen {
     private final ModConfig config;
 
     public ModSettingsScreen(Screen parent) {
-        super(Text.literal("LZE 模组设置"));
+        super(Text.literal("AI 模组设置"));
         this.parent = parent;
         this.config = HelloWorldMod.getConfig();
     }

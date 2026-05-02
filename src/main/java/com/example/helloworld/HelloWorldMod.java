@@ -80,7 +80,7 @@ public class HelloWorldMod implements ModInitializer {
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
-            player.sendMessage(Text.literal("Hello World! 输入 /lze <问题> 来和 AI 对话"), false);
+            player.sendMessage(Text.literal("Hello World! 输入 /ai <问题> 来和 AI 对话"), false);
         });
 
         // 注册接收客户端 NBT 放置请求的处理器
@@ -288,7 +288,7 @@ public class HelloWorldMod implements ModInitializer {
             // 注册 NBT 解析命令
             NbtCommands.register(dispatcher);
 
-            dispatcher.register(CommandManager.literal("lze")
+            dispatcher.register(CommandManager.literal("ai")
                 .then(CommandManager.literal("build")
                     .then(CommandManager.argument("name", StringArgumentType.greedyString())
                         .executes(this::executeBuild)
@@ -304,13 +304,13 @@ public class HelloWorldMod implements ModInitializer {
                     .executes(this::executeTestStairs)
                 )
                 .then(CommandManager.argument("message", StringArgumentType.greedyString())
-                    .executes(this::executeLze)
+                    .executes(this::executeAi)
                 )
             );
 
-            // /lzeconfig 查看和修改 AI 配置
-            dispatcher.register(CommandManager.literal("lzeconfig")
-                // /lzeconfig show - 查看当前配置
+            // /aiconfig 查看和修改 AI 配置
+            dispatcher.register(CommandManager.literal("aiconfig")
+                // /aiconfig show - 查看当前配置
                 .then(CommandManager.literal("show")
                     .executes(ctx -> {
                         ServerCommandSource src = ctx.getSource();
@@ -322,7 +322,7 @@ public class HelloWorldMod implements ModInitializer {
                         return 1;
                     })
                 )
-                // /lzeconfig api_base_url <value>
+                // /aiconfig api_base_url <value>
                 .then(CommandManager.literal("api_base_url")
                     .then(CommandManager.argument("value", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -333,7 +333,7 @@ public class HelloWorldMod implements ModInitializer {
                         })
                     )
                 )
-                // /lzeconfig api_key <value>
+                // /aiconfig api_key <value>
                 .then(CommandManager.literal("api_key")
                     .then(CommandManager.argument("value", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -344,7 +344,7 @@ public class HelloWorldMod implements ModInitializer {
                         })
                     )
                 )
-                // /lzeconfig model <value>
+                // /aiconfig model <value>
                 .then(CommandManager.literal("model")
                     .then(CommandManager.argument("value", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -355,7 +355,7 @@ public class HelloWorldMod implements ModInitializer {
                         })
                     )
                 )
-                // /lzeconfig web_search <on/off>
+                // /aiconfig web_search <on/off>
                 .then(CommandManager.literal("web_search")
                     .then(CommandManager.argument("value", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -367,7 +367,7 @@ public class HelloWorldMod implements ModInitializer {
                         })
                     )
                 )
-                // /lzeconfig tavily_api_key <value>
+                // /aiconfig tavily_api_key <value>
                 .then(CommandManager.literal("tavily_api_key")
                     .then(CommandManager.argument("value", StringArgumentType.greedyString())
                         .executes(ctx -> {
@@ -378,7 +378,7 @@ public class HelloWorldMod implements ModInitializer {
                         })
                     )
                 )
-                // /lzeconfig reload - 重新加载配置文件
+                // /aiconfig reload - 重新加载配置文件
                 .then(CommandManager.literal("reload")
                     .executes(ctx -> {
                         CONFIG.load();
@@ -388,8 +388,8 @@ public class HelloWorldMod implements ModInitializer {
                 )
             );
 
-            // /lzenew - 清空对话历史，开启新话题
-            dispatcher.register(CommandManager.literal("lzenew")
+            // /ainew - 清空对话历史，开启新话题
+            dispatcher.register(CommandManager.literal("ainew")
                 .executes(ctx -> {
                     conversationHistory.clear();
                     ctx.getSource().sendFeedback(() -> Text.literal("§a[AI] 对话历史已清空，开始新话题"), false);
@@ -397,8 +397,8 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
 
-            // /lzepos - 显示当前坐标
-            dispatcher.register(CommandManager.literal("lzepos")
+            // /aipos - 显示当前坐标
+            dispatcher.register(CommandManager.literal("aipos")
                 .executes(ctx -> {
                     ServerPlayerEntity p = ctx.getSource().getPlayer();
                     if (p == null) {
@@ -416,9 +416,9 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
 
-            // /lzelog - 控制日志转发到聊天框
-            dispatcher.register(CommandManager.literal("lzelog")
-                // /lzelog - 切换开关
+            // /ailog - 控制日志转发到聊天框
+            dispatcher.register(CommandManager.literal("ailog")
+                // /ailog - 切换开关
                 .executes(ctx -> {
                     InGameLogAppender.toggleEnabled();
                     boolean on = InGameLogAppender.isEnabled();
@@ -427,7 +427,7 @@ public class HelloWorldMod implements ModInitializer {
                     ), false);
                     return 1;
                 })
-                // /lzelog on
+                // /ailog on
                 .then(CommandManager.literal("on")
                     .executes(ctx -> {
                         InGameLogAppender.setEnabled(true);
@@ -435,7 +435,7 @@ public class HelloWorldMod implements ModInitializer {
                         return 1;
                     })
                 )
-                // /lzelog off
+                // /ailog off
                 .then(CommandManager.literal("off")
                     .executes(ctx -> {
                         InGameLogAppender.setEnabled(false);
@@ -443,7 +443,7 @@ public class HelloWorldMod implements ModInitializer {
                         return 1;
                     })
                 )
-                // /lzelog level <error|warn|info|debug>
+                // /ailog level <error|warn|info|debug>
                 .then(CommandManager.literal("level")
                     .then(CommandManager.literal("error")
                         .executes(ctx -> {
@@ -476,12 +476,12 @@ public class HelloWorldMod implements ModInitializer {
                 )
             );
 
-            // /lzetest - 故意触发测试日志，验证聊天框日志显示
-            dispatcher.register(CommandManager.literal("lzetest")
+            // /aitest - 故意触发测试日志，验证聊天框日志显示
+            dispatcher.register(CommandManager.literal("aitest")
                 .executes(ctx -> {
                     ctx.getSource().sendFeedback(() -> Text.literal("§e[测试] 正在生成测试日志..."), false);
-                    LOGGER.warn("这是一条测试 WARN 日志 - 来自 /lzetest 命令");
-                    LOGGER.error("这是一条测试 ERROR 日志 - 来自 /lzetest 命令");
+                    LOGGER.warn("这是一条测试 WARN 日志 - 来自 /aitest 命令");
+                    LOGGER.error("这是一条测试 ERROR 日志 - 来自 /aitest 命令");
                     LOGGER.error("模拟异常: NullPointerException at FakeClass.fakeMethod(FakeClass.java:42)");
                     LOGGER.info("这是一条测试 INFO 日志（默认级别下不会显示在聊天框）");
                     ctx.getSource().sendFeedback(() -> Text.literal("§a[测试] 已生成 2 条 WARN/ERROR + 1 条 INFO 日志，检查聊天框!"), false);
@@ -504,7 +504,7 @@ public class HelloWorldMod implements ModInitializer {
         BlueprintData blueprint = blueprintRegistry.find(name);
         if (blueprint == null) {
             source.sendFeedback(() -> Text.literal("§c未找到蓝图: " + name), false);
-            source.sendFeedback(() -> Text.literal("§e使用 /lze blueprints 查看可用蓝图"), false);
+            source.sendFeedback(() -> Text.literal("§e使用 /ai blueprints 查看可用蓝图"), false);
             return 0;
         }
 
@@ -587,7 +587,7 @@ public class HelloWorldMod implements ModInitializer {
         return 1;
     }
 
-    private int executeLze(CommandContext<ServerCommandSource> context) {
+    private int executeAi(CommandContext<ServerCommandSource> context) {
         String message = StringArgumentType.getString(context, "message");
         ServerCommandSource source = context.getSource();
 

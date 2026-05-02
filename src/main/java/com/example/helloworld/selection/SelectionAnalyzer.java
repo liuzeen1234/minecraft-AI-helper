@@ -336,7 +336,7 @@ public class SelectionAnalyzer {
 
     /**
      * 将分析结果导出为 Minecraft 原版 NBT 结构文件（.nbt）。
-     * 格式与结构方块保存的文件一致，可被 /lzenbt place 命令加载。
+     * 格式与结构方块保存的文件一致，可被 /ainbt place 命令加载。
      *
      * @param result 分析结果
      * @param file   目标文件

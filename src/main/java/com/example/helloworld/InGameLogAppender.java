@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class InGameLogAppender extends AbstractAppender {
 
-    /** 是否启用（玩家可通过 /lzelog 切换） */
+    /** 是否启用（玩家可通过 /ailog 切换） */
     private static volatile boolean enabled = true;
 
     /** 最低显示级别：默认只显示 WARN 及以上 */
