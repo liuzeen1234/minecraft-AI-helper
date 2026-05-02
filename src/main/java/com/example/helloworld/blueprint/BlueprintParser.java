@@ -92,56 +92,69 @@ public class BlueprintParser {
 
         LOGGER.info("解析蓝图 '{}': {} 个图例, {} 层", name, legend.size(), layers.size());
 
-        // 标准化：所有层统一为相同的行数（以第1层为准）
+        // 标准化：所有层统一为相同的行数（以第一个非空层为准）
         if (!layers.isEmpty()) {
-            normalizeLayers(layers);
+            // 移除开头的空层（如导出文件中第1层全为空行的情况）
+            while (!layers.isEmpty() && layers.get(0).length == 0) {
+                layers.remove(0);
+            }
+            if (!layers.isEmpty()) {
+                normalizeLayers(layers);
+            }
         }
 
         return new BlueprintData(name, legend, layers);
     }
 
     /**
-     * 标准化所有层的行数，以第1层为基准。
-     * 对于行数超过基准的层，优先从尾部去掉全空格行，再从头部去掉。
+     * 标准化所有层的行数，以所有层中有效内容行数最多的层为基准。
+     * 有效行数 = 去掉尾部全空格行后的行数。
+     * 对于行数超过基准的层，裁掉尾部多余的全空格行。
      * 对于行数不足的层，在尾部补全空格行。
      */
     private static void normalizeLayers(List<char[][]> layers) {
-        int standardRows = layers.get(0).length;
-        int standardCols = layers.get(0).length > 0 ? layers.get(0)[0].length : 0;
+        // 计算每层去掉尾部空行后的有效行数，取最大值作为基准
+        int standardRows = 0;
+        for (char[][] grid : layers) {
+            int effectiveRows = grid.length;
+            while (effectiveRows > 0 && !hasContent(grid[effectiveRows - 1])) {
+                effectiveRows--;
+            }
+            standardRows = Math.max(standardRows, effectiveRows);
+        }
 
-        for (int i = 1; i < layers.size(); i++) {
+        if (standardRows == 0) return;
+
+        // 计算最大列数
+        int standardCols = 0;
+        for (char[][] grid : layers) {
+            for (char[] row : grid) {
+                standardCols = Math.max(standardCols, row.length);
+            }
+        }
+
+        for (int i = 0; i < layers.size(); i++) {
             char[][] grid = layers.get(i);
-            if (grid.length == standardRows) continue;
+            // 计算该层有效行数
+            int effectiveRows = grid.length;
+            while (effectiveRows > 0 && !hasContent(grid[effectiveRows - 1])) {
+                effectiveRows--;
+            }
 
-            if (grid.length > standardRows) {
-                // 需要裁剪：找到有内容的行的范围，然后取 standardRows 行使内容对齐
-                int firstContentRow = -1;
-                int lastContentRow = -1;
-                for (int r = 0; r < grid.length; r++) {
-                    if (hasContent(grid[r])) {
-                        if (firstContentRow == -1) firstContentRow = r;
-                        lastContentRow = r;
-                    }
-                }
+            if (effectiveRows == standardRows && grid.length == standardRows) {
+                continue; // 已经正确，无需处理
+            }
 
-                // 计算在第1层中，内容行的典型起始位置
-                int contentRows = (firstContentRow == -1) ? 0 : (lastContentRow - firstContentRow + 1);
-                // 从 firstContentRow 开始，往前取尽可能多的行，使总行数为 standardRows
-                int startRow = Math.max(0, firstContentRow);
-                // 确保内容行都在范围内
-                if (startRow + standardRows - 1 < lastContentRow) {
-                    startRow = lastContentRow - standardRows + 1;
-                }
-                startRow = Math.max(0, Math.min(startRow, grid.length - standardRows));
-
+            if (effectiveRows >= standardRows) {
+                // 裁剪到 standardRows 行
                 char[][] trimmed = new char[standardRows][];
-                System.arraycopy(grid, startRow, trimmed, 0, standardRows);
+                System.arraycopy(grid, 0, trimmed, 0, standardRows);
                 layers.set(i, trimmed);
             } else {
                 // 行数不足，尾部补空格行
                 char[][] padded = new char[standardRows][];
-                System.arraycopy(grid, 0, padded, 0, grid.length);
-                for (int r = grid.length; r < standardRows; r++) {
+                System.arraycopy(grid, 0, padded, 0, effectiveRows);
+                for (int r = effectiveRows; r < standardRows; r++) {
                     padded[r] = new char[standardCols];
                     java.util.Arrays.fill(padded[r], ' ');
                 }
