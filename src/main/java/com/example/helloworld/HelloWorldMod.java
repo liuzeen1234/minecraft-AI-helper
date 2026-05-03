@@ -47,6 +47,10 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier EXPORT_NBT_PACKET = new Identifier(MOD_ID, "export_nbt");
     // 服务端 -> 客户端：导出完成通知
     public static final Identifier EXPORT_NBT_RESULT_PACKET = new Identifier(MOD_ID, "export_nbt_result");
+    // 客户端 -> 服务端：聊天界面发送消息
+    public static final Identifier CHAT_SCREEN_MESSAGE_PACKET = new Identifier(MOD_ID, "chat_screen_msg");
+    // 服务端 -> 客户端：聊天界面回复
+    public static final Identifier CHAT_SCREEN_RESPONSE_PACKET = new Identifier(MOD_ID, "chat_screen_resp");
 
     private static final ModConfig CONFIG = new ModConfig();
 
@@ -164,6 +168,74 @@ public class HelloWorldMod implements ModInitializer {
                     resultBuf.writeString("§c[选区] NBT 导出失败: " + e.getMessage());
                     ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
                 }
+            });
+        });
+
+        // 注册接收聊天界面消息的处理器
+        ServerPlayNetworking.registerGlobalReceiver(CHAT_SCREEN_MESSAGE_PACKET, (server, player, handler, buf, responseSender) -> {
+            String message = buf.readString();
+            server.execute(() -> {
+                if ("__CLEAR_HISTORY__".equals(message)) {
+                    conversationHistory.clear();
+                    player.sendMessage(Text.literal("§a[AI] 对话历史已清空"), false);
+                    return;
+                }
+
+                // 异步调用 AI API
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        String response = callKimiApi(message, "");
+
+                        // 检查是否需要抓取网页
+                        String fetchUrl = extractFetchUrl(response);
+                        if (fetchUrl != null) {
+                            String pageContent = webFetchService.fetch(fetchUrl);
+                            if (pageContent != null) {
+                                String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
+                                        + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
+                                response = callKimiApi(fetchContext, "");
+                            } else {
+                                response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
+                                if (response.isEmpty()) response = "网页抓取失败了，请检查 URL 是否正确。";
+                            }
+                        } else {
+                            // 检查是否需要联网搜索
+                            String searchQuery = extractSearchQuery(response);
+                            if (searchQuery != null && CONFIG.isWebSearchEnabled()
+                                    && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
+                                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
+                                if (searchResults != null) {
+                                    String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
+                                            + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
+                                    response = callKimiApi(searchContext, "");
+                                } else {
+                                    response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                                    if (response.isEmpty()) response = "搜索失败了，请稍后再试。";
+                                }
+                            } else {
+                                response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+                            }
+                        }
+
+                        // 执行 AI 指令
+                        String processed = AICommandExecutor.processResponse(response, player);
+
+                        // 发送回复到客户端聊天界面
+                        String finalResponse = processed;
+                        server.execute(() -> {
+                            PacketByteBuf respBuf = PacketByteBufs.create();
+                            respBuf.writeString(finalResponse);
+                            ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                        });
+                    } catch (Exception e) {
+                        LOGGER.error("聊天界面 AI 请求失败", e);
+                        server.execute(() -> {
+                            PacketByteBuf respBuf = PacketByteBufs.create();
+                            respBuf.writeString("§c请求失败: " + e.getMessage());
+                            ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                        });
+                    }
+                });
             });
         });
 

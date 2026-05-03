@@ -67,6 +67,19 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
+        // 注册接收 AI 聊天界面回复
+        ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.CHAT_SCREEN_RESPONSE_PACKET, (client, handler, buf, responseSender) -> {
+            String response = buf.readString();
+            client.execute(() -> {
+                // 将回复添加到聊天界面
+                AiChatScreen.receiveResponse(response);
+                // 如果当前打开的是聊天界面，通知它刷新
+                if (client.currentScreen instanceof AiChatScreen chatScreen) {
+                    chatScreen.setWaitingDone();
+                }
+            });
+        });
+
         // 每个客户端 tick 检查是否需要截图 & 刷新日志到聊天框
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // 按键打开设置页面
