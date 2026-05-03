@@ -88,7 +88,7 @@ public class AiChatScreen extends Screen {
 
         // 输入框
         int inputY = this.height - margin - inputAreaHeight + 5;
-        int inputWidth = this.width - margin * 2 - 120; // 留出按钮空间
+        int inputWidth = this.width - margin * 2 - 52; // 留出图标按钮空间
         inputField = new TextFieldWidget(this.textRenderer, margin, inputY, inputWidth, 20, Text.literal("输入消息..."));
         inputField.setPlaceholder(Text.literal("§7输入消息，按 Enter 发送..."));
         inputField.setMaxLength(1024);
@@ -96,14 +96,14 @@ public class AiChatScreen extends Screen {
         this.addDrawableChild(inputField);
 
         // 发送按钮
-        sendButton = ButtonWidget.builder(Text.literal("发送"), button -> sendMessage())
-                .dimensions(margin + inputWidth + 4, inputY, 50, 20)
+        sendButton = ButtonWidget.builder(Text.literal("↑"), button -> sendMessage())
+                .dimensions(margin + inputWidth + 4, inputY, 20, 20)
                 .build();
         this.addDrawableChild(sendButton);
 
         // 清空按钮
-        clearButton = ButtonWidget.builder(Text.literal("清空"), button -> clearHistory())
-                .dimensions(margin + inputWidth + 58, inputY, 50, 20)
+        clearButton = ButtonWidget.builder(Text.literal("\uD83D\uDDD1"), button -> clearHistory())
+                .dimensions(margin + inputWidth + 28, inputY, 20, 20)
                 .build();
         this.addDrawableChild(clearButton);
 
