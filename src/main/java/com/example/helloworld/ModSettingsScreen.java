@@ -21,9 +21,9 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        // 7 个按钮，每个高 20px，间距 4px，总高 164px，垂直居中起始 Y = height/2 - 82
+        // 8 个按钮，每个高 20px，间距 4px，总高 188px，垂直居中起始 Y = height/2 - 94
         int startX = this.width / 2 - 100;
-        int startY = this.height / 2 - 82;
+        int startY = this.height / 2 - 94;
         int btnH = 20;
         int gap = 4;
 
@@ -84,11 +84,19 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
+        // AI API 设置按钮
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("AI API 设置"),
+                button -> this.client.setScreen(new AiApiSettingsScreen(this)))
+                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .build()
+        );
+
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
                 .build()
         );
     }
