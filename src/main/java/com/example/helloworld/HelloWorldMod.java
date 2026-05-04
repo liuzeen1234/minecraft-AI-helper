@@ -174,6 +174,13 @@ public class HelloWorldMod implements ModInitializer {
         // 注册接收聊天界面消息的处理器
         ServerPlayNetworking.registerGlobalReceiver(CHAT_SCREEN_MESSAGE_PACKET, (server, player, handler, buf, responseSender) -> {
             String message = buf.readString();
+            // 读取引用的文件列表
+            int fileCount = buf.isReadable() ? buf.readInt() : 0;
+            List<String> referencedFiles = new ArrayList<>();
+            for (int i = 0; i < fileCount && buf.isReadable(); i++) {
+                referencedFiles.add(buf.readString());
+            }
+
             server.execute(() -> {
                 if ("__CLEAR_HISTORY__".equals(message)) {
                     conversationHistory.clear();
@@ -181,10 +188,25 @@ public class HelloWorldMod implements ModInitializer {
                     return;
                 }
 
+                // 读取引用文件内容（服务端可以直接访问 txts 目录）
+                String referenceContent = "";
+                if (!referencedFiles.isEmpty()) {
+                    referenceContent = loadReferencedFiles(referencedFiles);
+                }
+
+                // 构建完整消息
+                final String fullMessage;
+                if (!referenceContent.isEmpty()) {
+                    fullMessage = message + "\n\n--- 以下是用户引用的结构文件内容 ---\n" + referenceContent;
+                } else {
+                    fullMessage = message;
+                }
+
                 // 异步调用 AI API
+                final String finalRefContent = referenceContent;
                 CompletableFuture.runAsync(() -> {
                     try {
-                        String response = callKimiApi(message, "");
+                        String response = callKimiApi(fullMessage, "");
 
                         // 检查是否需要抓取网页
                         String fetchUrl = extractFetchUrl(response);
@@ -867,5 +889,34 @@ public class HelloWorldMod implements ModInitializer {
             return query.isEmpty() ? null : query;
         }
         return null;
+    }
+
+    /**
+     * 服务端读取引用的 txt 文件内容。
+     */
+    private String loadReferencedFiles(List<String> fileNames) {
+        java.nio.file.Path txtsDir = java.nio.file.Paths.get("txts");
+        if (!java.nio.file.Files.isDirectory(txtsDir)) {
+            txtsDir = java.nio.file.Paths.get("..").resolve("txts");
+        }
+        if (!java.nio.file.Files.isDirectory(txtsDir)) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (String fileName : fileNames) {
+            try {
+                java.nio.file.Path filePath = txtsDir.resolve(fileName);
+                if (java.nio.file.Files.exists(filePath)) {
+                    String content = java.nio.file.Files.readString(filePath, java.nio.charset.StandardCharsets.UTF_8);
+                    sb.append("=== 文件: ").append(fileName).append(" ===\n");
+                    sb.append(content).append("\n\n");
+                }
+            } catch (Exception e) {
+                LOGGER.warn("读取引用文件失败: {}", fileName, e);
+                sb.append("=== 文件: ").append(fileName).append(" (读取失败) ===\n\n");
+            }
+        }
+        return sb.toString();
     }
 }

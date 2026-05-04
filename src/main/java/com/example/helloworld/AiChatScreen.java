@@ -11,7 +11,9 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 全屏 AI 聊天界面，类似 /ai 指令但提供完整的聊天体验。
@@ -53,6 +55,10 @@ public class AiChatScreen extends Screen {
     private TextFieldWidget inputField;
     private ButtonWidget sendButton;
     private ButtonWidget clearButton;
+    private ButtonWidget referenceButton; // 引用按钮
+
+    // 引用的 txt 文件（跨屏幕保持选择状态）
+    private static final Set<String> referencedFiles = new HashSet<>();
 
     private int scrollOffset = 0;
     private boolean isWaiting = false;
@@ -86,24 +92,35 @@ public class AiChatScreen extends Screen {
         chatAreaTop = margin + titleHeight;
         chatAreaBottom = this.height - margin - inputAreaHeight - 5;
 
-        // 输入框
+        // 输入框 - 留出引用按钮 + 发送按钮 + 清空按钮空间
         int inputY = this.height - margin - inputAreaHeight + 5;
-        int inputWidth = this.width - margin * 2 - 52; // 留出图标按钮空间
+        int buttonsWidth = 76; // 引用(28) + 发送(20) + 清空(20) + 间距(8)
+        int inputWidth = this.width - margin * 2 - buttonsWidth;
         inputField = new TextFieldWidget(this.textRenderer, margin, inputY, inputWidth, 20, Text.literal("输入消息..."));
         inputField.setPlaceholder(Text.literal("§7输入消息，按 Enter 发送..."));
         inputField.setMaxLength(1024);
         inputField.setEditable(true);
         this.addDrawableChild(inputField);
 
+        int btnX = margin + inputWidth + 4;
+
+        // 引用按钮
+        referenceButton = ButtonWidget.builder(Text.literal("引用"), button -> openFileSelection())
+                .dimensions(btnX, inputY, 28, 20)
+                .build();
+        this.addDrawableChild(referenceButton);
+        btnX += 32;
+
         // 发送按钮
         sendButton = ButtonWidget.builder(Text.literal("↑"), button -> sendMessage())
-                .dimensions(margin + inputWidth + 4, inputY, 20, 20)
+                .dimensions(btnX, inputY, 20, 20)
                 .build();
         this.addDrawableChild(sendButton);
+        btnX += 24;
 
         // 清空按钮
         clearButton = ButtonWidget.builder(Text.literal("\uD83D\uDDD1"), button -> clearHistory())
-                .dimensions(margin + inputWidth + 28, inputY, 20, 20)
+                .dimensions(btnX, inputY, 20, 20)
                 .build();
         this.addDrawableChild(clearButton);
 
@@ -116,12 +133,25 @@ public class AiChatScreen extends Screen {
         scrollToBottom();
     }
 
+    private void openFileSelection() {
+        this.client.setScreen(new TxtFileSelectionScreen(this, referencedFiles, selectedFiles -> {
+            referencedFiles.clear();
+            referencedFiles.addAll(selectedFiles);
+        }));
+    }
+
     private void sendMessage() {
         String text = inputField.getText().trim();
         if (text.isEmpty() || isWaiting) return;
 
-        // 添加用户消息
-        messageHistory.add(new ChatMessage("user", text));
+        // 构建显示消息（给用户看的）
+        String displayText = text;
+        if (!referencedFiles.isEmpty()) {
+            displayText = text + "\n§7[引用了 " + referencedFiles.size() + " 个文件]";
+        }
+
+        // 添加用户消息到历史（显示用）
+        messageHistory.add(new ChatMessage("user", displayText));
         inputField.setText("");
 
         // 显示等待状态
@@ -129,9 +159,13 @@ public class AiChatScreen extends Screen {
         sendButton.active = false;
         messageHistory.add(new ChatMessage("system", "正在思考..."));
 
-        // 发送到服务端
+        // 发送到服务端：消息内容 + 引用文件数量 + 各文件路径
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(text);
+        buf.writeInt(referencedFiles.size());
+        for (String fileName : referencedFiles) {
+            buf.writeString(fileName);
+        }
         ClientPlayNetworking.send(HelloWorldMod.CHAT_SCREEN_MESSAGE_PACKET, buf);
 
         rebuildWrappedLines();
@@ -317,6 +351,15 @@ public class AiChatScreen extends Screen {
                     chatAreaLeft + PADDING, chatAreaBottom + 2, 0xFFAAAAAA);
         }
 
+        // 引用文件指示器
+        if (!referencedFiles.isEmpty()) {
+            String refText = "§6\uD83D\uDCCE 已引用 " + referencedFiles.size() + " 个文件";
+            int refTextWidth = this.textRenderer.getWidth(refText.replaceAll("§[0-9a-fk-or]", ""));
+            int refX = isWaiting ? chatAreaLeft + PADDING + 120 : chatAreaLeft + PADDING;
+            context.drawTextWithShadow(this.textRenderer, Text.literal(refText),
+                    refX, chatAreaBottom + 2, 0xFFFFAA00);
+        }
+
         // 提示文字
         String hint = "§8ESC 返回 | Enter 发送 | 滚轮翻页";
         context.drawTextWithShadow(this.textRenderer, Text.literal(hint),
@@ -366,7 +409,7 @@ public class AiChatScreen extends Screen {
     public void tick() {
         super.tick();
         // 确保输入框始终保持焦点（除非正在等待）
-        if (inputField != null && !inputField.isFocused() && this.getFocused() != sendButton && this.getFocused() != clearButton) {
+        if (inputField != null && !inputField.isFocused() && this.getFocused() != sendButton && this.getFocused() != clearButton && this.getFocused() != referenceButton) {
             this.setFocused(inputField);
             inputField.setFocused(true);
         }
