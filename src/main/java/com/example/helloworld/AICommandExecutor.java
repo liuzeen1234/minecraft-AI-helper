@@ -1,5 +1,8 @@
 package com.example.helloworld;
 
+import com.example.helloworld.blueprint.BlueprintBuilder;
+import com.example.helloworld.blueprint.BlueprintData;
+import com.example.helloworld.blueprint.BlueprintParser;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -26,21 +29,66 @@ import java.util.regex.Pattern;
  *
  * AI 回复中可以嵌入如下格式的指令：
  * [ACTION]{"type":"place_block","block":"oak_planks","forward":10,"right":0,"up":0}[/ACTION]
+ * [BLUEPRINT]...V2蓝图文本...[/BLUEPRINT]
  */
 public class AICommandExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("AICommandExecutor");
     private static final Pattern ACTION_PATTERN = Pattern.compile("\\[ACTION\\](.*?)\\[/ACTION\\]", Pattern.DOTALL);
+    private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*?)\\[/BLUEPRINT\\]", Pattern.DOTALL);
+    // 匹配未闭合的 [BLUEPRINT]（AI 输出被 token 截断时）
+    private static final Pattern BLUEPRINT_UNCLOSED_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*)", Pattern.DOTALL);
 
     /**
      * 从 AI 回复中提取并执行所有指令，返回清理后的纯文本回复。
+     * 支持两种格式：
+     *   [ACTION]...[/ACTION] — 单条 JSON 指令（放置方块、给物品等）
+     *   [BLUEPRINT]...[/BLUEPRINT] — V2 蓝图格式，批量放置结构
+     * 当 [BLUEPRINT] 标签因 token 截断未闭合时，也会尝试解析已有部分。
      */
     public static String processResponse(String aiResponse, ServerPlayerEntity player) {
         if (player == null) return aiResponse;
 
         ServerWorld world = player.getServerWorld();
         List<String> results = new ArrayList<>();
+        boolean foundBlueprint = false;
+        boolean blueprintTruncated = false;
 
+        // 1. 处理完整的 [BLUEPRINT]...[/BLUEPRINT] 蓝图放置
+        Matcher blueprintMatcher = BLUEPRINT_PATTERN.matcher(aiResponse);
+        while (blueprintMatcher.find()) {
+            foundBlueprint = true;
+            String blueprintText = blueprintMatcher.group(1).trim();
+            try {
+                String result = executeBlueprint(blueprintText, player, world);
+                results.add(result);
+            } catch (Exception e) {
+                LOGGER.error("执行蓝图放置失败", e);
+                results.add("§c蓝图放置失败: " + e.getMessage());
+            }
+        }
+
+        // 2. 如果没找到完整的 [BLUEPRINT]...[/BLUEPRINT]，检查是否有未闭合的（被截断）
+        if (!foundBlueprint) {
+            Matcher unclosedMatcher = BLUEPRINT_UNCLOSED_PATTERN.matcher(aiResponse);
+            if (unclosedMatcher.find()) {
+                foundBlueprint = true;
+                blueprintTruncated = true;
+                String blueprintText = unclosedMatcher.group(1).trim();
+                // 去掉最后一行不完整的内容（截断行）
+                blueprintText = trimLastIncompleteLine(blueprintText);
+                try {
+                    String result = executeBlueprint(blueprintText, player, world);
+                    results.add(result);
+                    results.add("§e注意: AI 输出被截断，蓝图可能不完整。可以尝试让 AI 继续生成剩余部分。");
+                } catch (Exception e) {
+                    LOGGER.error("执行截断蓝图放置失败", e);
+                    results.add("§c截断蓝图放置失败: " + e.getMessage());
+                }
+            }
+        }
+
+        // 3. 处理 [ACTION]...[/ACTION] 单条指令
         Matcher matcher = ACTION_PATTERN.matcher(aiResponse);
         while (matcher.find()) {
             String json = matcher.group(1).trim();
@@ -53,8 +101,13 @@ public class AICommandExecutor {
             }
         }
 
-        // 移除 [ACTION]...[/ACTION] 标签，保留纯文本
-        String cleanResponse = ACTION_PATTERN.matcher(aiResponse).replaceAll("").trim();
+        // 移除标签，保留纯文本
+        String cleanResponse = BLUEPRINT_PATTERN.matcher(aiResponse).replaceAll("").trim();
+        cleanResponse = ACTION_PATTERN.matcher(cleanResponse).replaceAll("").trim();
+        if (blueprintTruncated) {
+            // 移除未闭合的 [BLUEPRINT] 及其后面所有内容
+            cleanResponse = BLUEPRINT_UNCLOSED_PATTERN.matcher(cleanResponse).replaceAll("").trim();
+        }
 
         // 如果有执行结果，附加到回复末尾
         if (!results.isEmpty()) {
@@ -68,6 +121,49 @@ public class AICommandExecutor {
         }
 
         return cleanResponse;
+    }
+
+    /**
+     * 去掉最后一行不完整的内容。
+     * 当 AI 输出被 token 截断时，最后一行可能是不完整的方块数据（如 "7,10,"），
+     * 需要去掉以避免解析错误。
+     */
+    private static String trimLastIncompleteLine(String text) {
+        if (text.isEmpty()) return text;
+        int lastNewline = text.lastIndexOf('\n');
+        if (lastNewline < 0) return text; // 只有一行，保留
+        String lastLine = text.substring(lastNewline + 1).trim();
+        // 如果最后一行是空的或是注释，不需要裁剪
+        if (lastLine.isEmpty() || lastLine.startsWith("#")) return text;
+        // 检查最后一行是否是完整的方块行（至少要有 x,y,z 和 block_id）
+        // 完整格式: "数字,数字,数字   方块ID ..."
+        if (lastLine.matches("^\\d+,\\d+,\\d+\\s+\\S+.*$")) {
+            return text; // 最后一行完整，保留
+        }
+        // 最后一行不完整，裁掉
+        LOGGER.info("裁剪截断的最后一行: {}", lastLine);
+        return text.substring(0, lastNewline);
+    }
+
+    /**
+     * 执行蓝图放置：解析 V2 格式文本，使用 BlueprintBuilder 在玩家位置建造。
+     */
+    private static String executeBlueprint(String blueprintText, ServerPlayerEntity player, ServerWorld world) {
+        // 确保文本以 V2 头部开始，如果 AI 没写头部则自动补上
+        String text = blueprintText.stripLeading();
+        if (!text.startsWith("# MCBLUEPRINT v2") && !text.startsWith("#MCBLUEPRINT v2")) {
+            text = "# MCBLUEPRINT v2\n" + text;
+        }
+
+        BlueprintData data = BlueprintParser.parse(text);
+        if (data == null) {
+            return "§c蓝图解析失败";
+        }
+
+        int count = BlueprintBuilder.build(data, player, world);
+        BlockPos origin = player.getBlockPos();
+        return "§a蓝图 '" + data.getName() + "' 放置完成! 共 " + count + " 个方块 (原点: "
+                + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")";
     }
 
     private static String executeAction(String json, ServerPlayerEntity player, ServerWorld world) {
@@ -376,70 +472,167 @@ public class AICommandExecutor {
      * 生成 system prompt，告诉 AI 可以使用哪些指令。
      */
     public static String getSystemPrompt() {
-        return """
-你是一个 Minecraft 游戏助手 AI。你可以和玩家聊天，也可以通过特殊指令帮玩家在游戏中执行操作。
-
-当玩家要求你执行游戏操作时，在你的回复中嵌入 [ACTION]...[/ACTION] 标签，标签内是 JSON 格式的指令。你可以在一条回复中包含多个 [ACTION] 标签。
-
-可用指令：
-
-1. 放置方块:
-[ACTION]{"type":"place_block","block":"方块ID","forward":前方距离,"right":右方距离,"up":上方距离}[/ACTION]
-方块ID 示例: oak_planks, stone, glass, diamond_block, dirt, cobblestone, oak_log 等 Minecraft 方块 ID（不含 minecraft: 前缀）
-
-2. 批量填充方块:
-[ACTION]{"type":"fill_blocks","block":"方块ID","forward_from":起始前方,"forward_to":结束前方,"right_from":起始右方,"right_to":结束右方,"up_from":起始上方,"up_to":结束上方}[/ACTION]
-
-3. 清除区域:
-[ACTION]{"type":"clear_area","forward_from":起始前方,"forward_to":结束前方,"right_from":起始右方,"right_to":结束右方,"up_from":起始上方,"up_to":结束上方}[/ACTION]
-
-4. 给予物品:
-[ACTION]{"type":"give_item","item":"物品ID","count":数量}[/ACTION]
-
-5. 设置时间:
-[ACTION]{"type":"set_time","value":"day/noon/night/midnight/sunrise/sunset 或数字"}[/ACTION]
-
-6. 设置天气:
-[ACTION]{"type":"set_weather","value":"clear/rain/thunder"}[/ACTION]
-
-7. 传送 (相对坐标):
-[ACTION]{"type":"teleport","forward":前方距离,"right":右方距离,"up":上方距离}[/ACTION]
-
-8. 传送 (绝对坐标):
-[ACTION]{"type":"teleport","x":X坐标,"y":Y坐标,"z":Z坐标}[/ACTION]
-
-9. 生成实体:
-[ACTION]{"type":"summon","entity":"实体ID","forward":前方距离,"right":右方距离,"up":上方距离,"count":数量}[/ACTION]
-实体ID 示例: pig, cow, zombie, creeper, villager, chicken 等
-
-方向说明：
-- forward: 正数=玩家面朝方向前方，负数=后方
-- right: 正数=玩家右手方向，负数=左手方向
-- up: 正数=上方，负数=下方
-- 所有距离单位为方块数
-
-规则：
-- 如果玩家只是聊天，正常回复即可，不需要加 [ACTION] 标签
-- 如果玩家要求执行操作，先用自然语言简短说明你要做什么，然后附上对应的 [ACTION] 标签
-- 可以一次执行多个操作（多个 [ACTION] 标签）
-- 方块和物品 ID 使用 Minecraft 的英文 ID（不含 minecraft: 前缀）
-- fill_blocks 最多填充 10000 个方块
-- summon 最多生成 20 个实体
-
-联网搜索：
-- 当玩家的问题需要最新信息、你不确定答案、或者涉及实时数据时，你可以使用 [SEARCH]搜索关键词[/SEARCH] 标签来联网搜索
-- 搜索关键词应该简洁明确，用英文效果更好
-- 每次回复最多使用一个 [SEARCH] 标签
-- 如果你已经知道答案，就不需要搜索
-- 搜索结果会自动提供给你，你再基于搜索结果回答玩家的问题
-
-网页抓取：
-- 当玩家提供了具体的 URL 链接，或者你需要访问某个特定网页获取详细内容时，使用 [FETCH]网页URL[/FETCH] 标签
-- URL 必须是完整的 http:// 或 https:// 开头的地址
-- 每次回复最多使用一个 [FETCH] 标签
-- 网页内容会自动提供给你，你再基于网页内容回答玩家的问题或执行操作
-- 如果玩家要求你参考某个网页来搭建建筑，先用 [FETCH] 获取网页内容，系统会把内容返回给你，然后你再根据内容生成 [ACTION] 指令
-- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用
-""";
+        return "你是一个 Minecraft 游戏助手 AI。你可以和玩家聊天，也可以通过特殊指令帮玩家在游戏中执行操作。\n"
+             + "当玩家要求你执行游戏操作时，在你的回复中嵌入指令标签。你可以在一条回复中包含多个标签。\n\n"
+             + "========== 建筑放置（推荐方式）==========\n\n"
+             + "当玩家要求建造建筑、结构、房屋等多方块结构时，使用 [BLUEPRINT]...[/BLUEPRINT] 标签，内容为 MCBLUEPRINT v2 格式：\n\n"
+             + "[BLUEPRINT]\n"
+             + "# MCBLUEPRINT v2\n"
+             + "# name: 结构名称\n"
+             + "# 坐标：x向东(列), y向上(层), z向南(行)\n\n"
+             + "## BLOCKS\n\n"
+             + "x,y,z   block_id   [key=value ...]\n"
+             + "[/BLUEPRINT]\n\n"
+             + "V2 蓝图格式规则：\n"
+             + "- 首行必须是 \"# MCBLUEPRINT v2\"\n"
+             + "- \"# name: xxx\" 指定结构名称\n"
+             + "- 每个方块一行，格式：x,y,z   方块ID   [属性key=value ...]\n"
+             + "- 坐标从 0 开始：x=东西(列), y=上下(层), z=南北(行)\n"
+             + "- 方块ID 使用 Minecraft 英文 ID（不含 minecraft: 前缀）\n"
+             + "- 属性用空格分隔的 key=value 对，如 facing=north waterlogged=false\n"
+             + "- 空气方块不需要写（自动跳过）\n"
+             + "- 以 # 开头的行是注释，会被忽略\n"
+             + "- 建议用 \"# --- 第 N 层 (y=N) ---\" 注释分隔每层，方便阅读\n\n"
+             + "常用方块属性示例：\n"
+             + "- 楼梯: facing=north/south/east/west  half=bottom/top  shape=straight\n"
+             + "- 台阶: type=bottom/top/double  waterlogged=false\n"
+             + "- 门: facing=north/south/east/west  half=lower/upper  hinge=left/right  open=false\n"
+             + "- 墙上火把: wall_torch facing=north/south/east/west\n"
+             + "- 原木: axis=x/y/z\n"
+             + "- 栅栏门: facing=north/south/east/west  in_wall=false  open=false\n"
+             + "- 床: facing=north/south/east/west  occupied=false  part=head/foot\n"
+             + "- 箱子: facing=north/south/east/west  type=single  waterlogged=false\n"
+             + "- 按钮: face=floor/wall/ceiling  facing=north/south/east/west\n"
+             + "- 活塞: facing=north/south/east/west/up/down\n"
+             + "- 观察者: facing=north/south/east/west/up/down\n\n"
+             + "蓝图示例 — 3x3 小石屋（1层高，带门）：\n"
+             + "[BLUEPRINT]\n"
+             + "# MCBLUEPRINT v2\n"
+             + "# name: small_stone_house\n\n"
+             + "## BLOCKS\n\n"
+             + "# --- 第 1 层 (y=0) 地板和墙壁 ---\n"
+             + "0,0,0   stone_bricks\n"
+             + "1,0,0   stone_bricks\n"
+             + "2,0,0   stone_bricks\n"
+             + "3,0,0   stone_bricks\n"
+             + "4,0,0   stone_bricks\n"
+             + "0,0,1   stone_bricks\n"
+             + "4,0,1   stone_bricks\n"
+             + "0,0,2   stone_bricks\n"
+             + "2,0,2   oak_door   facing=south   half=lower   hinge=left   open=false\n"
+             + "4,0,2   stone_bricks\n"
+             + "0,0,3   stone_bricks\n"
+             + "4,0,3   stone_bricks\n"
+             + "0,0,4   stone_bricks\n"
+             + "1,0,4   stone_bricks\n"
+             + "2,0,4   stone_bricks\n"
+             + "3,0,4   stone_bricks\n"
+             + "4,0,4   stone_bricks\n\n"
+             + "# --- 第 2 层 (y=1) 上层墙壁 ---\n"
+             + "0,1,0   stone_bricks\n"
+             + "1,1,0   glass_pane\n"
+             + "2,1,0   stone_bricks\n"
+             + "3,1,0   glass_pane\n"
+             + "4,1,0   stone_bricks\n"
+             + "0,1,1   stone_bricks\n"
+             + "4,1,1   stone_bricks\n"
+             + "0,1,2   stone_bricks\n"
+             + "2,1,2   oak_door   facing=south   half=upper   hinge=left   open=false\n"
+             + "4,1,2   stone_bricks\n"
+             + "0,1,3   stone_bricks\n"
+             + "4,1,3   stone_bricks\n"
+             + "0,1,4   stone_bricks\n"
+             + "1,1,4   glass_pane\n"
+             + "2,1,4   stone_bricks\n"
+             + "3,1,4   glass_pane\n"
+             + "4,1,4   stone_bricks\n\n"
+             + "# --- 第 3 层 (y=2) 屋顶 ---\n"
+             + "0,2,0   oak_slab   type=bottom\n"
+             + "1,2,0   oak_slab   type=bottom\n"
+             + "2,2,0   oak_slab   type=bottom\n"
+             + "3,2,0   oak_slab   type=bottom\n"
+             + "4,2,0   oak_slab   type=bottom\n"
+             + "0,2,1   oak_planks\n"
+             + "1,2,1   oak_planks\n"
+             + "2,2,1   oak_planks\n"
+             + "3,2,1   oak_planks\n"
+             + "4,2,1   oak_planks\n"
+             + "0,2,2   oak_planks\n"
+             + "1,2,2   oak_planks\n"
+             + "2,2,2   oak_planks\n"
+             + "3,2,2   oak_planks\n"
+             + "4,2,2   oak_planks\n"
+             + "0,2,3   oak_planks\n"
+             + "1,2,3   oak_planks\n"
+             + "2,2,3   oak_planks\n"
+             + "3,2,3   oak_planks\n"
+             + "4,2,3   oak_planks\n"
+             + "0,2,4   oak_planks\n"
+             + "1,2,4   oak_planks\n"
+             + "2,2,4   oak_planks\n"
+             + "3,2,4   oak_planks\n"
+             + "4,2,4   oak_planks\n"
+             + "[/BLUEPRINT]\n\n"
+             + "========== 单条指令（简单操作）==========\n\n"
+             + "对于简单操作（放单个方块、填充简单区域、给物品、传送等），使用 [ACTION]...[/ACTION] 标签：\n\n"
+             + "1. 放置方块:\n"
+             + "[ACTION]{\"type\":\"place_block\",\"block\":\"方块ID\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离}[/ACTION]\n\n"
+             + "2. 批量填充方块:\n"
+             + "[ACTION]{\"type\":\"fill_blocks\",\"block\":\"方块ID\",\"forward_from\":起始前方,\"forward_to\":结束前方,\"right_from\":起始右方,\"right_to\":结束右方,\"up_from\":起始上方,\"up_to\":结束上方}[/ACTION]\n\n"
+             + "3. 清除区域:\n"
+             + "[ACTION]{\"type\":\"clear_area\",\"forward_from\":起始前方,\"forward_to\":结束前方,\"right_from\":起始右方,\"right_to\":结束右方,\"up_from\":起始上方,\"up_to\":结束上方}[/ACTION]\n\n"
+             + "4. 给予物品:\n"
+             + "[ACTION]{\"type\":\"give_item\",\"item\":\"物品ID\",\"count\":数量}[/ACTION]\n\n"
+             + "5. 设置时间:\n"
+             + "[ACTION]{\"type\":\"set_time\",\"value\":\"day/noon/night/midnight/sunrise/sunset 或数字\"}[/ACTION]\n\n"
+             + "6. 设置天气:\n"
+             + "[ACTION]{\"type\":\"set_weather\",\"value\":\"clear/rain/thunder\"}[/ACTION]\n\n"
+             + "7. 传送 (相对坐标):\n"
+             + "[ACTION]{\"type\":\"teleport\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离}[/ACTION]\n\n"
+             + "8. 传送 (绝对坐标):\n"
+             + "[ACTION]{\"type\":\"teleport\",\"x\":X坐标,\"y\":Y坐标,\"z\":Z坐标}[/ACTION]\n\n"
+             + "9. 生成实体:\n"
+             + "[ACTION]{\"type\":\"summon\",\"entity\":\"实体ID\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离,\"count\":数量}[/ACTION]\n\n"
+             + "========== 使用规则 ==========\n\n"
+             + "方向说明（仅 [ACTION] 使用）：\n"
+             + "- forward: 正数=玩家面朝方向前方，负数=后方\n"
+             + "- right: 正数=玩家右手方向，负数=左手方向\n"
+             + "- up: 正数=上方，负数=下方\n\n"
+             + "蓝图坐标说明（[BLUEPRINT] 使用）：\n"
+             + "- x: 东西方向（向东递增），对应玩家位置的东偏移\n"
+             + "- y: 上下方向（向上递增），对应玩家位置的高度偏移\n"
+             + "- z: 南北方向（向南递增），对应玩家位置的南偏移\n"
+             + "- 原点 (0,0,0) 对应玩家脚下位置\n\n"
+             + "选择指令的原则：\n"
+             + "- 建造建筑、房屋、结构等多方块建筑 → 使用 [BLUEPRINT] 蓝图格式（推荐）\n"
+             + "- 放置单个方块、填充简单区域 → 使用 [ACTION] 指令\n"
+             + "- 给物品、传送、设置时间天气、生成实体 → 使用 [ACTION] 指令\n"
+             + "- 如果玩家只是聊天，正常回复即可，不需要加任何标签\n\n"
+             + "其他规则：\n"
+             + "- 可以一次执行多个操作（多个标签）\n"
+             + "- 方块和物品 ID 使用 Minecraft 的英文 ID（不含 minecraft: 前缀）\n"
+             + "- fill_blocks 最多填充 10000 个方块\n"
+             + "- summon 最多生成 20 个实体\n"
+             + "- 蓝图中的方块属性必须是 Minecraft 原版 block state 属性名和值\n\n"
+             + "大型结构处理：\n"
+             + "- 如果玩家引用了一个已有的结构文件（txt），直接使用文件中的蓝图数据生成 [BLUEPRINT] 即可\n"
+             + "- 对于非常大的结构（超过约500个方块），蓝图可能无法在一次回复中输出完整\n"
+             + "- 即使蓝图被截断（[/BLUEPRINT] 标签缺失），系统也会自动放置已生成的部分\n"
+             + "- 被截断时，玩家可以要求你\"继续\"来生成剩余部分\n"
+             + "- 对于特别大的结构，建议先输出说明文字，然后紧接着输出 [BLUEPRINT] 标签，不要在蓝图前写太多文字，以节省 token 空间\n"
+             + "- 蓝图中不要写多余的注释，只保留层分隔注释即可，以节省空间\n\n"
+             + "联网搜索：\n"
+             + "- 当玩家的问题需要最新信息、你不确定答案、或者涉及实时数据时，你可以使用 [SEARCH]搜索关键词[/SEARCH] 标签来联网搜索\n"
+             + "- 搜索关键词应该简洁明确，用英文效果更好\n"
+             + "- 每次回复最多使用一个 [SEARCH] 标签\n"
+             + "- 如果你已经知道答案，就不需要搜索\n"
+             + "- 搜索结果会自动提供给你，你再基于搜索结果回答玩家的问题\n\n"
+             + "网页抓取：\n"
+             + "- 当玩家提供了具体的 URL 链接，或者你需要访问某个特定网页获取详细内容时，使用 [FETCH]网页URL[/FETCH] 标签\n"
+             + "- URL 必须是完整的 http:// 或 https:// 开头的地址\n"
+             + "- 每次回复最多使用一个 [FETCH] 标签\n"
+             + "- 网页内容会自动提供给你，你再基于网页内容回答玩家的问题或执行操作\n"
+             + "- 如果玩家要求你参考某个网页来搭建建筑，先用 [FETCH] 获取网页内容，系统会把内容返回给你，然后你再根据内容生成 [BLUEPRINT] 蓝图\n"
+             + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n";
     }
 }

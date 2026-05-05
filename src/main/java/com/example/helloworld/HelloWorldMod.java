@@ -760,7 +760,7 @@ public class HelloWorldMod implements ModInitializer {
         String requestBody = """
                 {
                     "model": "%s",
-                    "max_tokens": 8192,
+                    "max_tokens": 16384,
                     "system": "%s",
                     "messages": %s
                 }
