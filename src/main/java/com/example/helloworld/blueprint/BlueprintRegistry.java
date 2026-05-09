@@ -16,25 +16,19 @@ import java.util.Map;
 public class BlueprintRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("BlueprintRegistry");
-    private static final String BLUEPRINT_DIR = "txts";
 
     // key = 蓝图名称（小写），value = 解析后的蓝图数据
     private final Map<String, BlueprintData> blueprints = new LinkedHashMap<>();
 
     /**
-     * 扫描 txts/ 目录，加载所有 .txt 蓝图文件。
-     * Minecraft 运行时工作目录是 run/，所以需要向上一级找项目根目录。
+     * 扫描 ai-helper/txts/ 目录，加载所有 .txt 蓝图文件。
      */
     public void loadAll() {
         blueprints.clear();
 
-        // 尝试多个可能的路径：当前目录、上一级目录（run/ 的情况）
-        Path dir = Paths.get(BLUEPRINT_DIR);
+        Path dir = com.example.helloworld.ModPaths.getTxtsDir();
         if (!Files.isDirectory(dir)) {
-            dir = Paths.get("..").resolve(BLUEPRINT_DIR);
-        }
-        if (!Files.isDirectory(dir)) {
-            LOGGER.warn("蓝图目录不存在: {}", Paths.get(BLUEPRINT_DIR).toAbsolutePath());
+            LOGGER.warn("蓝图目录不存在: {}", dir.toAbsolutePath());
             return;
         }
 

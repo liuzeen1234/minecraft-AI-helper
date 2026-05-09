@@ -26,7 +26,7 @@ import java.util.stream.Stream;
  */
 public class NbtBrowserScreen extends Screen {
 
-    private static final Path NBTS_DIR = Path.of("../nbts");
+    private static final Path NBTS_DIR = com.example.helloworld.ModPaths.getNbtsDir();
 
     private final Screen parent;
 

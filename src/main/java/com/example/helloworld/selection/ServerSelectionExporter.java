@@ -141,10 +141,7 @@ public class ServerSelectionExporter {
         root.put("entities", new NbtList());
 
         // 写入文件
-        Path dir = Paths.get("nbts");
-        if (!Files.isDirectory(dir)) {
-            dir = Paths.get("..").resolve("nbts");
-        }
+        Path dir = com.example.helloworld.ModPaths.getNbtsDir();
         if (!Files.isDirectory(dir)) {
             Files.createDirectories(dir);
         }

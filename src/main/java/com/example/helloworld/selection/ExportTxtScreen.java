@@ -24,7 +24,7 @@ public class ExportTxtScreen extends Screen {
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
 
-    private static final Path TXTS_DIR = Path.of("../txts");
+    private static final Path TXTS_DIR = com.example.helloworld.ModPaths.getTxtsDir();
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
@@ -105,10 +105,7 @@ public class ExportTxtScreen extends Screen {
         if (!pathText.isEmpty()) {
             dir = Path.of(pathText);
         } else {
-            dir = Paths.get("txts");
-            if (!Files.isDirectory(dir)) {
-                dir = Paths.get("..").resolve("txts");
-            }
+            dir = com.example.helloworld.ModPaths.getTxtsDir();
         }
         if (!Files.isDirectory(dir)) {
             try { Files.createDirectories(dir); } catch (IOException ignored) {}

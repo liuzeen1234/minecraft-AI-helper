@@ -71,11 +71,28 @@ public class HelloWorldClientMod implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.CHAT_SCREEN_RESPONSE_PACKET, (client, handler, buf, responseSender) -> {
             String response = buf.readString();
             client.execute(() -> {
-                // 将回复添加到聊天界面
+                // 将回复添加到聊天界面历史
                 AiChatScreen.receiveResponse(response);
                 // 如果当前打开的是聊天界面，通知它刷新
                 if (client.currentScreen instanceof AiChatScreen chatScreen) {
                     chatScreen.setWaitingDone();
+                } else {
+                    // 聊天界面已关闭，将 AI 回复显示到游戏内聊天框
+                    if (client.player != null) {
+                        // 截取前200字符避免聊天框溢出，完整内容可在 AI 聊天界面查看
+                        String displayResponse = response.length() > 200
+                                ? response.substring(0, 200) + "..."
+                                : response;
+                        // 按换行分割，逐行发送到聊天框
+                        String[] lines = displayResponse.split("\n");
+                        client.player.sendMessage(Text.literal("§a[AI 回复]"), false);
+                        for (String line : lines) {
+                            if (!line.trim().isEmpty()) {
+                                client.player.sendMessage(Text.literal("§f" + line), false);
+                            }
+                        }
+                        client.player.sendMessage(Text.literal("§7(完整内容请打开 AI 聊天界面查看)"), false);
+                    }
                 }
             });
         });

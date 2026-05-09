@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  */
 public class NbtCommands {
 
-    private static final Path NBTS_DIR = Path.of("../nbts");
+    private static final Path NBTS_DIR = com.example.helloworld.ModPaths.getNbtsDir();
 
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(CommandManager.literal("ainbt")

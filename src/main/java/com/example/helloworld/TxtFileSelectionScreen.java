@@ -106,23 +106,7 @@ public class TxtFileSelectionScreen extends Screen {
     }
 
     private Path findTxtsDir() {
-        // 尝试多个可能的路径
-        MinecraftClient client = MinecraftClient.getInstance();
-        File runDir = client.runDirectory;
-
-        // 1. 运行目录下的 txts/
-        Path p1 = runDir.toPath().resolve("txts");
-        if (Files.isDirectory(p1)) return p1;
-
-        // 2. 运行目录的父目录下的 txts/ (开发环境)
-        Path p2 = runDir.toPath().getParent().resolve("txts");
-        if (Files.isDirectory(p2)) return p2;
-
-        // 3. 当前工作目录下的 txts/
-        Path p3 = Paths.get("txts");
-        if (Files.isDirectory(p3)) return p3;
-
-        return null;
+        return com.example.helloworld.ModPaths.getTxtsDir();
     }
 
     private void scanDirectory(File root, File dir, List<String> result) {

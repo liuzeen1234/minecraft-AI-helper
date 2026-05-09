@@ -118,10 +118,10 @@ public class HelloWorldMod implements ModInitializer {
             String relativePath = buf.readString();
             server.execute(() -> {
                 try {
-                    // 解析 txts/ 目录下的文件路径
-                    java.nio.file.Path txtsDir = java.nio.file.Paths.get("txts");
+                    // 解析 ai-helper/txts/ 目录下的文件路径
+                    java.nio.file.Path txtsDir = com.example.helloworld.ModPaths.getTxtsDir();
                     if (!java.nio.file.Files.isDirectory(txtsDir)) {
-                        txtsDir = java.nio.file.Paths.get("..").resolve("txts");
+                        java.nio.file.Files.createDirectories(txtsDir);
                     }
                     java.io.File file = txtsDir.resolve(relativePath).toFile();
                     if (!file.exists()) {
@@ -895,10 +895,7 @@ public class HelloWorldMod implements ModInitializer {
      * 服务端读取引用的 txt 文件内容。
      */
     private String loadReferencedFiles(List<String> fileNames) {
-        java.nio.file.Path txtsDir = java.nio.file.Paths.get("txts");
-        if (!java.nio.file.Files.isDirectory(txtsDir)) {
-            txtsDir = java.nio.file.Paths.get("..").resolve("txts");
-        }
+        java.nio.file.Path txtsDir = com.example.helloworld.ModPaths.getTxtsDir();
         if (!java.nio.file.Files.isDirectory(txtsDir)) {
             return "";
         }

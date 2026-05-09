@@ -27,7 +27,7 @@ import java.util.stream.Stream;
  */
 public class TxtBrowserScreen extends Screen {
 
-    private static final Path TXTS_DIR = Path.of("../txts");
+    private static final Path TXTS_DIR = com.example.helloworld.ModPaths.getTxtsDir();
 
     private final Screen parent;
 

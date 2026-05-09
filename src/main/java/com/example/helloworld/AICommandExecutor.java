@@ -18,6 +18,9 @@ import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -162,8 +165,53 @@ public class AICommandExecutor {
 
         int count = BlueprintBuilder.build(data, player, world);
         BlockPos origin = player.getBlockPos();
+
+        // 自动保存蓝图为 txt 文件到 txts/ 文件夹
+        String savedPath = saveBlueprintToTxt(text, data.getName());
+        String saveMsg = savedPath != null ? " §7(已保存: " + savedPath + ")" : "";
+
         return "§a蓝图 '" + data.getName() + "' 放置完成! 共 " + count + " 个方块 (原点: "
-                + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")";
+                + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")" + saveMsg;
+    }
+
+    /**
+     * 将蓝图文本保存为 txt 文件到 txts/ 文件夹。
+     * 文件名基于蓝图名称，如果已存在则追加数字后缀。
+     *
+     * @param blueprintText 完整的蓝图文本内容
+     * @param name          蓝图名称（用于生成文件名）
+     * @return 保存的文件路径（相对路径），失败返回 null
+     */
+    private static String saveBlueprintToTxt(String blueprintText, String name) {
+        try {
+            Path txtsDir = ModPaths.getTxtsDir();
+            if (!Files.exists(txtsDir)) {
+                Files.createDirectories(txtsDir);
+            }
+
+            // 清理文件名：移除非法字符，用下划线替代空格
+            String safeName = name.replaceAll("[^a-zA-Z0-9_\\-\\u4e00-\\u9fff]", "_")
+                    .replaceAll("_+", "_")
+                    .replaceAll("^_|_$", "");
+            if (safeName.isEmpty()) {
+                safeName = "blueprint";
+            }
+
+            // 如果文件已存在，追加数字后缀
+            Path targetFile = txtsDir.resolve(safeName + ".txt");
+            int counter = 1;
+            while (Files.exists(targetFile)) {
+                targetFile = txtsDir.resolve(safeName + "_" + counter + ".txt");
+                counter++;
+            }
+
+            Files.writeString(targetFile, blueprintText);
+            LOGGER.info("蓝图已保存到: {}", targetFile);
+            return targetFile.toString();
+        } catch (IOException e) {
+            LOGGER.error("保存蓝图 txt 文件失败: {}", name, e);
+            return null;
+        }
     }
 
     private static String executeAction(String json, ServerPlayerEntity player, ServerWorld world) {

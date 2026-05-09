@@ -25,7 +25,7 @@ public class ExportNbtScreen extends Screen {
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
 
-    private static final Path NBTS_DIR = Path.of("../nbts");
+    private static final Path NBTS_DIR = com.example.helloworld.ModPaths.getNbtsDir();
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
