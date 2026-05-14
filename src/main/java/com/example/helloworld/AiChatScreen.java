@@ -62,6 +62,7 @@ public class AiChatScreen extends Screen {
 
     private int scrollOffset = 0;
     private boolean isWaiting = false;
+    private long thinkingStartTime = 0; // 开始思考的时间戳
 
     // 布局常量
     private int chatAreaTop;
@@ -156,6 +157,7 @@ public class AiChatScreen extends Screen {
 
         // 显示等待状态
         isWaiting = true;
+        thinkingStartTime = System.currentTimeMillis();
         sendButton.active = false;
         messageHistory.add(new ChatMessage("system", "正在思考..."));
 
@@ -231,8 +233,15 @@ public class AiChatScreen extends Screen {
                 default -> { prefix = "§7"; color = 0xFFAAAAAA; }
             }
 
+            // 对"正在思考..."消息追加计时
+            String content = msg.content;
+            if (msg.role.equals("system") && content.equals("正在思考...") && isWaiting && thinkingStartTime > 0) {
+                long elapsedSeconds = (System.currentTimeMillis() - thinkingStartTime) / 1000;
+                content = "正在思考... §8[" + elapsedSeconds + "s]";
+            }
+
             // 按行分割内容
-            String[] lines = msg.content.split("\n");
+            String[] lines = content.split("\n");
             for (int i = 0; i < lines.length; i++) {
                 String line = (i == 0 ? prefix : "     ") + lines[i];
                 // 自动换行
@@ -346,7 +355,8 @@ public class AiChatScreen extends Screen {
         // 等待指示器
         if (isWaiting) {
             long dots = (System.currentTimeMillis() / 500) % 4;
-            String indicator = "§7AI 正在思考" + ".".repeat((int) dots);
+            long elapsedSeconds = (System.currentTimeMillis() - thinkingStartTime) / 1000;
+            String indicator = "§7AI 正在思考" + ".".repeat((int) dots) + " §8[" + elapsedSeconds + "s]";
             context.drawTextWithShadow(this.textRenderer, Text.literal(indicator),
                     chatAreaLeft + PADDING, chatAreaBottom + 2, 0xFFAAAAAA);
         }
