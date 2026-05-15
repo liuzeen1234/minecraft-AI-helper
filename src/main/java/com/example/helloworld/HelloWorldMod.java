@@ -51,6 +51,8 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier CHAT_SCREEN_MESSAGE_PACKET = new Identifier(MOD_ID, "chat_screen_msg");
     // 服务端 -> 客户端：聊天界面回复
     public static final Identifier CHAT_SCREEN_RESPONSE_PACKET = new Identifier(MOD_ID, "chat_screen_resp");
+    // 客户端 -> 服务端：取消正在进行的 AI 请求
+    public static final Identifier CHAT_CANCEL_PACKET = new Identifier(MOD_ID, "chat_cancel");
 
     private static final ModConfig CONFIG = new ModConfig();
 
@@ -61,6 +63,10 @@ public class HelloWorldMod implements ModInitializer {
     // 对话历史记录（多轮上下文）
     private final List<String> conversationHistory = new ArrayList<>();
     private static final int MAX_HISTORY_SIZE = 20; // 最多保留 20 条消息（10轮对话）
+
+    // 当前正在执行的 AI 请求（用于取消）
+    private volatile CompletableFuture<?> pendingAiTask = null;
+    private volatile boolean cancelRequested = false;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -204,14 +210,33 @@ public class HelloWorldMod implements ModInitializer {
 
                 // 异步调用 AI API
                 final String finalRefContent = referenceContent;
-                CompletableFuture.runAsync(() -> {
+                cancelRequested = false;
+                pendingAiTask = CompletableFuture.runAsync(() -> {
                     try {
                         String response = callKimiApi(fullMessage, "");
+
+                        // 检查是否已被取消
+                        if (cancelRequested) {
+                            server.execute(() -> {
+                                PacketByteBuf respBuf = PacketByteBufs.create();
+                                respBuf.writeString("§7[思考已终止]");
+                                ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                            });
+                            return;
+                        }
 
                         // 检查是否需要抓取网页
                         String fetchUrl = extractFetchUrl(response);
                         if (fetchUrl != null) {
                             String pageContent = webFetchService.fetch(fetchUrl);
+                            if (cancelRequested) {
+                                server.execute(() -> {
+                                    PacketByteBuf respBuf = PacketByteBufs.create();
+                                    respBuf.writeString("§7[思考已终止]");
+                                    ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                                });
+                                return;
+                            }
                             if (pageContent != null) {
                                 String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
                                         + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
@@ -226,6 +251,14 @@ public class HelloWorldMod implements ModInitializer {
                             if (searchQuery != null && CONFIG.isWebSearchEnabled()
                                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
                                 String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
+                                if (cancelRequested) {
+                                    server.execute(() -> {
+                                        PacketByteBuf respBuf = PacketByteBufs.create();
+                                        respBuf.writeString("§7[思考已终止]");
+                                        ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                                    });
+                                    return;
+                                }
                                 if (searchResults != null) {
                                     String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
                                             + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
@@ -239,6 +272,16 @@ public class HelloWorldMod implements ModInitializer {
                             }
                         }
 
+                        // 再次检查取消
+                        if (cancelRequested) {
+                            server.execute(() -> {
+                                PacketByteBuf respBuf = PacketByteBufs.create();
+                                respBuf.writeString("§7[思考已终止]");
+                                ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                            });
+                            return;
+                        }
+
                         // 执行 AI 指令
                         String processed = AICommandExecutor.processResponse(response, player);
 
@@ -250,14 +293,36 @@ public class HelloWorldMod implements ModInitializer {
                             ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                         });
                     } catch (Exception e) {
+                        if (cancelRequested) {
+                            server.execute(() -> {
+                                PacketByteBuf respBuf = PacketByteBufs.create();
+                                respBuf.writeString("§7[思考已终止]");
+                                ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                            });
+                            return;
+                        }
                         LOGGER.error("聊天界面 AI 请求失败", e);
                         server.execute(() -> {
                             PacketByteBuf respBuf = PacketByteBufs.create();
                             respBuf.writeString("§c请求失败: " + e.getMessage());
                             ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                         });
+                    } finally {
+                        pendingAiTask = null;
                     }
                 });
+            });
+        });
+
+        // 注册取消 AI 请求的处理器
+        ServerPlayNetworking.registerGlobalReceiver(CHAT_CANCEL_PACKET, (server, player, handler, buf, responseSender) -> {
+            server.execute(() -> {
+                cancelRequested = true;
+                CompletableFuture<?> task = pendingAiTask;
+                if (task != null) {
+                    task.cancel(true);
+                }
+                LOGGER.info("玩家 {} 取消了 AI 请求", player.getName().getString());
             });
         });
 

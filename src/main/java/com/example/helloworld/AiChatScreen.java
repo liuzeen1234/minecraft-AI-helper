@@ -64,6 +64,11 @@ public class AiChatScreen extends Screen {
     private boolean isWaiting = false;
     private long thinkingStartTime = 0; // 开始思考的时间戳
 
+    // "终止思考" 按钮的点击区域
+    private int cancelTextX = 0;
+    private int cancelTextY = 0;
+    private int cancelTextWidth = 0;
+
     // 布局常量
     private int chatAreaTop;
     private int chatAreaBottom;
@@ -190,6 +195,18 @@ public class AiChatScreen extends Screen {
             }
         }
 
+        // 如果是服务端发来的终止消息，且本地已经有终止提示了，跳过
+        if (response.equals("§7[思考已终止]")) {
+            if (!messageHistory.isEmpty()) {
+                ChatMessage last = messageHistory.get(messageHistory.size() - 1);
+                if (last.role.equals("system") && last.content.equals("§7[思考已终止]")) {
+                    return; // 已经有了，不重复添加
+                }
+            }
+            messageHistory.add(new ChatMessage("system", "§7[思考已终止]"));
+            return;
+        }
+
         // 添加 AI 回复
         messageHistory.add(new ChatMessage("assistant", response));
     }
@@ -200,6 +217,33 @@ public class AiChatScreen extends Screen {
     public void setWaitingDone() {
         isWaiting = false;
         if (sendButton != null) sendButton.active = true;
+        rebuildWrappedLines();
+        scrollToBottom();
+    }
+
+    /**
+     * 终止思考 - 发送取消请求到服务端
+     */
+    private void cancelThinking() {
+        if (!isWaiting) return;
+
+        // 发送取消数据包到服务端
+        PacketByteBuf buf = PacketByteBufs.create();
+        ClientPlayNetworking.send(HelloWorldMod.CHAT_CANCEL_PACKET, buf);
+
+        // 立即更新本地状态
+        isWaiting = false;
+        if (sendButton != null) sendButton.active = true;
+
+        // 移除 "正在思考..." 消息，替换为终止提示
+        if (!messageHistory.isEmpty()) {
+            ChatMessage last = messageHistory.get(messageHistory.size() - 1);
+            if (last.role.equals("system") && last.content.equals("正在思考...")) {
+                messageHistory.remove(messageHistory.size() - 1);
+            }
+        }
+        messageHistory.add(new ChatMessage("system", "§7[思考已终止]"));
+
         rebuildWrappedLines();
         scrollToBottom();
     }
@@ -359,13 +403,28 @@ public class AiChatScreen extends Screen {
             String indicator = "§7AI 正在思考" + ".".repeat((int) dots) + " §8[" + elapsedSeconds + "s]";
             context.drawTextWithShadow(this.textRenderer, Text.literal(indicator),
                     chatAreaLeft + PADDING, chatAreaBottom + 2, 0xFFAAAAAA);
+
+            // 红色可点击 "终止思考" 文本
+            String cancelText = "终止思考";
+            cancelTextWidth = this.textRenderer.getWidth(cancelText);
+            cancelTextX = chatAreaLeft + PADDING + this.textRenderer.getWidth(
+                    ("AI 正在思考" + ".".repeat((int) dots) + " [" + elapsedSeconds + "s]  ").replace("§7", "").replace("§8", ""));
+            cancelTextY = chatAreaBottom + 2;
+
+            // 检测鼠标悬停
+            boolean hovered = mouseX >= cancelTextX && mouseX <= cancelTextX + cancelTextWidth
+                    && mouseY >= cancelTextY && mouseY <= cancelTextY + LINE_HEIGHT;
+            int cancelColor = hovered ? 0xFFFF6666 : 0xFFFF4444; // 悬停时稍亮
+            String cancelDisplay = (hovered ? "§n" : "") + "终止思考";
+            context.drawTextWithShadow(this.textRenderer, Text.literal("§c" + cancelDisplay),
+                    cancelTextX, cancelTextY, cancelColor);
         }
 
         // 引用文件指示器
         if (!referencedFiles.isEmpty()) {
             String refText = "§6\uD83D\uDCCE 已引用 " + referencedFiles.size() + " 个文件";
             int refTextWidth = this.textRenderer.getWidth(refText.replaceAll("§[0-9a-fk-or]", ""));
-            int refX = isWaiting ? chatAreaLeft + PADDING + 120 : chatAreaLeft + PADDING;
+            int refX = isWaiting ? cancelTextX + cancelTextWidth + 10 : chatAreaLeft + PADDING;
             context.drawTextWithShadow(this.textRenderer, Text.literal(refText),
                     refX, chatAreaBottom + 2, 0xFFFFAA00);
         }
@@ -407,6 +466,19 @@ public class AiChatScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         scroll((int) (-verticalAmount * 3));
         return true;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // 检查是否点击了 "终止思考" 文本
+        if (isWaiting && button == 0) {
+            if (mouseX >= cancelTextX && mouseX <= cancelTextX + cancelTextWidth
+                    && mouseY >= cancelTextY && mouseY <= cancelTextY + LINE_HEIGHT) {
+                cancelThinking();
+                return true;
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     private void scroll(int amount) {
