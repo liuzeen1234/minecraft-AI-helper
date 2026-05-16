@@ -21,9 +21,9 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        // 9 个按钮，每个高 20px，间距 4px，总高 212px，垂直居中起始 Y = height/2 - 106
+        // 10 个按钮，每个高 20px，间距 4px，总高 236px，垂直居中起始 Y = height/2 - 118
         int startX = this.width / 2 - 100;
-        int startY = this.height / 2 - 106;
+        int startY = this.height / 2 - 118;
         int btnH = 20;
         int gap = 4;
 
@@ -60,11 +60,22 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
+        // 流式输出开关按钮
+        this.addDrawableChild(ButtonWidget.builder(
+                getStreamOutputButtonText(),
+                button -> {
+                    config.setStreamOutputEnabled(!config.isStreamOutputEnabled());
+                    button.setMessage(getStreamOutputButtonText());
+                })
+                .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
+                .build()
+        );
+
         // AI 聊天按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("AI 聊天"),
                 button -> this.client.setScreen(new AiChatScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
         );
 
@@ -72,7 +83,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("选区工具"),
                 button -> this.client.setScreen(new com.example.helloworld.selection.SelectionScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
         );
 
@@ -80,7 +91,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("加载结构 (NBT)"),
                 button -> this.client.setScreen(new com.example.helloworld.nbt.NbtBrowserScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
                 .build()
         );
 
@@ -88,7 +99,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("加载结构 (TXT)"),
                 button -> this.client.setScreen(new com.example.helloworld.blueprint.TxtBrowserScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
                 .build()
         );
 
@@ -96,7 +107,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("AI API 设置"),
                 button -> this.client.setScreen(new AiApiSettingsScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 8, 200, btnH)
                 .build()
         );
 
@@ -104,7 +115,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 8, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 9, 200, btnH)
                 .build()
         );
     }
@@ -119,6 +130,10 @@ public class ModSettingsScreen extends Screen {
 
     private Text getWebSearchButtonText() {
         return Text.literal("联网搜索: " + (config.isWebSearchEnabled() ? "§a开启" : "§c关闭"));
+    }
+
+    private Text getStreamOutputButtonText() {
+        return Text.literal("流式输出(聊天框): " + (config.isStreamOutputEnabled() ? "§a开启" : "§c关闭"));
     }
 
     @Override

@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 public class HelloWorldMod implements ModInitializer {
 
@@ -213,7 +214,14 @@ public class HelloWorldMod implements ModInitializer {
                 cancelRequested = false;
                 pendingAiTask = CompletableFuture.runAsync(() -> {
                     try {
-                        String response = callKimiApi(fullMessage, "");
+                        String response;
+                        if (CONFIG.isStreamOutputEnabled()) {
+                            // 流式模式：实时输出到聊天框
+                            server.execute(() -> player.sendMessage(Text.literal("§7[AI] 开始回复..."), false));
+                            response = callKimiApiStreaming(fullMessage, "", player, server);
+                        } else {
+                            response = callKimiApi(fullMessage, "");
+                        }
 
                         // 检查是否已被取消
                         if (cancelRequested) {
@@ -871,6 +879,307 @@ public class HelloWorldMod implements ModInitializer {
         }
 
         return content;
+    }
+
+    /**
+     * 流式调用 AI API，逐段将内容发送到玩家聊天框。
+     * 返回完整的响应文本（用于后续指令解析和聊天界面显示）。
+     */
+    private String callKimiApiStreaming(String userMessage, String base64Image, ServerPlayerEntity player,
+                                        net.minecraft.server.MinecraftServer server) throws Exception {
+        String escapedMessage = userMessage
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+
+        // 构建当前用户消息
+        String currentUserMessage;
+        if (base64Image != null && !base64Image.isEmpty()) {
+            currentUserMessage = """
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": "image/png",
+                                        "data": "%s"
+                                    }
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "%s"
+                                }
+                            ]
+                        }""".formatted(base64Image, escapedMessage);
+        } else {
+            currentUserMessage = """
+                        {
+                            "role": "user",
+                            "content": "%s"
+                        }""".formatted(escapedMessage);
+        }
+
+        // 构建 messages 数组
+        StringBuilder messagesBuilder = new StringBuilder();
+        messagesBuilder.append("[");
+
+        if (CONFIG.isContextEnabled() && !conversationHistory.isEmpty()) {
+            for (int i = 0; i < conversationHistory.size(); i++) {
+                messagesBuilder.append(conversationHistory.get(i));
+                messagesBuilder.append(",");
+            }
+        }
+
+        messagesBuilder.append(currentUserMessage);
+        messagesBuilder.append("]");
+
+        String systemPrompt = AICommandExecutor.getSystemPrompt()
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+
+        // 启用 stream
+        String requestBody = """
+                {
+                    "model": "%s",
+                    "max_tokens": 16384,
+                    "stream": true,
+                    "system": "%s",
+                    "messages": %s
+                }
+                """.formatted(CONFIG.getModel(), systemPrompt, messagesBuilder.toString());
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(CONFIG.getApiBaseUrl()))
+                .header("Content-Type", "application/json")
+                .header("x-api-key", CONFIG.getApiKey())
+                .header("anthropic-version", "2023-06-01")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .timeout(Duration.ofSeconds(180))
+                .build();
+
+        HttpResponse<java.util.stream.Stream<String>> response = httpClient.send(request,
+                HttpResponse.BodyHandlers.ofLines());
+
+        if (response.statusCode() != 200) {
+            // 读取错误信息
+            StringBuilder errorBody = new StringBuilder();
+            response.body().forEach(errorBody::append);
+            throw new RuntimeException("HTTP " + response.statusCode() + ": " + errorBody);
+        }
+
+        // 逐行解析 SSE 流
+        StringBuilder fullContent = new StringBuilder();
+        StringBuilder lineBuffer = new StringBuilder(); // 按句缓冲
+        final int FLUSH_THRESHOLD = 60; // 攒够约60字符发一条
+        boolean firstDelta = true;
+
+        java.util.Iterator<String> lines = response.body().iterator();
+        while (lines.hasNext()) {
+            if (cancelRequested) break;
+
+            String line = lines.next();
+
+            // SSE 格式：data: {...} 或 data:{...}
+            String data;
+            if (line.startsWith("data: ")) {
+                data = line.substring(6).trim();
+            } else if (line.startsWith("data:")) {
+                data = line.substring(5).trim();
+            } else {
+                continue;
+            }
+
+            if (data.equals("[DONE]") || data.isEmpty()) break;
+
+            // 记录第一条 SSE 数据用于调试
+            if (firstDelta) {
+                LOGGER.info("[流式] 首条SSE数据: {}", data.length() > 200 ? data.substring(0, 200) + "..." : data);
+                firstDelta = false;
+            }
+
+            // 解析 SSE 事件中的 delta text
+            String deltaText = extractStreamDelta(data);
+            if (deltaText == null || deltaText.isEmpty()) continue;
+
+            fullContent.append(deltaText);
+            lineBuffer.append(deltaText);
+
+            // 检查是否应该刷新到聊天框：遇到换行或缓冲超过阈值
+            boolean shouldFlush = lineBuffer.toString().contains("\n")
+                    || lineBuffer.length() >= FLUSH_THRESHOLD;
+
+            if (shouldFlush) {
+                String toSend = lineBuffer.toString();
+                lineBuffer.setLength(0);
+
+                // 按换行分割发送
+                String[] segments = toSend.split("\n", -1);
+                for (int i = 0; i < segments.length; i++) {
+                    String seg = segments[i].trim();
+                    if (!seg.isEmpty()) {
+                        final String msgLine = seg;
+                        server.execute(() -> {
+                            player.sendMessage(Text.literal("§a[AI] §r" + msgLine), false);
+                        });
+                    }
+                }
+            }
+        }
+
+        // 刷新剩余缓冲
+        if (lineBuffer.length() > 0) {
+            String remaining = lineBuffer.toString().trim();
+            if (!remaining.isEmpty()) {
+                String[] segments = remaining.split("\n", -1);
+                for (String seg : segments) {
+                    String trimmed = seg.trim();
+                    if (!trimmed.isEmpty()) {
+                        final String msgLine = trimmed;
+                        server.execute(() -> {
+                            player.sendMessage(Text.literal("§a[AI] §r" + msgLine), false);
+                        });
+                    }
+                }
+            }
+        }
+
+        String content = fullContent.toString();
+
+        LOGGER.info("[流式] 完成，总内容长度: {}", content.length());
+        if (content.isEmpty()) {
+            LOGGER.warn("[流式] 未能解析到任何内容，可能是 SSE 格式不兼容");
+        }
+
+        // 保存到对话历史
+        if (CONFIG.isContextEnabled()) {
+            conversationHistory.add(currentUserMessage);
+
+            String escapedContent = content
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            conversationHistory.add("""
+                        {
+                            "role": "assistant",
+                            "content": "%s"
+                        }""".formatted(escapedContent));
+
+            while (conversationHistory.size() > MAX_HISTORY_SIZE) {
+                conversationHistory.remove(0);
+                conversationHistory.remove(0);
+            }
+        }
+
+        return content;
+    }
+
+    /**
+     * 从 SSE data 行中提取 delta text 内容。
+     * 兼容多种格式：
+     * - Anthropic: {"type":"content_block_delta","delta":{"type":"text_delta","text":"..."}}
+     * - OpenAI/Kimi: {"choices":[{"delta":{"content":"..."}}]}
+     * - Kimi coding: 可能直接包含 "text" 字段
+     */
+    private String extractStreamDelta(String jsonData) {
+        // Anthropic 格式
+        if (jsonData.contains("\"content_block_delta\"")) {
+            String marker = "\"text\":\"";
+            int start = jsonData.indexOf(marker);
+            if (start == -1) return null;
+            start += marker.length();
+            return extractJsonStringValue(jsonData, start);
+        }
+
+        // OpenAI/Kimi 格式: 查找 "delta" 对象中的 "content" 字段
+        int deltaIdx = jsonData.indexOf("\"delta\"");
+        if (deltaIdx != -1) {
+            String contentMarker = "\"content\":\"";
+            int contentIdx = jsonData.indexOf(contentMarker, deltaIdx);
+            if (contentIdx != -1) {
+                int start = contentIdx + contentMarker.length();
+                return extractJsonStringValue(jsonData, start);
+            }
+            // 也尝试 "text" 字段
+            String textMarker = "\"text\":\"";
+            int textIdx = jsonData.indexOf(textMarker, deltaIdx);
+            if (textIdx != -1) {
+                int start = textIdx + textMarker.length();
+                return extractJsonStringValue(jsonData, start);
+            }
+        }
+
+        // 最后尝试：如果 JSON 中有 "choices" 和 "content"
+        if (jsonData.contains("\"choices\"")) {
+            String contentMarker = "\"content\":\"";
+            int contentIdx = jsonData.indexOf(contentMarker);
+            if (contentIdx != -1) {
+                int start = contentIdx + contentMarker.length();
+                return extractJsonStringValue(jsonData, start);
+            }
+        }
+
+        // 兜底：如果包含 "text" 字段且不是 stop/start 事件
+        if (!jsonData.contains("\"message_start\"") && !jsonData.contains("\"message_stop\"")
+                && !jsonData.contains("\"content_block_start\"") && !jsonData.contains("\"content_block_stop\"")) {
+            String textMarker = "\"text\":\"";
+            int textIdx = jsonData.indexOf(textMarker);
+            if (textIdx != -1) {
+                int start = textIdx + textMarker.length();
+                return extractJsonStringValue(jsonData, start);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 从 JSON 字符串的指定位置开始，提取一个 JSON string value（处理转义）。
+     */
+    private String extractJsonStringValue(String json, int start) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = start; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (c == '\\' && i + 1 < json.length()) {
+                char next = json.charAt(i + 1);
+                switch (next) {
+                    case '"' -> { sb.append('"'); i++; }
+                    case '\\' -> { sb.append('\\'); i++; }
+                    case 'n' -> { sb.append('\n'); i++; }
+                    case 'r' -> { sb.append('\r'); i++; }
+                    case 't' -> { sb.append('\t'); i++; }
+                    case '/' -> { sb.append('/'); i++; }
+                    case 'u' -> {
+                        // unicode escape: backslash u + XXXX
+                        if (i + 5 < json.length()) {
+                            String hex = json.substring(i + 2, i + 6);
+                            try {
+                                sb.append((char) Integer.parseInt(hex, 16));
+                                i += 5;
+                            } catch (NumberFormatException e) {
+                                sb.append(c);
+                            }
+                        } else {
+                            sb.append(c);
+                        }
+                    }
+                    default -> sb.append(c);
+                }
+            } else if (c == '"') {
+                break;
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private String extractContent(String jsonResponse) {

@@ -22,6 +22,7 @@ public class ModConfig {
     private boolean contextEnabled;
     private boolean webSearchEnabled;
     private String tavilyApiKey;
+    private boolean streamOutputEnabled;
 
     // 默认值
     private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
@@ -31,6 +32,7 @@ public class ModConfig {
     private static final boolean DEFAULT_CONTEXT_ENABLED = true;
     private static final boolean DEFAULT_WEB_SEARCH_ENABLED = true;
     private static final String DEFAULT_TAVILY_API_KEY = "";
+    private static final boolean DEFAULT_STREAM_OUTPUT_ENABLED = false;
 
     public void load() {
         Path configPath = Path.of(CONFIG_FILE);
@@ -54,8 +56,9 @@ public class ModConfig {
         contextEnabled = Boolean.parseBoolean(props.getProperty("context_enabled", String.valueOf(DEFAULT_CONTEXT_ENABLED)));
         webSearchEnabled = Boolean.parseBoolean(props.getProperty("web_search_enabled", String.valueOf(DEFAULT_WEB_SEARCH_ENABLED)));
         tavilyApiKey = props.getProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
+        streamOutputEnabled = Boolean.parseBoolean(props.getProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED)));
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}", model, apiBaseUrl, contextEnabled, webSearchEnabled);
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled);
     }
 
     private void createDefault(Path configPath) {
@@ -69,6 +72,7 @@ public class ModConfig {
             props.setProperty("context_enabled", String.valueOf(DEFAULT_CONTEXT_ENABLED));
             props.setProperty("web_search_enabled", String.valueOf(DEFAULT_WEB_SEARCH_ENABLED));
             props.setProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
+            props.setProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED));
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "HelloWorld Mod - AI API Configuration");
             }
@@ -85,6 +89,7 @@ public class ModConfig {
     public boolean isContextEnabled() { return contextEnabled; }
     public boolean isWebSearchEnabled() { return webSearchEnabled; }
     public String getTavilyApiKey() { return tavilyApiKey; }
+    public boolean isStreamOutputEnabled() { return streamOutputEnabled; }
 
     public void setApiBaseUrl(String apiBaseUrl) {
         this.apiBaseUrl = apiBaseUrl;
@@ -121,6 +126,11 @@ public class ModConfig {
         save();
     }
 
+    public void setStreamOutputEnabled(boolean streamOutputEnabled) {
+        this.streamOutputEnabled = streamOutputEnabled;
+        save();
+    }
+
     private void save() {
         Path configPath = Path.of(CONFIG_FILE);
         Properties props = new Properties();
@@ -131,6 +141,7 @@ public class ModConfig {
         props.setProperty("context_enabled", String.valueOf(contextEnabled));
         props.setProperty("web_search_enabled", String.valueOf(webSearchEnabled));
         props.setProperty("tavily_api_key", tavilyApiKey);
+        props.setProperty("stream_output_enabled", String.valueOf(streamOutputEnabled));
         try (OutputStream out = Files.newOutputStream(configPath)) {
             props.store(out, "HelloWorld Mod - AI API Configuration");
         } catch (IOException e) {
