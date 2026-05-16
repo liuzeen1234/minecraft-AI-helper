@@ -837,7 +837,6 @@ public class HelloWorldMod implements ModInitializer {
                 .header("x-api-key", CONFIG.getApiKey())
                 .header("anthropic-version", "2023-06-01")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .timeout(Duration.ofSeconds(180))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
