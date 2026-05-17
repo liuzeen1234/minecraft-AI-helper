@@ -3,7 +3,7 @@
     "id": "helloworld",
     "version": "${version}",
     "name": "AI Builder",
-    "description": "游戏内 AI 助手模组，支持自然语言对话、AI 指令建造、NBT/蓝图结构管理、选区导出、联网搜索等功能",
+    "description": "In-game AI assistant mod featuring natural language chat, AI-powered building, NBT/blueprint structure management, selection export, and web search.",
     "authors": ["liuzeen1234"],
     "contact": {
         "sources": "https://github.com/liuzeen1234/minecraft-AI-helper"
