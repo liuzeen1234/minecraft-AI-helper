@@ -97,6 +97,19 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
+        // 注册接收 AI 聊天界面流式增量回复
+        ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.CHAT_SCREEN_STREAM_PACKET, (client, handler, buf, responseSender) -> {
+            String delta = buf.readString();
+            client.execute(() -> {
+                // 将增量内容追加到聊天界面（如果打开的话）
+                if (client.currentScreen instanceof AiChatScreen chatScreen) {
+                    HelloWorldMod.LOGGER.debug("[流式客户端] 收到流式包, 长度={}", delta.length());
+                    chatScreen.appendStreamDelta(delta);
+                }
+                // 聊天界面未打开时静默丢弃（/ai 命令已通过 player.sendMessage 显示）
+            });
+        });
+
         // 每个客户端 tick 检查是否需要截图 & 刷新日志到聊天框
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // 按键打开设置页面
@@ -106,6 +119,9 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
             // 将捕获的日志消息发送到聊天框
             InGameLogAppender.flushToChat();
+
+            // 处理 AI 聊天界面的延迟截图
+            AiChatScreen.tickScreenshot();
 
             if (pendingMessage != null && delayTicks > 0) {
                 delayTicks--;

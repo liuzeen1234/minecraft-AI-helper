@@ -2,6 +2,7 @@ package com.example.helloworld;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -10,10 +11,18 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 /**
  * 全屏 AI 聊天界面，类似 /ai 指令但提供完整的聊天体验。
@@ -63,6 +72,12 @@ public class AiChatScreen extends Screen {
     private int scrollOffset = 0;
     private boolean isWaiting = false;
     private long thinkingStartTime = 0; // 开始思考的时间戳
+
+    // 截图延迟发送状态（static 以便在屏幕关闭后仍可被 tick 事件访问）
+    private static String pendingSendText = null;
+    private static Set<String> pendingSendFiles = null;
+    private static int screenshotDelayTicks = 0;
+    private static AiChatScreen pendingInstance = null;
 
     // "终止思考" 按钮的点击区域
     private int cancelTextX = 0;
@@ -166,21 +181,131 @@ public class AiChatScreen extends Screen {
         sendButton.active = false;
         messageHistory.add(new ChatMessage("system", "正在思考..."));
 
-        // 发送到服务端：消息内容 + 引用文件数量 + 各文件路径
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(text);
-        buf.writeInt(referencedFiles.size());
-        for (String fileName : referencedFiles) {
-            buf.writeString(fileName);
-        }
-        ClientPlayNetworking.send(HelloWorldMod.CHAT_SCREEN_MESSAGE_PACKET, buf);
-
         rebuildWrappedLines();
         scrollToBottom();
 
+        // 检查是否启用截图
+        boolean screenshotEnabled = HelloWorldMod.getConfig().isScreenshotEnabled();
+        if (screenshotEnabled) {
+            // 延迟截图：先隐藏界面，等2 tick后截图再发送
+            pendingSendText = text;
+            pendingSendFiles = new HashSet<>(referencedFiles);
+            screenshotDelayTicks = 2;
+            pendingInstance = this;
+            // 暂时隐藏界面以获取干净的游戏画面
+            this.client.setScreen(null);
+        } else {
+            // 不截图，直接发送
+            doSendWithImage(text, "");
+        }
+    }
+
+    /**
+     * 执行截图并发送消息（由客户端 tick 事件延迟调用）
+     */
+    static void doScreenshotAndSend() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        String screenshotPath = "";
+
+        try {
+            // 从 framebuffer 截图并保存到文件
+            var framebuffer = client.getFramebuffer();
+            int width = framebuffer.textureWidth;
+            int height = framebuffer.textureHeight;
+
+            IntBuffer pixelBuffer = BufferUtils.createIntBuffer(width * height);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, framebuffer.getColorAttachment());
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixelBuffer);
+
+            int[] pixels = new int[width * height];
+            pixelBuffer.get(pixels);
+
+            // OpenGL 纹理上下翻转
+            BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int pixel = pixels[(height - 1 - y) * width + x];
+                    int r = (pixel >> 16) & 0xFF;
+                    int g = (pixel >> 8) & 0xFF;
+                    int b = pixel & 0xFF;
+                    image.setRGB(x, y, (r << 16) | (g << 8) | b);
+                }
+            }
+
+            // 缩放到 512px 宽
+            int maxWidth = 512;
+            if (width > maxWidth) {
+                int newHeight = (int) ((double) maxWidth / width * height);
+                java.awt.Image scaled = image.getScaledInstance(maxWidth, newHeight, java.awt.Image.SCALE_SMOOTH);
+                BufferedImage scaledImage = new BufferedImage(maxWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+                scaledImage.getGraphics().drawImage(scaled, 0, 0, null);
+                image = scaledImage;
+            }
+
+            // 保存到文件（与 /ai 命令一致的路径）
+            File screenshotDir = new File(client.runDirectory, "screenshots/ai");
+            if (!screenshotDir.exists()) {
+                screenshotDir.mkdirs();
+            }
+            File outputFile = new File(screenshotDir, "ai_chat_temp.png");
+            ImageIO.write(image, "png", outputFile);
+            screenshotPath = outputFile.getAbsolutePath();
+        } catch (Exception e) {
+            // 截图失败不影响发送
+        }
+
+        // 重新打开聊天界面
+        AiChatScreen instance = pendingInstance;
+        client.setScreen(instance);
+
+        // 发送消息（传文件路径而非 base64）
+        String text = pendingSendText;
+        Set<String> files = pendingSendFiles;
+        pendingSendText = null;
+        pendingSendFiles = null;
+        pendingInstance = null;
+
+        if (instance != null && text != null) {
+            instance.doSendWithImageStatic(text, screenshotPath, files);
+        }
+    }
+
+    /**
+     * 发送消息到服务端（带可选的截图文件路径）
+     */
+    private void doSendWithImage(String text, String screenshotPath) {
+        doSendWithImageStatic(text, screenshotPath, referencedFiles);
+    }
+
+    private void doSendWithImageStatic(String text, String screenshotPath, Set<String> files) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(text);
+        buf.writeInt(files != null ? files.size() : 0);
+        if (files != null) {
+            for (String fileName : files) {
+                buf.writeString(fileName);
+            }
+        }
+        buf.writeString(screenshotPath != null ? screenshotPath : "");
+        ClientPlayNetworking.send(HelloWorldMod.CHAT_SCREEN_MSG_WITH_IMG_PACKET, buf);
+
         // 发送后焦点回到输入框
-        inputField.setFocused(true);
-        this.setFocused(inputField);
+        if (inputField != null) {
+            inputField.setFocused(true);
+            this.setFocused(inputField);
+        }
+    }
+
+    /**
+     * 由客户端 tick 事件调用，处理延迟截图
+     */
+    public static void tickScreenshot() {
+        if (pendingSendText != null && screenshotDelayTicks > 0) {
+            screenshotDelayTicks--;
+            if (screenshotDelayTicks == 0) {
+                doScreenshotAndSend();
+            }
+        }
     }
 
     /**
@@ -194,6 +319,15 @@ public class AiChatScreen extends Screen {
                 messageHistory.remove(messageHistory.size() - 1);
             }
         }
+
+        // 如果有流式累积内容，移除它（最终完整回复会替代）
+        if (!messageHistory.isEmpty()) {
+            ChatMessage last = messageHistory.get(messageHistory.size() - 1);
+            if (last.role.equals("assistant") && last == streamingMessage) {
+                messageHistory.remove(messageHistory.size() - 1);
+            }
+        }
+        streamingMessage = null;
 
         // 如果是服务端发来的终止消息，且本地已经有终止提示了，跳过
         if (response.equals("§7[思考已终止]")) {
@@ -209,6 +343,37 @@ public class AiChatScreen extends Screen {
 
         // 添加 AI 回复
         messageHistory.add(new ChatMessage("assistant", response));
+    }
+
+    // 流式消息引用（用于追加增量内容）
+    private static ChatMessage streamingMessage = null;
+
+    /**
+     * 接收流式增量内容（由 ClientMod 调用）
+     */
+    public void appendStreamDelta(String delta) {
+        // 移除 "正在思考..." 消息（首次收到流式内容时）
+        if (streamingMessage == null) {
+            if (!messageHistory.isEmpty()) {
+                ChatMessage last = messageHistory.get(messageHistory.size() - 1);
+                if (last.role.equals("system") && last.content.equals("正在思考...")) {
+                    messageHistory.remove(messageHistory.size() - 1);
+                }
+            }
+            // 创建流式消息占位
+            streamingMessage = new ChatMessage("assistant", delta);
+            messageHistory.add(streamingMessage);
+        } else {
+            // 追加到现有流式消息 - 需要替换（ChatMessage.content 是 final 的）
+            int idx = messageHistory.indexOf(streamingMessage);
+            if (idx >= 0) {
+                String newContent = streamingMessage.content + delta;
+                streamingMessage = new ChatMessage("assistant", newContent);
+                messageHistory.set(idx, streamingMessage);
+            }
+        }
+        rebuildWrappedLines();
+        scrollToBottom();
     }
 
     /**
