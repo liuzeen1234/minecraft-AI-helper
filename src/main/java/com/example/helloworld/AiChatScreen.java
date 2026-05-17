@@ -93,7 +93,7 @@ public class AiChatScreen extends Screen {
     private static final int PADDING = 8;
 
     public AiChatScreen(Screen parent) {
-        super(Text.literal("AI 聊天"));
+        super(Text.literal(I18n.get("AI 聊天", "AI Chat")));
         this.parent = parent;
     }
 
@@ -117,8 +117,8 @@ public class AiChatScreen extends Screen {
         int inputY = this.height - margin - inputAreaHeight + 5;
         int buttonsWidth = 76; // 引用(28) + 发送(20) + 清空(20) + 间距(8)
         int inputWidth = this.width - margin * 2 - buttonsWidth;
-        inputField = new TextFieldWidget(this.textRenderer, margin, inputY, inputWidth, 20, Text.literal("输入消息..."));
-        inputField.setPlaceholder(Text.literal("§7输入消息，按 Enter 发送..."));
+        inputField = new TextFieldWidget(this.textRenderer, margin, inputY, inputWidth, 20, Text.literal(I18n.get("输入消息...", "Message...")));
+        inputField.setPlaceholder(Text.literal(I18n.get("§7输入消息，按 Enter 发送...", "§7Type a message, press Enter to send...")));
         inputField.setMaxLength(1024);
         inputField.setEditable(true);
         this.addDrawableChild(inputField);
@@ -126,7 +126,7 @@ public class AiChatScreen extends Screen {
         int btnX = margin + inputWidth + 4;
 
         // 引用按钮
-        referenceButton = ButtonWidget.builder(Text.literal("引用"), button -> openFileSelection())
+        referenceButton = ButtonWidget.builder(Text.literal(I18n.get("引用", "Ref")), button -> openFileSelection())
                 .dimensions(btnX, inputY, 28, 20)
                 .build();
         this.addDrawableChild(referenceButton);

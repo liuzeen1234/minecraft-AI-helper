@@ -24,7 +24,7 @@ public class AiApiSettingsScreen extends Screen {
     private static final int BUTTON_HEIGHT = 20;
 
     public AiApiSettingsScreen(Screen parent) {
-        super(Text.literal("AI API 设置"));
+        super(Text.literal(I18n.get("AI API 设置", "AI API Settings")));
         this.parent = parent;
         this.config = HelloWorldMod.getConfig();
     }
@@ -64,7 +64,7 @@ public class AiApiSettingsScreen extends Screen {
         // 保存按钮
         int buttonY = startY + 145;
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("保存"),
+                Text.literal(I18n.get("保存", "Save")),
                 button -> saveSettings())
                 .dimensions(centerX - BUTTON_WIDTH - 5, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build()
@@ -72,7 +72,7 @@ public class AiApiSettingsScreen extends Screen {
         
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("返回"),
+                Text.literal(I18n.get("返回", "Back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(centerX + 5, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build()

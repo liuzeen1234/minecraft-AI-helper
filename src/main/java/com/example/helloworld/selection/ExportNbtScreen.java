@@ -32,7 +32,7 @@ public class ExportNbtScreen extends Screen {
     private static final int POPUP_HEIGHT = 130;
 
     public ExportNbtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
-        super(Text.literal("导出 .nbt"));
+        super(Text.literal(com.example.helloworld.I18n.get("导出 .nbt", "Export .nbt")));
         this.parent = parent;
         this.result = result;
     }
@@ -51,27 +51,27 @@ public class ExportNbtScreen extends Screen {
         int pathY = popTop + 28;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("📁"), button -> openFolderChooser())
                 .dimensions(fieldLeft, pathY, 20, 18).build());
-        pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal("路径"));
+        pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal(com.example.helloworld.I18n.get("路径", "Path")));
         pathField.setText("");
-        pathField.setPlaceholder(Text.literal("§7保存路径（留空=nbts根目录）"));
+        pathField.setPlaceholder(Text.literal(com.example.helloworld.I18n.get("§7保存路径（留空=nbts根目录）", "§7Save path (empty=nbts root)")));
         pathField.setMaxLength(512);
         this.addDrawableChild(pathField);
 
         // 文件名输入
         int nameY = pathY + 24;
-        nameField = new TextFieldWidget(this.textRenderer, fieldLeft, nameY, fieldW, 18, Text.literal("名称"));
+        nameField = new TextFieldWidget(this.textRenderer, fieldLeft, nameY, fieldW, 18, Text.literal(com.example.helloworld.I18n.get("名称", "Name")));
         nameField.setText("exported_structure");
         nameField.setMaxLength(64);
         this.addDrawableChild(nameField);
 
         // 导出按钮
         int btnY = nameY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§b导出 .nbt"), button -> doExportNbt())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§b导出 .nbt", "§bExport .nbt")), button -> doExportNbt())
                 .dimensions(fieldLeft, btnY, fieldW, 20).build());
 
         // 返回按钮
         int cancelY = btnY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("返回"), button -> close())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> close())
                 .dimensions(cx - 40, cancelY, 80, 20).build());
     }
 

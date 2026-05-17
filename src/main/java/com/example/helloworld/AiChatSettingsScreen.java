@@ -13,7 +13,7 @@ public class AiChatSettingsScreen extends Screen {
     private final ModConfig config;
 
     public AiChatSettingsScreen(Screen parent) {
-        super(Text.literal("AI 聊天设置"));
+        super(Text.literal(I18n.get("AI 聊天设置", "AI Chat Settings")));
         this.parent = parent;
         this.config = HelloWorldMod.getConfig();
     }
@@ -23,7 +23,6 @@ public class AiChatSettingsScreen extends Screen {
         int startX = this.width / 2 - 100;
         int btnH = 20;
         int gap = 4;
-        // 5 个按钮 + 返回，共 6 个，总高 = 6*20 + 5*4 = 140，垂直居中
         int startY = this.height / 2 - 70;
 
         // 截图开关按钮
@@ -72,7 +71,7 @@ public class AiChatSettingsScreen extends Screen {
 
         // AI API 设置按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("AI API 设置"),
+                Text.literal(I18n.get("AI API 设置", "AI API Settings")),
                 button -> this.client.setScreen(new AiApiSettingsScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
@@ -80,7 +79,7 @@ public class AiChatSettingsScreen extends Screen {
 
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("返回"),
+                Text.literal(I18n.get("返回", "Back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
@@ -88,19 +87,31 @@ public class AiChatSettingsScreen extends Screen {
     }
 
     private Text getScreenshotButtonText() {
-        return Text.literal("AI 聊天截图: " + (config.isScreenshotEnabled() ? "§a开启" : "§c关闭"));
+        String on = I18n.get("§a开启", "§aON");
+        String off = I18n.get("§c关闭", "§cOFF");
+        String label = I18n.get("AI 聊天截图: ", "AI Chat Screenshot: ");
+        return Text.literal(label + (config.isScreenshotEnabled() ? on : off));
     }
 
     private Text getContextButtonText() {
-        return Text.literal("多轮对话记忆: " + (config.isContextEnabled() ? "§a开启" : "§c关闭"));
+        String on = I18n.get("§a开启", "§aON");
+        String off = I18n.get("§c关闭", "§cOFF");
+        String label = I18n.get("多轮对话记忆: ", "Context Memory: ");
+        return Text.literal(label + (config.isContextEnabled() ? on : off));
     }
 
     private Text getWebSearchButtonText() {
-        return Text.literal("联网搜索: " + (config.isWebSearchEnabled() ? "§a开启" : "§c关闭"));
+        String on = I18n.get("§a开启", "§aON");
+        String off = I18n.get("§c关闭", "§cOFF");
+        String label = I18n.get("联网搜索: ", "Web Search: ");
+        return Text.literal(label + (config.isWebSearchEnabled() ? on : off));
     }
 
     private Text getStreamOutputButtonText() {
-        return Text.literal("流式输出(聊天框): " + (config.isStreamOutputEnabled() ? "§a开启" : "§c关闭"));
+        String on = I18n.get("§a开启", "§aON");
+        String off = I18n.get("§c关闭", "§cOFF");
+        String label = I18n.get("流式输出(聊天框): ", "Stream Output (Chat): ");
+        return Text.literal(label + (config.isStreamOutputEnabled() ? on : off));
     }
 
     @Override

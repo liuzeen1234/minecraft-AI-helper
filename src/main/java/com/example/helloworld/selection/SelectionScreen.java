@@ -18,7 +18,7 @@ public class SelectionScreen extends Screen {
     private TextFieldWidget x2Field, y2Field, z2Field;
 
     public SelectionScreen(Screen parent) {
-        super(Text.literal("选区工具"));
+        super(Text.literal(com.example.helloworld.I18n.get("选区工具", "Selection Tool")));
         this.parent = parent;
     }
 
@@ -72,7 +72,7 @@ public class SelectionScreen extends Screen {
 
         // --- 快捷按钮：当前位置 ---
         int quickY = fieldY2 + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("坐标1=当前位置"), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("坐标1=当前位置", "Pos1=Current")), button -> {
             if (this.client != null && this.client.player != null) {
                 BlockPos pos = this.client.player.getBlockPos();
                 x1Field.setText(String.valueOf(pos.getX()));
@@ -81,7 +81,7 @@ public class SelectionScreen extends Screen {
             }
         }).dimensions(cx - totalW / 2, quickY, totalW / 2 - 2, 20).build());
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("坐标2=当前位置"), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("坐标2=当前位置", "Pos2=Current")), button -> {
             if (this.client != null && this.client.player != null) {
                 BlockPos pos = this.client.player.getBlockPos();
                 x2Field.setText(String.valueOf(pos.getX()));
@@ -92,10 +92,10 @@ public class SelectionScreen extends Screen {
 
         // --- 确认 / 清除 ---
         int actionY = quickY + 24;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§a确认选区"), button -> applySelection())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§a确认选区", "§aConfirm")), button -> applySelection())
                 .dimensions(cx - totalW / 2, actionY, totalW / 2 - 2, 20).build());
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§c清除选区"), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§c清除选区", "§cClear")), button -> {
             mgr.clear();
             mgr.clearDraft();
             x1Field.setText(""); y1Field.setText(""); z1Field.setText("");
@@ -104,11 +104,11 @@ public class SelectionScreen extends Screen {
 
         // --- 分析导出 ---
         int analyzeBtnY = actionY + 30;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§b分析/导出选区 →"), button -> analyzeAndExport())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§b分析/导出选区 →", "§bAnalyze/Export →")), button -> analyzeAndExport())
                 .dimensions(cx - totalW / 2, analyzeBtnY, totalW, 20).build());
 
         // --- 返回 ---
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("返回"), button -> goBack())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> goBack())
                 .dimensions(cx - 50, analyzeBtnY + 28, 100, 20).build());
     }
 
@@ -176,8 +176,8 @@ public class SelectionScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
         int cx = this.width / 2;
         context.drawCenteredTextWithShadow(this.textRenderer, this.title, cx, 34, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, "坐标 1 (X  Y  Z):", cx - 84, 48, 0xAAAAAA);
-        context.drawTextWithShadow(this.textRenderer, "坐标 2 (X  Y  Z):", cx - 84, 48 + 36, 0xAAAAAA);
+        context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.get("坐标 1 (X  Y  Z):", "Pos 1 (X  Y  Z):"), cx - 84, 48, 0xAAAAAA);
+        context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.get("坐标 2 (X  Y  Z):", "Pos 2 (X  Y  Z):"), cx - 84, 48 + 36, 0xAAAAAA);
         super.render(context, mouseX, mouseY, delta);
     }
 

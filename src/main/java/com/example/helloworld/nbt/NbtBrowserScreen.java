@@ -66,7 +66,7 @@ public class NbtBrowserScreen extends Screen {
     private static final int ITEM_HEIGHT = 14;
 
     public NbtBrowserScreen(Screen parent) {
-        super(Text.literal("NBT 结构浏览器"));
+        super(Text.literal(com.example.helloworld.I18n.get("NBT 结构浏览器", "NBT Structure Browser")));
         this.parent = parent;
     }
 
@@ -87,8 +87,8 @@ public class NbtBrowserScreen extends Screen {
         detailHeight = listHeight;
 
         // 搜索框
-        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal("搜索..."));
-        searchField.setPlaceholder(Text.literal("§7搜索文件名..."));
+        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal(com.example.helloworld.I18n.get("搜索...", "Search...")));
+        searchField.setPlaceholder(Text.literal(com.example.helloworld.I18n.get("§7搜索文件名...", "§7Search filename...")));
         searchField.setMaxLength(100);
         searchField.setChangedListener(this::onSearchChanged);
         this.addDrawableChild(searchField);
@@ -99,21 +99,21 @@ public class NbtBrowserScreen extends Screen {
         int btnSpacing = 6;
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("放置结构"),
+                Text.literal(com.example.helloworld.I18n.get("放置结构", "Place")),
                 button -> placeSelected())
                 .dimensions(listLeft, btnY, btnWidth, 20)
                 .build()
         );
 
         deleteButton = ButtonWidget.builder(
-                Text.literal("删除"),
+                Text.literal(com.example.helloworld.I18n.get("删除", "Delete")),
                 button -> onDeleteClicked())
                 .dimensions(listLeft + btnWidth + btnSpacing, btnY, 60, 20)
                 .build();
         this.addDrawableChild(deleteButton);
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("刷新"),
+                Text.literal(com.example.helloworld.I18n.get("刷新", "Refresh")),
                 button -> refreshCurrentDir())
                 .dimensions(listLeft + btnWidth + btnSpacing + 60 + btnSpacing, btnY, 60, 20)
                 .build()
@@ -122,14 +122,14 @@ public class NbtBrowserScreen extends Screen {
         int createFolderX = listLeft + btnWidth + btnSpacing + 60 + btnSpacing + 60 + btnSpacing;
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("管理文件"),
+                Text.literal(com.example.helloworld.I18n.get("管理文件", "Files")),
                 button -> openNbtsFolder())
                 .dimensions(createFolderX, btnY, 70, 20)
                 .build()
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("返回"),
+                Text.literal(com.example.helloworld.I18n.get("返回", "Back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(this.width - margin - btnWidth, btnY, btnWidth, 20)
                 .build()
@@ -304,12 +304,12 @@ public class NbtBrowserScreen extends Screen {
         if (confirmingDelete) {
             deleteSelected();
             confirmingDelete = false;
-            deleteButton.setMessage(Text.literal("删除"));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("删除", "Delete")));
         } else {
             confirmingDelete = true;
             ListEntry entry = filteredEntries.get(selectedIndex);
-            String typeName = entry.isFolder ? "文件夹" : "文件";
-            deleteButton.setMessage(Text.literal("§c确认删除?"));
+            String typeName = entry.isFolder ? com.example.helloworld.I18n.get("文件夹", "folder") : com.example.helloworld.I18n.get("文件", "file");
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("§c确认删除?", "§cConfirm?")));
         }
     }
 
@@ -317,7 +317,7 @@ public class NbtBrowserScreen extends Screen {
     private void resetDeleteConfirm() {
         if (confirmingDelete) {
             confirmingDelete = false;
-            deleteButton.setMessage(Text.literal("删除"));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("删除", "Delete")));
         }
     }
 
@@ -401,7 +401,7 @@ public class NbtBrowserScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         // 标题 + 当前路径
-        String titleText = "NBT 结构浏览器";
+        String titleText = com.example.helloworld.I18n.get("NBT 结构浏览器", "NBT Structure Browser");
         if (!currentDir.isEmpty()) {
             titleText += " §7- " + currentDir;
         }
@@ -428,7 +428,7 @@ public class NbtBrowserScreen extends Screen {
             if (hovered) {
                 context.fill(listLeft, itemY, listLeft + listWidth, itemY + ITEM_HEIGHT, 0xFF303050);
             }
-            context.drawTextWithShadow(this.textRenderer, Text.literal("§e↑ .. (返回上级)"),
+            context.drawTextWithShadow(this.textRenderer, Text.literal("§e↑ .. (" + com.example.helloworld.I18n.get("返回上级", "Go up") + ")"),
                     listLeft + 4, itemY + 3, 0xFFFFFF);
             renderStartY += ITEM_HEIGHT;
         }
@@ -490,7 +490,7 @@ public class NbtBrowserScreen extends Screen {
         }
 
         // 文件计数
-        String countText = "§7" + filteredEntries.size() + " 项";
+        String countText = "§7" + filteredEntries.size() + " " + com.example.helloworld.I18n.get("项", "items");
         context.drawTextWithShadow(this.textRenderer, Text.literal(countText),
                 listLeft, listTop + listHeight + 3, 0xFFFFFF);
 

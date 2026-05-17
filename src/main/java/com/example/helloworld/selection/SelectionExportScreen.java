@@ -22,7 +22,7 @@ public class SelectionExportScreen extends Screen {
     private List<Map.Entry<String, Integer>> blockList;
 
     public SelectionExportScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
-        super(Text.literal("选区分析"));
+        super(Text.literal(com.example.helloworld.I18n.get("选区分析", "Selection Analysis")));
         this.parent = parent;
         this.result = result;
     }
@@ -37,12 +37,12 @@ public class SelectionExportScreen extends Screen {
 
         // 导出选区按钮（点击后弹出导出菜单）
         int exportBtnY = this.height - 58;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§e导出选区"), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§e导出选区", "§eExport")), button -> {
             this.client.setScreen(new SelectionExportPopupScreen(this, result));
         }).dimensions(leftX, exportBtnY, totalW, 20).build());
 
         // 返回按钮
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("返回"), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> {
             this.client.setScreen(this.parent);
         }).dimensions(cx - 50, this.height - 30, 100, 20).build());
     }
