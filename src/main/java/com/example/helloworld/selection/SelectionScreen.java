@@ -129,14 +129,14 @@ public class SelectionScreen extends Screen {
         SelectionManager mgr = SelectionManager.getInstance();
         if (!mgr.isComplete()) {
             if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("§c[选区] 请先确认选区再分析"), false);
+                this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 请先确认选区再分析", "§c[Selection] Please confirm selection first")), false);
             }
             return;
         }
         SelectionAnalyzer.AnalysisResult result = SelectionAnalyzer.analyze(mgr.getPos1(), mgr.getPos2());
         if (result == null) {
             if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("§c[选区] 分析失败，无法读取世界数据"), false);
+                this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 分析失败，无法读取世界数据", "§c[Selection] Analysis failed, cannot read world data")), false);
             }
             return;
         }
@@ -160,13 +160,13 @@ public class SelectionScreen extends Screen {
 
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(
-                    Text.literal("§a[选区] 已设置: (" + x1 + "," + y1 + "," + z1 + ") → (" + x2 + "," + y2 + "," + z2 + ")"),
+                    Text.literal(com.example.helloworld.I18n.get("§a[选区] 已设置: (", "§a[Selection] Set: (") + x1 + "," + y1 + "," + z1 + ") → (" + x2 + "," + y2 + "," + z2 + ")"),
                     false);
             }
             this.client.setScreen(this.parent);
         } catch (NumberFormatException e) {
             if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("§c[选区] 请输入有效的整数坐标"), false);
+                this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 请输入有效的整数坐标", "§c[Selection] Please enter valid integer coordinates")), false);
             }
         }
     }

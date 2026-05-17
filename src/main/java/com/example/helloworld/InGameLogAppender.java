@@ -109,7 +109,7 @@ public class InGameLogAppender extends AbstractAppender {
                 ? Formatting.RED : Formatting.GOLD;
         MutableText msgText = Text.literal(entry.message).formatted(msgColor);
 
-        return Text.literal("§8[日志] ").append(levelTag).append(sourceTag).append(msgText);
+        return Text.literal("§8[" + I18n.get("日志", "Log") + "] ").append(levelTag).append(sourceTag).append(msgText);
     }
 
     public static boolean isEnabled() {

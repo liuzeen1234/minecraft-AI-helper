@@ -85,13 +85,13 @@ public class HelloWorldClientMod implements ClientModInitializer {
                                 : response;
                         // 按换行分割，逐行发送到聊天框
                         String[] lines = displayResponse.split("\n");
-                        client.player.sendMessage(Text.literal("§a[AI 回复]"), false);
+                        client.player.sendMessage(Text.literal(I18n.get("§a[AI 回复]", "§a[AI Reply]")), false);
                         for (String line : lines) {
                             if (!line.trim().isEmpty()) {
                                 client.player.sendMessage(Text.literal("§f" + line), false);
                             }
                         }
-                        client.player.sendMessage(Text.literal("§7(完整内容请打开 AI 聊天界面查看)"), false);
+                        client.player.sendMessage(Text.literal(I18n.get("§7(完整内容请打开 AI 聊天界面查看)", "§7(Open AI Chat screen for full content)")), false);
                     }
                 }
             });

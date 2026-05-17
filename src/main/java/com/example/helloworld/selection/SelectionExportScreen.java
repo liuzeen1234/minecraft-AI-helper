@@ -60,21 +60,21 @@ public class SelectionExportScreen extends Screen {
         // 基本信息
         int infoY = 26;
         context.drawTextWithShadow(this.textRenderer,
-                String.format("选区大小: %d × %d × %d", result.sizeX(), result.sizeY(), result.sizeZ()),
+                String.format(com.example.helloworld.I18n.get("选区大小: %d × %d × %d", "Size: %d × %d × %d"), result.sizeX(), result.sizeY(), result.sizeZ()),
                 leftX, infoY, 0xAAAAAA);
         context.drawTextWithShadow(this.textRenderer,
-                String.format("方块总数: %d  空气: %d  实体: %d",
+                String.format(com.example.helloworld.I18n.get("方块总数: %d  空气: %d  实体: %d", "Total: %d  Air: %d  Solid: %d"),
                         result.totalBlocks(), result.airBlocks(),
                         result.totalBlocks() - result.airBlocks()),
                 leftX, infoY + 12, 0xAAAAAA);
         context.drawTextWithShadow(this.textRenderer,
-                String.format("方块种类: %d", result.blockCounts().size()),
+                String.format(com.example.helloworld.I18n.get("方块种类: %d", "Block types: %d"), result.blockCounts().size()),
                 leftX, infoY + 24, 0xAAAAAA);
 
         // 方块列表
         int listY = infoY + 42;
         int listMaxY = this.height - 66; // 导出按钮上方留出空间
-        context.drawTextWithShadow(this.textRenderer, "--- 方块统计 ---", leftX, listY, 0xFFFF55);
+        context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.get("--- 方块统计 ---", "--- Block Stats ---"), leftX, listY, 0xFFFF55);
         listY += 12;
 
         int maxVisible = Math.max(1, (listMaxY - listY) / 11);

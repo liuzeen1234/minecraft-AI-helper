@@ -115,7 +115,7 @@ public class ExportNbtScreen extends Screen {
                 : pathText + "/" + name + ".nbt";
         if (this.client != null && this.client.player != null) {
             this.client.player.sendMessage(
-                    Text.literal("§7[选区] 正在服务端导出 NBT 到 " + displayPath + " ..."), false);
+                    Text.literal(com.example.helloworld.I18n.get("§7[选区] 正在服务端导出 NBT 到 ", "§7[Selection] Exporting NBT to ") + displayPath + " ..."), false);
         }
         close();
     }

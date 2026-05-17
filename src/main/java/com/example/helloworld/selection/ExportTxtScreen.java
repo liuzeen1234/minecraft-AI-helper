@@ -118,12 +118,12 @@ public class ExportTxtScreen extends Screen {
             Files.writeString(filePath, blueprintText, StandardCharsets.UTF_8);
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(
-                        Text.literal("§a[选区] 蓝图已导出: " + filePath.toAbsolutePath()), false);
+                        Text.literal(com.example.helloworld.I18n.get("§a[选区] 蓝图已导出: ", "§a[Selection] Blueprint exported: ") + filePath.toAbsolutePath()), false);
             }
         } catch (IOException e) {
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(
-                        Text.literal("§c[选区] 导出失败: " + e.getMessage()), false);
+                        Text.literal(com.example.helloworld.I18n.get("§c[选区] 导出失败: ", "§c[Selection] Export failed: ") + e.getMessage()), false);
             }
         }
         close();
