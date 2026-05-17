@@ -21,53 +21,17 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        // 10 个按钮，每个高 20px，间距 4px，总高 236px，垂直居中起始 Y = height/2 - 118
+        // 6 个按钮，每个高 20px，间距 4px，总高 = 6*20 + 5*4 = 140px，垂直居中
         int startX = this.width / 2 - 100;
-        int startY = this.height / 2 - 118;
         int btnH = 20;
         int gap = 4;
+        int startY = this.height / 2 - 70;
 
-        // 截图开关按钮
+        // AI 聊天设置（二级菜单入口）
         this.addDrawableChild(ButtonWidget.builder(
-                getScreenshotButtonText(),
-                button -> {
-                    config.setScreenshotEnabled(!config.isScreenshotEnabled());
-                    button.setMessage(getScreenshotButtonText());
-                })
+                Text.literal("AI 聊天设置"),
+                button -> this.client.setScreen(new AiChatSettingsScreen(this)))
                 .dimensions(startX, startY, 200, btnH)
-                .build()
-        );
-
-        // 上下文记忆开关按钮
-        this.addDrawableChild(ButtonWidget.builder(
-                getContextButtonText(),
-                button -> {
-                    config.setContextEnabled(!config.isContextEnabled());
-                    button.setMessage(getContextButtonText());
-                })
-                .dimensions(startX, startY + (btnH + gap), 200, btnH)
-                .build()
-        );
-
-        // 联网搜索开关按钮
-        this.addDrawableChild(ButtonWidget.builder(
-                getWebSearchButtonText(),
-                button -> {
-                    config.setWebSearchEnabled(!config.isWebSearchEnabled());
-                    button.setMessage(getWebSearchButtonText());
-                })
-                .dimensions(startX, startY + (btnH + gap) * 2, 200, btnH)
-                .build()
-        );
-
-        // 流式输出开关按钮
-        this.addDrawableChild(ButtonWidget.builder(
-                getStreamOutputButtonText(),
-                button -> {
-                    config.setStreamOutputEnabled(!config.isStreamOutputEnabled());
-                    button.setMessage(getStreamOutputButtonText());
-                })
-                .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
                 .build()
         );
 
@@ -75,7 +39,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("AI 聊天"),
                 button -> this.client.setScreen(new AiChatScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap), 200, btnH)
                 .build()
         );
 
@@ -83,7 +47,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("选区工具"),
                 button -> this.client.setScreen(new com.example.helloworld.selection.SelectionScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 2, 200, btnH)
                 .build()
         );
 
@@ -91,7 +55,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("加载结构 (NBT)"),
                 button -> this.client.setScreen(new com.example.helloworld.nbt.NbtBrowserScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
                 .build()
         );
 
@@ -99,15 +63,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("加载结构 (TXT)"),
                 button -> this.client.setScreen(new com.example.helloworld.blueprint.TxtBrowserScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
-                .build()
-        );
-
-        // AI API 设置按钮
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal("AI API 设置"),
-                button -> this.client.setScreen(new AiApiSettingsScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 8, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
         );
 
@@ -115,25 +71,9 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal("返回"),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 9, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
         );
-    }
-
-    private Text getScreenshotButtonText() {
-        return Text.literal("AI 聊天截图: " + (config.isScreenshotEnabled() ? "§a开启" : "§c关闭"));
-    }
-
-    private Text getContextButtonText() {
-        return Text.literal("多轮对话记忆: " + (config.isContextEnabled() ? "§a开启" : "§c关闭"));
-    }
-
-    private Text getWebSearchButtonText() {
-        return Text.literal("联网搜索: " + (config.isWebSearchEnabled() ? "§a开启" : "§c关闭"));
-    }
-
-    private Text getStreamOutputButtonText() {
-        return Text.literal("流式输出(聊天框): " + (config.isStreamOutputEnabled() ? "§a开启" : "§c关闭"));
     }
 
     @Override
