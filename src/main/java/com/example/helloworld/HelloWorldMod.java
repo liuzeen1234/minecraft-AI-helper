@@ -637,6 +637,7 @@ public class HelloWorldMod implements ModInitializer {
                         }
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
+                        LOGGER.error("[AI诊断] 异常链: {}", getExceptionChain(e));
                         server.execute(() -> {
                             source.sendFeedback(() -> Text.literal(I18n.get("§c[AI] 请求失败: ", "§c[AI] Request failed: ") + e.getMessage()), false);
                         });
@@ -1158,8 +1159,21 @@ public class HelloWorldMod implements ModInitializer {
                 .timeout(Duration.ofSeconds(180))
                 .build();
 
+        // 诊断日志：请求信息
+        LOGGER.info("[AI诊断] 发送请求: URL={}, 请求体大小={}字节, HttpClient版本={}", 
+                CONFIG.getApiBaseUrl(), requestBody.length(), httpClient.version());
+        LOGGER.info("[AI诊断] Java版本={}, OS={}", 
+                System.getProperty("java.version"), System.getProperty("os.name"));
+
+        long startTime = System.currentTimeMillis();
         HttpResponse<java.util.stream.Stream<String>> response = httpClient.send(request,
                 HttpResponse.BodyHandlers.ofLines());
+        long connectTime = System.currentTimeMillis() - startTime;
+
+        // 诊断日志：响应信息
+        LOGGER.info("[AI诊断] 收到响应: 状态码={}, HTTP版本={}, 连接耗时={}ms", 
+                response.statusCode(), response.version(), connectTime);
+        LOGGER.info("[AI诊断] 响应头: {}", response.headers().map());
 
         if (response.statusCode() != 200) {
             // 读取错误信息
@@ -1173,12 +1187,16 @@ public class HelloWorldMod implements ModInitializer {
         StringBuilder lineBuffer = new StringBuilder(); // 按句缓冲
         final int FLUSH_THRESHOLD = 60; // 攒够约60字符发一条
         boolean firstDelta = true;
+        int totalLinesRead = 0;
+        int dataLinesRead = 0;
 
         java.util.Iterator<String> lines = response.body().iterator();
+        try {
         while (lines.hasNext()) {
             if (cancelRequested) break;
 
             String line = lines.next();
+            totalLinesRead++;
 
             // SSE 格式：data: {...} 或 data:{...}
             String data;
@@ -1190,7 +1208,13 @@ public class HelloWorldMod implements ModInitializer {
                 continue;
             }
 
-            if (data.equals("[DONE]") || data.isEmpty()) break;
+            dataLinesRead++;
+
+            if (data.equals("[DONE]") || data.isEmpty()) {
+                LOGGER.info("[AI诊断] 流正常结束: 收到{}, 总行数={}, 数据行数={}", 
+                        data.equals("[DONE]") ? "[DONE]" : "空行", totalLinesRead, dataLinesRead);
+                break;
+            }
 
             // 记录第一条 SSE 数据用于调试
             if (firstDelta) {
@@ -1233,6 +1257,23 @@ public class HelloWorldMod implements ModInitializer {
                         });
                     }
                 }
+            }
+        }
+        } catch (java.io.UncheckedIOException streamEx) {
+            // 流式读取过程中发生 EOF 或 IO 异常
+            long elapsed = System.currentTimeMillis() - startTime;
+            LOGGER.error("[AI诊断] 流式读取中断! 已读总行数={}, 数据行数={}, 已解析内容长度={}, 总耗时={}ms", 
+                    totalLinesRead, dataLinesRead, fullContent.length(), elapsed);
+            LOGGER.error("[AI诊断] 异常类型={}, 消息={}", streamEx.getClass().getName(), streamEx.getMessage());
+            if (streamEx.getCause() != null) {
+                LOGGER.error("[AI诊断] 根因: 类型={}, 消息={}", 
+                        streamEx.getCause().getClass().getName(), streamEx.getCause().getMessage());
+            }
+            // 如果已经读到了部分内容，仍然返回（不抛异常）
+            if (fullContent.length() > 0) {
+                LOGGER.warn("[AI诊断] 流中断但已有部分内容({}字符)，将返回已读取的内容", fullContent.length());
+            } else {
+                throw streamEx;
             }
         }
 
@@ -1292,6 +1333,22 @@ public class HelloWorldMod implements ModInitializer {
         }
 
         return content;
+    }
+
+    /**
+     * 获取异常链的简洁描述（用于诊断日志）
+     */
+    private String getExceptionChain(Throwable e) {
+        StringBuilder chain = new StringBuilder();
+        Throwable current = e;
+        int depth = 0;
+        while (current != null && depth < 5) {
+            if (depth > 0) chain.append(" -> ");
+            chain.append(current.getClass().getSimpleName()).append(": ").append(current.getMessage());
+            current = current.getCause();
+            depth++;
+        }
+        return chain.toString();
     }
 
     /**
