@@ -1,0 +1,420 @@
+# AI Builder User Manual
+
+> Version 1.1.0 | Minecraft 1.20.4 | Fabric Mod
+
+---
+
+## Table of Contents
+
+1. Installation & Requirements
+2. Initial Setup
+3. Keybindings
+4. Commands
+5. Features
+6. Configuration
+7. Blueprint Format
+8. File Structure
+9. FAQ & Notes
+
+---
+
+## Installation & Requirements
+
+| Item | Requirement |
+|------|-------------|
+| Minecraft Version | 1.20.4 |
+| Mod Loader | Fabric Loader >= 0.15.0 |
+| Java Version | >= 17 |
+| Dependencies | Fabric API (required) |
+
+Installation Steps:
+
+1. Install Fabric Loader (>= 0.15.0)
+2. Install Fabric API
+3. Place hello-world-mod-1.1.0.jar into .minecraft/mods/
+4. Launch the game
+
+---
+
+## Initial Setup
+
+On first launch, the mod generates a default config file at
+ai-helper/config/helloworld.properties.
+You MUST configure your AI API key before using AI features.
+
+Quick Setup (choose one):
+
+- Method 1: In-game commands
+  /aiconfig api_key YOUR_API_KEY
+  /aiconfig api_base_url YOUR_API_URL
+  /aiconfig model YOUR_MODEL_NAME
+
+- Method 2: Press K -> open "AI Chat Settings"
+
+> This mod supports any OpenAI-compatible API (OpenAI, Kimi, DeepSeek, etc.)
+
+---
+
+## Keybindings
+
+| Key | Function | Context |
+|-----|----------|---------|
+| K | Open mod settings menu | In-game |
+| Enter | Send message | AI Chat screen |
+| Escape | Close current screen | All mod screens |
+| Page Up/Down | Scroll chat history | AI Chat screen |
+| Mouse Wheel | Scroll list/chat | All scrollable screens |
+| Up/Down Arrows | Navigate file list | NBT/TXT browser |
+| Backspace | Go up one directory | NBT/TXT browser |
+| Delete | Delete selected file | NBT/TXT browser |
+| Enter | Place structure/enter folder | NBT/TXT browser |
+
+---
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| /ai <message> | Chat with AI, AI can auto-execute build operations |
+| /ai build <name> | Build a blueprint at your feet |
+| /ai blueprints | List all loaded blueprints |
+| /ai reload_blueprints | Reload blueprint files from disk |
+| /ainew | Clear conversation history |
+| /aiconfig show | Show current configuration |
+| /aiconfig <key> <value> | Modify a config value |
+| /aipos | Show current player coordinates |
+| /ailog [on/off] | Toggle log forwarding to chat |
+| /ainbt | Open NBT structure browser |
+
+---
+
+## Features
+
+### AI Chat
+
+Usage:
+- Command: /ai build me a wooden house
+- Chat screen: Press K -> click "AI Chat"
+
+AI Chat Screen Features:
+- Multi-turn conversation memory (up to 20 messages / 10 turns)
+- Real-time streaming output (toggle in settings)
+- Reference TXT blueprint files as context (click "Ref" button)
+- Cancel ongoing AI requests ("Stop Thinking" button)
+- Screenshot support (AI can analyze your game screen)
+
+Notes:
+- Chat history persists during game session; use /ainew or clear button to reset
+- Input field max length: 1024 characters
+- Streaming mode shows AI response incrementally
+
+---
+
+### AI Building
+
+AI can execute the following via natural language:
+
+| Action | Example |
+|--------|---------|
+| Place block | "Place a stone brick in front of me" |
+| Fill blocks | "Fill a 5x3x5 area with oak planks" |
+| Clear area | "Clear all blocks 10 blocks ahead" |
+| Give item | "Give me 64 diamonds" |
+| Set time | "Set time to day" |
+| Set weather | "Make it sunny" |
+| Teleport | "Teleport me to 100 64 200" |
+| Spawn entity | "Spawn a pig in front of me" |
+| Build blueprint | "Build me a small cabin" (AI generates and places) |
+
+Coordinate System:
+- Relative: forward/right/up based on player facing direction
+- Absolute: direct x/y/z world coordinates
+- Blueprint: X=east, Y=up, Z=south, origin at player feet
+
+Limits:
+- Max 10,000 blocks per fill command
+- Max 20 entities per summon command
+- Max 64 items per give command
+
+---
+
+### NBT Structure Management
+
+Open via:
+- Command: /ainbt
+- Press K -> "Load Structure (NBT)"
+
+Features:
+- Browse all .nbt files in nbts/ directory (supports subfolders)
+- Search/filter by filename
+- View file details (size, block count, block types, data version)
+- Double-click or click "Place" to place at player feet
+- Delete files (requires confirmation)
+- Open system file manager
+
+Placement Rules:
+- Structure placed at player feet position as origin
+- Automatically skips air and structure_void blocks
+- Preserves block entity data (chest contents, sign text, etc.)
+- Signs auto-converted to 1.20+ format
+
+Notes:
+- Large structures may take a moment to place
+- Ensure sufficient space at placement location
+- NBT files must be standard Minecraft structure format
+
+---
+
+### TXT Blueprint Management
+
+Open via:
+- Press K -> "Load Structure (TXT)"
+
+Features:
+- Browse all .txt blueprint files in txts/ directory
+- Search/filter by filename
+- Double-click or click "Place" to build at player feet
+- AI-generated blueprints are auto-saved here
+
+Placement Rules:
+- Origin at player feet
+- V2 format: X=east, Y=up, Z=south
+- V1 format: row=south, column=east
+- Attachable blocks (buttons, torches) auto-orient to neighbors
+- Beds auto-generate head block
+
+---
+
+### Selection Tool
+
+Open via:
+- Press K -> "Selection Tool"
+
+Workflow:
+
+1. Set Selection Coordinates
+   - Manually enter two corner coordinates (X Y Z)
+   - Or click "Pos1=Current" / "Pos2=Current" for quick setup
+
+2. Confirm Selection
+   - Click "Confirm" button
+   - A blue translucent highlight box appears in-game
+
+3. Analyze/Export
+   - Click "Analyze/Export" to enter export screen
+   - View block statistics (types, quantities)
+   - Export as V2 blueprint text
+   - Export as .nbt file (preserves block entity data)
+
+Export Formats:
+- NBT Export: Standard Minecraft structure file with block entities
+- Blueprint Export: MCBLUEPRINT v2 format with all block state properties
+
+Notes:
+- Selection coordinates auto-save as draft when closing
+- Clearing selection removes highlight rendering
+- NBT export runs on server for complete block entity access
+
+---
+
+### Web Search & Fetch
+
+Prerequisites:
+- Set tavily_api_key in config
+- Enable web_search_enabled
+
+Usage:
+- Tell AI "search how to build a gothic cathedral"
+- AI automatically decides when to search
+- Search results provide context for AI responses
+
+Web Fetch:
+- AI can fetch content from specified URLs
+- Example: "Check this webpage for me https://..."
+
+Notes:
+- Returns top 5 search results
+- Search timeout: 120 seconds
+- Requires valid Tavily API key
+
+---
+
+### Screenshot Analysis
+
+Prerequisites:
+- Enable "screenshot_enabled" in settings
+
+Usage:
+- When sending messages in AI Chat, the mod auto-captures game screen
+- AI can analyze screen content and respond accordingly
+
+Notes:
+- Screenshots auto-scaled to max 512px width
+- 2-tick delay for clean capture (after chat screen closes)
+- Saved temporarily at ai-helper/screenshots/ai_temp.png
+- Can be disabled in settings at any time
+
+---
+
+## Configuration
+
+Config file location: ai-helper/config/helloworld.properties
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| api_base_url | String | https://api.kimi.com/coding/v1/messages | AI API endpoint (OpenAI-compatible) |
+| api_key | String | your-api-key-here | API key (MUST be set manually) |
+| model | String | kimi-for-coding | AI model name |
+| screenshot_enabled | Boolean | true | Enable screenshot feature |
+| context_enabled | Boolean | true | Enable multi-turn conversation |
+| web_search_enabled | Boolean | true | Enable web search |
+| tavily_api_key | String | (empty) | Tavily search API key |
+| stream_output_enabled | Boolean | false | Enable streaming output |
+| language | String | zh_cn | UI language (zh_cn or en_us) |
+
+Modification Methods:
+- In-game command: /aiconfig <key> <value>
+- Press K -> AI Chat Settings (visual toggles)
+- Edit config file directly (requires game restart)
+
+---
+
+## Blueprint Format
+
+### V2 Format (Recommended)
+
+```
+# MCBLUEPRINT v2
+# name: my_building
+# size: 5x3x5
+
+## BLOCKS
+0,0,0   oak_planks
+1,0,0   oak_stairs   facing=north   half=bottom
+2,0,0   oak_door   facing=south   half=lower   hinge=left   open=false
+0,1,0   glass_pane
+3,0,2   oak_log   axis=y
+```
+
+Format Details:
+- First line must be "# MCBLUEPRINT v2"
+- "# name:" specifies blueprint name
+- "# size:" specifies dimensions (optional, informational)
+- Block line format: x,y,z   block_id   [key=value ...]
+- Coordinates are relative (origin at 0,0,0)
+- Supports all vanilla block state properties
+- Lines starting with # are comments
+
+### V1 Format (Legacy)
+
+```
+{{layered blueprint|name=small_house
+|A=Oak Planks
+|B=Oak Stairs-rot90
+|C=Oak Door
+|----Layer 1|
+AAAA
+ABBA
+AAAA
+|----Layer 2|
+A  A
+
+A  A
+}}
+```
+
+Format Details:
+- Starts with {{layered blueprint|name=...
+- |char=block_name defines legend
+- Supports rotation: -rot0, -rot90, -rot180, -rot270
+- Supports properties: +bottom, +top, +head, +foot
+- |----Layer N| separates height layers
+- Spaces represent air
+
+---
+
+## File Structure
+
+```
+.minecraft/
+|- ai-helper/                  <- Mod data root directory
+|  |- config/
+|  |  |- helloworld.properties <- Config file
+|  |- nbts/                    <- NBT structure files
+|  |  |- my_house.nbt
+|  |  |- ancient_city/
+|  |  |- bastion/
+|  |- txts/                    <- TXT blueprint files
+|  |  |- small_house.txt
+|  |  |- ai_generated/
+|  |- screenshots/             <- AI screenshot temp files
+|     |- ai_temp.png
+|     |- ai_chat_temp.png
+|- mods/
+   |- hello-world-mod-1.1.0.jar
+```
+
+- ai-helper/: Mod data root, alongside mods/ and config/
+- ai-helper/config/: Configuration files
+- ai-helper/nbts/: NBT structure files (supports subfolders)
+- ai-helper/txts/: TXT blueprint files (AI-generated saved here too)
+- ai-helper/screenshots/: AI screenshot temp files
+- All directories support arbitrary subfolder depth
+
+---
+
+## FAQ & Notes
+
+### Q: AI not responding / errors
+- Check API key: /aiconfig show
+- Verify API URL is accessible
+- Use /ailog on for detailed logs
+
+### Q: Web search not working
+- Verify tavily_api_key is set
+- Verify web_search_enabled is true
+- Check network connection
+
+### Q: Blueprint placed in wrong position
+- Blueprints use player feet as origin
+- V2: X=east, Y=up, Z=south
+- V1: row=south, column=east
+- Place on flat open ground
+
+### Q: NBT structure has missing blocks
+- Verify NBT file version matches Minecraft version
+- Some old block IDs may have changed
+- structure_void blocks are auto-skipped
+
+### Q: AI output truncated
+- AI models have token limits; large blueprints may be cut off
+- Mod auto-parses available portion and places it
+- Ask AI to "continue generating the rest"
+
+### Q: How to switch language
+- Press K -> "Mod Language"
+- Or: /aiconfig language en_us (English) / /aiconfig language zh_cn (Chinese)
+
+### Q: Streaming vs normal output
+- Streaming: AI response appears word by word, less waiting
+- Normal: Waits for complete response then displays all at once
+- Toggle: /aiconfig stream_output_enabled true
+
+### Security Notes
+- API keys stored in local config file; do not share
+- AI operations (place, fill) are IRREVERSIBLE; backup saves before major builds
+- Web search/fetch sends requests to external servers; be mindful of privacy
+
+### Performance Tips
+- Avoid filling very large areas (>10,000 blocks) at once
+- Large NBT structures may cause brief lag
+- Streaming mode works better with high network latency
+
+---
+
+## License
+
+MIT License
+
+Author: liuzeen1234
+Source: https://github.com/liuzeen1234/minecraft-AI-helper
