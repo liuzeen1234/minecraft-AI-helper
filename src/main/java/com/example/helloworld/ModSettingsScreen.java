@@ -21,11 +21,11 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        // 7 个按钮，每个高 20px，间距 4px，总高 = 7*20 + 6*4 = 164px，垂直居中
+        // 8 个按钮，每个高 20px，间距 4px，总高 = 8*20 + 7*4 = 188px，垂直居中
         int startX = this.width / 2 - 100;
         int btnH = 20;
         int gap = 4;
-        int startY = this.height / 2 - 82;
+        int startY = this.height / 2 - 94;
 
         // AI 聊天设置（二级菜单入口）
         this.addDrawableChild(ButtonWidget.builder(
@@ -75,11 +75,19 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
+        // 用户手册按钮
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal(I18n.get("用户手册", "User Manual")),
+                button -> this.client.setScreen(new UserManualScreen(this)))
+                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .build()
+        );
+
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.get("返回", "Back")),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
                 .build()
         );
     }
