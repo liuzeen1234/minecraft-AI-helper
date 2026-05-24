@@ -24,8 +24,8 @@ public class InGameLogAppender extends AbstractAppender {
     /** 是否启用（玩家可通过 /ailog 切换） */
     private static volatile boolean enabled = true;
 
-    /** 最低显示级别：默认只显示 WARN 及以上 */
-    private static volatile Level minLevel = Level.WARN;
+    /** 最低显示级别：默认只显示 ERROR 及以上 */
+    private static volatile Level minLevel = Level.ERROR;
 
     /** 待发送到聊天框的消息队列 */
     private static final Queue<LogEntry> pendingMessages = new ConcurrentLinkedQueue<>();
