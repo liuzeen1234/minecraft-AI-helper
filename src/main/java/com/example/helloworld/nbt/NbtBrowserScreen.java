@@ -217,14 +217,14 @@ public class NbtBrowserScreen extends Screen {
     private void updateDetail() {
         detailLines.clear();
         if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) {
-            detailLines.add("§7未选择文件");
+            detailLines.add("§7" + com.example.helloworld.I18n.get("未选择文件", "No file selected"));
             return;
         }
 
         ListEntry entry = filteredEntries.get(selectedIndex);
 
         if (entry.isFolder) {
-            detailLines.add("§e文件夹:");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("文件夹:", "Folder:"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
             // 统计文件夹内容
@@ -233,33 +233,33 @@ public class NbtBrowserScreen extends Screen {
                 long count = walk.filter(Files::isRegularFile)
                                  .filter(p -> p.toString().endsWith(".nbt"))
                                  .count();
-                detailLines.add("§e包含: §f" + count + " 个 NBT 文件");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("包含: §f" + count + " 个 NBT 文件", "Contains: §f" + count + " NBT files"));
             } catch (IOException e) {
-                detailLines.add("§c无法读取文件夹");
+                detailLines.add("§c" + com.example.helloworld.I18n.get("无法读取文件夹", "Cannot read folder"));
             }
             detailLines.add("");
-            detailLines.add("§7双击或按 Enter 进入文件夹");
+            detailLines.add("§7" + com.example.helloworld.I18n.get("双击或按 Enter 进入文件夹", "Double-click or press Enter to open"));
             return;
         }
 
         File file = NBTS_DIR.resolve(entry.fullPath).toFile();
         if (!file.exists()) {
-            detailLines.add("§c文件不存在");
+            detailLines.add("§c" + com.example.helloworld.I18n.get("文件不存在", "File not found"));
             return;
         }
 
         try {
             NbtStructureParser.StructureData data = NbtStructureParser.parse(file);
-            detailLines.add("§e名称:");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("名称:", "Name:"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
-            detailLines.add("§e尺寸: §f" + data.sizeX + " x " + data.sizeY + " x " + data.sizeZ);
-            detailLines.add("§e方块数: §f" + data.blocks.size());
-            detailLines.add("§e方块类型: §f" + data.palette.size() + " 种");
-            detailLines.add("§e文件大小: §f" + file.length() + " bytes");
-            detailLines.add("§e数据版本: §f" + data.dataVersion);
+            detailLines.add("§e" + com.example.helloworld.I18n.get("尺寸: ", "Size: ") + "§f" + data.sizeX + " x " + data.sizeY + " x " + data.sizeZ);
+            detailLines.add("§e" + com.example.helloworld.I18n.get("方块数: ", "Blocks: ") + "§f" + data.blocks.size());
+            detailLines.add("§e" + com.example.helloworld.I18n.get("方块类型: ", "Block types: ") + "§f" + data.palette.size() + com.example.helloworld.I18n.get(" 种", ""));
+            detailLines.add("§e" + com.example.helloworld.I18n.get("文件大小: ", "File size: ") + "§f" + file.length() + " bytes");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("数据版本: ", "Data version: ") + "§f" + data.dataVersion);
             detailLines.add("");
-            detailLines.add("§e方块列表:");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("方块列表:", "Block list:"));
 
             Map<Integer, Integer> counts = new HashMap<>();
             for (NbtStructureParser.BlockEntry block : data.blocks) {
@@ -273,7 +273,7 @@ public class NbtBrowserScreen extends Screen {
                 detailLines.add("§7  " + name + " §8x" + count);
             }
         } catch (Exception e) {
-            detailLines.add("§c解析失败: " + e.getMessage());
+            detailLines.add("§c" + com.example.helloworld.I18n.get("解析失败: ", "Parse failed: ") + e.getMessage());
         }
     }
 
@@ -336,7 +336,7 @@ public class NbtBrowserScreen extends Screen {
             refreshCurrentDir();
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c删除失败: " + e.getMessage());
+            detailLines.add("§c" + com.example.helloworld.I18n.get("删除失败: ", "Delete failed: ") + e.getMessage());
         }
     }
 
@@ -378,7 +378,7 @@ public class NbtBrowserScreen extends Screen {
             }
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c无法打开文件管理器: " + e.getMessage());
+            detailLines.add("§c" + com.example.helloworld.I18n.get("无法打开文件管理器: ", "Cannot open file manager: ") + e.getMessage());
         }
     }
 

@@ -215,14 +215,14 @@ public class TxtBrowserScreen extends Screen {
     private void updateDetail() {
         detailLines.clear();
         if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) {
-            detailLines.add("§7未选择文件");
+            detailLines.add("§7" + com.example.helloworld.I18n.get("未选择文件", "No file selected"));
             return;
         }
 
         ListEntry entry = filteredEntries.get(selectedIndex);
 
         if (entry.isFolder) {
-            detailLines.add("§e文件夹:");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("文件夹:", "Folder:"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
             Path folderPath = TXTS_DIR.resolve(entry.fullPath);
@@ -230,18 +230,18 @@ public class TxtBrowserScreen extends Screen {
                 long count = walk.filter(Files::isRegularFile)
                                  .filter(p -> p.toString().endsWith(".txt"))
                                  .count();
-                detailLines.add("§e包含: §f" + count + " 个 TXT 文件");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("包含: §f" + count + " 个 TXT 文件", "Contains: §f" + count + " TXT files"));
             } catch (IOException e) {
-                detailLines.add("§c无法读取文件夹");
+                detailLines.add("§c" + com.example.helloworld.I18n.get("无法读取文件夹", "Cannot read folder"));
             }
             detailLines.add("");
-            detailLines.add("§7双击或按 Enter 进入文件夹");
+            detailLines.add("§7" + com.example.helloworld.I18n.get("双击或按 Enter 进入文件夹", "Double-click or press Enter to open"));
             return;
         }
 
         File file = TXTS_DIR.resolve(entry.fullPath).toFile();
         if (!file.exists()) {
-            detailLines.add("§c文件不存在");
+            detailLines.add("§c" + com.example.helloworld.I18n.get("文件不存在", "File not found"));
             return;
         }
 
@@ -249,29 +249,29 @@ public class TxtBrowserScreen extends Screen {
             String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
             BlueprintData data = BlueprintParser.parse(content);
 
-            detailLines.add("§e名称:");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("名称:", "Name:"));
             detailLines.add("§f  " + data.getName());
             detailLines.add("");
-            detailLines.add("§e文件路径:");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("文件路径:", "File path:"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
-            detailLines.add("§e文件大小: §f" + file.length() + " bytes");
+            detailLines.add("§e" + com.example.helloworld.I18n.get("文件大小: ", "File size: ") + "§f" + file.length() + " bytes");
 
             if (data.isV2()) {
                 // ---- V2 格式详情 ----
-                detailLines.add("§e格式: §fMCBLUEPRINT v2");
-                detailLines.add("§e尺寸: §f" + data.getSizeX() + " x " + data.getSizeY() + " x " + data.getSizeZ());
-                detailLines.add("§e方块总数: §f" + data.getBlocks3d().size());
+                detailLines.add("§e" + com.example.helloworld.I18n.get("格式: ", "Format: ") + "§fMCBLUEPRINT v2");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("尺寸: ", "Size: ") + "§f" + data.getSizeX() + " x " + data.getSizeY() + " x " + data.getSizeZ());
+                detailLines.add("§e" + com.example.helloworld.I18n.get("方块总数: ", "Total blocks: ") + "§f" + data.getBlocks3d().size());
 
                 // 统计不同方块种类
                 java.util.Set<String> blockTypes = new java.util.LinkedHashSet<>();
                 for (BlueprintData.BlockEntry3D b : data.getBlocks3d()) {
                     blockTypes.add(b.getBlockId());
                 }
-                detailLines.add("§e方块种类: §f" + blockTypes.size() + " 种");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("方块种类: ", "Block types: ") + "§f" + blockTypes.size() + com.example.helloworld.I18n.get(" 种", ""));
 
                 detailLines.add("");
-                detailLines.add("§e方块列表:");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("方块列表:", "Block list:"));
                 int shown = 0;
                 for (String blockId : blockTypes) {
                     detailLines.add("§7  §f" + blockId.replace("_", " "));
@@ -282,9 +282,9 @@ public class TxtBrowserScreen extends Screen {
                 }
             } else {
                 // ---- V1 格式详情 ----
-                detailLines.add("§e格式: §f旧版字符网格");
-                detailLines.add("§e层数: §f" + data.getLayers().size());
-                detailLines.add("§e图例数: §f" + data.getLegend().size() + " 种方块");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("格式: §f旧版字符网格", "Format: §fLegacy char grid"));
+                detailLines.add("§e" + com.example.helloworld.I18n.get("层数: ", "Layers: ") + "§f" + data.getLayers().size());
+                detailLines.add("§e" + com.example.helloworld.I18n.get("图例数: ", "Legend entries: ") + "§f" + data.getLegend().size() + com.example.helloworld.I18n.get(" 种方块", " block types"));
 
                 // 计算总方块数（非空格字符）
                 int totalBlocks = 0;
@@ -297,7 +297,7 @@ public class TxtBrowserScreen extends Screen {
                         }
                     }
                 }
-                detailLines.add("§e方块总数: §f" + totalBlocks);
+                detailLines.add("§e" + com.example.helloworld.I18n.get("方块总数: ", "Total blocks: ") + "§f" + totalBlocks);
 
                 // 显示尺寸（宽x高x深）
                 if (!data.getLayers().isEmpty()) {
@@ -305,11 +305,11 @@ public class TxtBrowserScreen extends Screen {
                     int depth = firstLayer.length;
                     int width = depth > 0 ? firstLayer[0].length : 0;
                     int height = data.getLayers().size();
-                    detailLines.add("§e尺寸: §f" + width + " x " + height + " x " + depth);
+                    detailLines.add("§e" + com.example.helloworld.I18n.get("尺寸: ", "Size: ") + "§f" + width + " x " + height + " x " + depth);
                 }
 
                 detailLines.add("");
-                detailLines.add("§e图例:");
+                detailLines.add("§e" + com.example.helloworld.I18n.get("图例:", "Legend:"));
                 for (Map.Entry<Character, BlueprintData.BlockEntry> legendEntry : data.getLegend().entrySet()) {
                     String blockName = legendEntry.getValue().getBlockId().replace("_", " ");
                     detailLines.add("§7  '" + legendEntry.getKey() + "' §8= §f" + blockName);
@@ -320,7 +320,7 @@ public class TxtBrowserScreen extends Screen {
                 }
             }
         } catch (Exception e) {
-            detailLines.add("§c解析失败: " + e.getMessage());
+            detailLines.add("§c" + com.example.helloworld.I18n.get("解析失败: ", "Parse failed: ") + e.getMessage());
         }
     }
 
@@ -381,7 +381,7 @@ public class TxtBrowserScreen extends Screen {
             refreshCurrentDir();
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c删除失败: " + e.getMessage());
+            detailLines.add("§c" + com.example.helloworld.I18n.get("删除失败: ", "Delete failed: ") + e.getMessage());
         }
     }
 
@@ -421,7 +421,7 @@ public class TxtBrowserScreen extends Screen {
             }
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c无法打开文件管理器: " + e.getMessage());
+            detailLines.add("§c" + com.example.helloworld.I18n.get("无法打开文件管理器: ", "Cannot open file manager: ") + e.getMessage());
         }
     }
 
