@@ -522,7 +522,7 @@ public class AiChatScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         // 标题
-        context.drawCenteredTextWithShadow(this.textRenderer, "§e✦ AI 聊天 ✦", this.width / 2, 12, 0xFFFFFF55);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§e✦ " + I18n.get("AI 聊天", "AI Chat") + " ✦", this.width / 2, 12, 0xFFFFFF55);
 
         // 聊天区域背景
         context.fill(chatAreaLeft, chatAreaTop, chatAreaRight, chatAreaBottom, 0xCC000000);
@@ -565,29 +565,30 @@ public class AiChatScreen extends Screen {
         if (isWaiting) {
             long dots = (System.currentTimeMillis() / 500) % 4;
             long elapsedSeconds = (System.currentTimeMillis() - thinkingStartTime) / 1000;
-            String indicator = "§7AI 正在思考" + ".".repeat((int) dots) + " §8[" + elapsedSeconds + "s]";
+            String thinkingText = I18n.get("AI 正在思考", "AI Thinking");
+            String indicator = "§7" + thinkingText + ".".repeat((int) dots) + " §8[" + elapsedSeconds + "s]";
             context.drawTextWithShadow(this.textRenderer, Text.literal(indicator),
                     chatAreaLeft + PADDING, chatAreaBottom + 2, 0xFFAAAAAA);
 
             // 红色可点击 "终止思考" 文本
-            String cancelText = "终止思考";
+            String cancelText = I18n.get("终止思考", "Cancel");
             cancelTextWidth = this.textRenderer.getWidth(cancelText);
             cancelTextX = chatAreaLeft + PADDING + this.textRenderer.getWidth(
-                    ("AI 正在思考" + ".".repeat((int) dots) + " [" + elapsedSeconds + "s]  ").replace("§7", "").replace("§8", ""));
+                    (thinkingText + ".".repeat((int) dots) + " [" + elapsedSeconds + "s]  "));
             cancelTextY = chatAreaBottom + 2;
 
             // 检测鼠标悬停
             boolean hovered = mouseX >= cancelTextX && mouseX <= cancelTextX + cancelTextWidth
                     && mouseY >= cancelTextY && mouseY <= cancelTextY + LINE_HEIGHT;
             int cancelColor = hovered ? 0xFFFF6666 : 0xFFFF4444; // 悬停时稍亮
-            String cancelDisplay = (hovered ? "§n" : "") + "终止思考";
+            String cancelDisplay = (hovered ? "§n" : "") + cancelText;
             context.drawTextWithShadow(this.textRenderer, Text.literal("§c" + cancelDisplay),
                     cancelTextX, cancelTextY, cancelColor);
         }
 
         // 引用文件指示器
         if (!referencedFiles.isEmpty()) {
-            String refText = "§6\uD83D\uDCCE 已引用 " + referencedFiles.size() + " 个文件";
+            String refText = "§6\uD83D\uDCCE " + I18n.get("已引用 " + referencedFiles.size() + " 个文件", referencedFiles.size() + " file(s) referenced");
             int refTextWidth = this.textRenderer.getWidth(refText.replaceAll("§[0-9a-fk-or]", ""));
             int refX = isWaiting ? cancelTextX + cancelTextWidth + 10 : chatAreaLeft + PADDING;
             context.drawTextWithShadow(this.textRenderer, Text.literal(refText),
@@ -595,7 +596,7 @@ public class AiChatScreen extends Screen {
         }
 
         // 提示文字
-        String hint = "§8ESC 返回 | Enter 发送 | 滚轮翻页";
+        String hint = "§8" + I18n.get("ESC 返回 | Enter 发送 | 滚轮翻页", "ESC Back | Enter Send | Scroll");
         context.drawTextWithShadow(this.textRenderer, Text.literal(hint),
                 this.width - this.textRenderer.getWidth(hint.replaceAll("§[0-9a-fk-or]", "")) - 12,
                 12, 0xFF888888);
