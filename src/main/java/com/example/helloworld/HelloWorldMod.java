@@ -96,6 +96,41 @@ public class HelloWorldMod implements ModInitializer {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
             player.sendMessage(Text.literal(I18n.get("Hello World! 输入 /ai <问题> 来和 AI 对话", "Hello World! Type /ai <question> to chat with AI")), false);
+
+            // 检查该存档是否是第一次加载本 mod，如果是则提示用户查看手册
+            server.execute(() -> {
+                try {
+                    java.nio.file.Path worldDir = server.getSavePath(net.minecraft.util.WorldSavePath.ROOT).getParent();
+                    java.nio.file.Path markerFile = worldDir.resolve("ai-helper-initialized.marker");
+                    if (!java.nio.file.Files.exists(markerFile)) {
+                        // 第一次加载，发送用户手册提示
+                        player.sendMessage(Text.literal(""), false);
+                        player.sendMessage(Text.literal(I18n.get(
+                                "§e§l[AI Builder] §r§6欢迎首次使用 AI Builder 模组！",
+                                "§e§l[AI Builder] §r§6Welcome to AI Builder mod for the first time!"
+                        )), false);
+                        player.sendMessage(Text.literal(I18n.get(
+                                "§e建议您阅读用户手册以了解所有功能。",
+                                "§eWe recommend reading the user manual to learn all features."
+                        )), false);
+                        player.sendMessage(Text.literal(I18n.get(
+                                "§b打开方式: §f按 §aK 键§f 打开设置界面，点击 §a\"用户手册\"§f 按钮即可在游戏内查看。",
+                                "§bHow to open: §fPress §aK key§f to open settings, then click §a\"User Manual\"§f button to view in-game."
+                        )), false);
+                        player.sendMessage(Text.literal(I18n.get(
+                                "§b快速上手: §f按 §aK 键§f 打开设置界面 | 输入 §a/ai <问题>§f 与 AI 对话 | 输入 §a/nbt§f 管理结构文件",
+                                "§bQuick start: §fPress §aK key§f to open settings | Type §a/ai <question>§f to chat with AI | Type §a/nbt§f to manage structures"
+                        )), false);
+                        player.sendMessage(Text.literal(""), false);
+
+                        // 创建标记文件，下次不再提示
+                        java.nio.file.Files.createDirectories(markerFile.getParent());
+                        java.nio.file.Files.writeString(markerFile, "AI Builder mod initialized. Delete this file to see the welcome message again.");
+                    }
+                } catch (Exception e) {
+                    LOGGER.warn("检查首次加载标记失败", e);
+                }
+            });
         });
 
         // 注册接收客户端 NBT 放置请求的处理器
