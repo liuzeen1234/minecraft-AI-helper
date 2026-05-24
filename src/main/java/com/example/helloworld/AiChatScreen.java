@@ -243,7 +243,7 @@ public class AiChatScreen extends Screen {
             }
 
             // 保存到文件（与 /ai 命令一致的路径）
-            File screenshotDir = new File(client.runDirectory, "screenshots/ai");
+            File screenshotDir = ModPaths.getScreenshotsDir().toFile();
             if (!screenshotDir.exists()) {
                 screenshotDir.mkdirs();
             }

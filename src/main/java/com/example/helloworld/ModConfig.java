@@ -8,12 +8,10 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 /**
- * 模组配置管理，从 config/helloworld.properties 读取 API 配置。
+ * 模组配置管理，从 ai-helper/config/helloworld.properties 读取 API 配置。
  * 如果配置文件不存在，会自动创建带默认值的文件。
  */
 public class ModConfig {
-
-    private static final String CONFIG_FILE = "config/helloworld.properties";
 
     private String apiBaseUrl;
     private String apiKey;
@@ -34,10 +32,10 @@ public class ModConfig {
     private static final boolean DEFAULT_WEB_SEARCH_ENABLED = true;
     private static final String DEFAULT_TAVILY_API_KEY = "";
     private static final boolean DEFAULT_STREAM_OUTPUT_ENABLED = false;
-    private static final String DEFAULT_LANGUAGE = "zh_cn";
+    private static final String DEFAULT_LANGUAGE = "en_us";
 
     public void load() {
-        Path configPath = Path.of(CONFIG_FILE);
+        Path configPath = ModPaths.getConfigFile();
         Properties props = new Properties();
 
         if (!Files.exists(configPath)) {
@@ -143,7 +141,7 @@ public class ModConfig {
     }
 
     private void save() {
-        Path configPath = Path.of(CONFIG_FILE);
+        Path configPath = ModPaths.getConfigFile();
         Properties props = new Properties();
         props.setProperty("api_base_url", apiBaseUrl);
         props.setProperty("api_key", apiKey);

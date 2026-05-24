@@ -13,8 +13,10 @@ import java.nio.file.Path;
  *
  * 结构：
  *   .minecraft/ai-helper/
+ *   ├── config/    配置文件
  *   ├── txts/      蓝图文本文件
  *   ├── nbts/      NBT 结构文件
+ *   ├── screenshots/ AI 截图临时文件
  *   └── ...        其他模组数据
  */
 public class ModPaths {
@@ -40,6 +42,27 @@ public class ModPaths {
      */
     public static Path getNbtsDir() {
         return getModDir().resolve("nbts");
+    }
+
+    /**
+     * 获取 config 目录：gameDir/ai-helper/config/
+     */
+    public static Path getConfigDir() {
+        return getModDir().resolve("config");
+    }
+
+    /**
+     * 获取配置文件路径：gameDir/ai-helper/config/helloworld.properties
+     */
+    public static Path getConfigFile() {
+        return getConfigDir().resolve("helloworld.properties");
+    }
+
+    /**
+     * 获取截图目录：gameDir/ai-helper/screenshots/
+     */
+    public static Path getScreenshotsDir() {
+        return getModDir().resolve("screenshots");
     }
 
     /**

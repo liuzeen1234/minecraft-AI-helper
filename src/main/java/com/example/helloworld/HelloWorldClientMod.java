@@ -138,7 +138,7 @@ public class HelloWorldClientMod implements ClientModInitializer {
         boolean screenshotEnabled = HelloWorldMod.getConfig().isScreenshotEnabled();
 
         if (screenshotEnabled) {
-            File screenshotDir = new File(client.runDirectory, "screenshots/ai");
+            File screenshotDir = ModPaths.getScreenshotsDir().toFile();
             if (!screenshotDir.exists()) {
                 screenshotDir.mkdirs();
             }
@@ -148,7 +148,7 @@ public class HelloWorldClientMod implements ClientModInitializer {
                 (text) -> client.inGameHud.getChatHud().addMessage(text)
             );
 
-            File aiScreenshot = new File(client.runDirectory, "screenshots/ai/ai_temp.png");
+            File aiScreenshot = new File(screenshotDir, "ai_temp.png");
             saveScaledScreenshot(client.getFramebuffer(), aiScreenshot);
 
             PacketByteBuf responseBuf = PacketByteBufs.create();
