@@ -1,6 +1,6 @@
 # AI Builder 用户手册
 
-> 版本 1.1.0 | Minecraft 1.20.4 | Fabric Mod
+> 版本 1.2.0 | Minecraft 1.20.4 | Fabric Mod
 
 ---
 
@@ -38,14 +38,14 @@
 
 1. 安装 [Fabric Loader](https://fabricmc.net/)（≥ 0.15.0）
 2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `hello-world-mod-1.1.0.jar` 放入 `.minecraft/mods/` 目录
+3. 将 `ai-builder-1.2.0.jar` 放入 `.minecraft/mods/` 目录
 4. 启动游戏
 
 ---
 
 ## 首次配置
 
-首次启动后，Mod 会在 `ai-helper/config/helloworld.properties` 自动生成默认配置文件。**你必须配置 AI API 密钥才能使用 AI 功能。**
+首次启动后，Mod 会在 `ai-helper/config/ai-builder.properties` 自动生成默认配置文件。**你必须配置 AI API 密钥才能使用 AI 功能。**
 
 **快速配置方法（二选一）：**
 
@@ -265,7 +265,7 @@ AI 可以通过自然语言指令执行以下操作：
 
 ## 配置项说明
 
-配置文件位置：`ai-helper/config/helloworld.properties`
+配置文件位置：`ai-helper/config/ai-builder.properties`
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
@@ -346,7 +346,7 @@ A  A
 .minecraft/
 ├── ai-helper/                   ← Mod 数据根目录
 │   ├── config/
-│   │   └── helloworld.properties    ← 配置文件
+│   │   └── ai-builder.properties    ← 配置文件
 │   ├── nbts/                    ← NBT 结构文件目录
 │   │   ├── my_house.nbt
 │   │   ├── ancient_city/
@@ -361,7 +361,7 @@ A  A
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
 └── mods/
-    └── hello-world-mod-1.1.0.jar
+    └── ai-builder-1.2.0.jar
 ```
 
 - `ai-helper/`：Mod 的数据根目录，与 `mods/`、`config/` 同级

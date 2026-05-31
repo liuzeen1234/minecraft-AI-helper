@@ -89,13 +89,13 @@ public class HelloWorldMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOGGER.info("Hello World Mod 已加载!");
+        LOGGER.info("AI Builder 已加载!");
         CONFIG.load();
         blueprintRegistry.loadAll();
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
-            player.sendMessage(Text.literal(I18n.get("Hello World! 输入 /ai <问题> 来和 AI 对话", "Hello World! Type /ai <question> to chat with AI")), false);
+            player.sendMessage(Text.literal(I18n.get("AI Builder 已加载! 输入 /ai <问题> 来和 AI 对话", "AI Builder loaded! Type /ai <question> to chat with AI")), false);
 
             // 检查该存档是否是第一次加载本 mod，如果是则提示用户查看手册
             server.execute(() -> {

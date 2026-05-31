@@ -1,6 +1,6 @@
 # AI Builder User Manual
 
-> Version 1.1.0 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.2.0 | Minecraft 1.20.4 | Fabric Mod
 
 ---
 
@@ -31,7 +31,7 @@ Installation Steps:
 
 1. Install Fabric Loader (>= 0.15.0)
 2. Install Fabric API
-3. Place hello-world-mod-1.1.0.jar into .minecraft/mods/
+3. Place ai-builder-1.2.0.jar into .minecraft/mods/
 4. Launch the game
 
 ---
@@ -39,7 +39,7 @@ Installation Steps:
 ## Initial Setup
 
 On first launch, the mod generates a default config file at
-ai-helper/config/helloworld.properties.
+ai-helper/config/ai-builder.properties.
 You MUST configure your AI API key before using AI features.
 
 Quick Setup (choose one):
@@ -258,7 +258,7 @@ Notes:
 
 ## Configuration
 
-Config file location: ai-helper/config/helloworld.properties
+Config file location: ai-helper/config/ai-builder.properties
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
@@ -339,7 +339,7 @@ Format Details:
 .minecraft/
 |- ai-helper/                  <- Mod data root directory
 |  |- config/
-|  |  |- helloworld.properties <- Config file
+|  |  |- ai-builder.properties <- Config file
 |  |- nbts/                    <- NBT structure files
 |  |  |- my_house.nbt
 |  |  |- ancient_city/
@@ -351,7 +351,7 @@ Format Details:
 |     |- ai_temp.png
 |     |- ai_chat_temp.png
 |- mods/
-   |- hello-world-mod-1.1.0.jar
+   |- ai-builder-1.2.0.jar
 ```
 
 - ai-helper/: Mod data root, alongside mods/ and config/

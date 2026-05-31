@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 /**
- * 模组配置管理，从 ai-helper/config/helloworld.properties 读取 API 配置。
+ * 模组配置管理，从 ai-helper/config/ai-builder.properties 读取 API 配置。
  * 如果配置文件不存在，会自动创建带默认值的文件。
  */
 public class ModConfig {

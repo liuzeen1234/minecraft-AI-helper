@@ -30,7 +30,7 @@ class ConfigToggleTest {
     @BeforeEach
     void setUp() throws Exception {
         // 设置工作目录为临时目录，让 ModConfig 读写临时配置文件
-        configFile = tempDir.resolve("config/helloworld.properties");
+        configFile = tempDir.resolve("config/ai-builder.properties");
         Files.createDirectories(configFile.getParent());
 
         // 写入测试配置

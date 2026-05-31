@@ -21,7 +21,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.1.0 |
+| **Version** | 1.2.0 |
 | **Minecraft Version** | 1.20.4 |
 | **Mod Loader** | Fabric |
 | **Fabric Loader Version** | >= 0.15.0 |
@@ -92,7 +92,7 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 
 ## Configuration
 
-A configuration file is generated at `config/helloworld.properties` on first launch:
+A configuration file is generated at `config/ai-builder.properties` on first launch:
 
 | Key | Description | Default |
 |-----|-------------|---------|
@@ -110,7 +110,7 @@ A configuration file is generated at `config/helloworld.properties` on first lau
 
 - `nbts/` — Store `.nbt` structure files (supports subfolders)
 - `txts/` — Store `.txt` blueprint files
-- `config/helloworld.properties` — Mod configuration file
+- `config/ai-builder.properties` — Mod configuration file
 
 ## Keybinds
 
@@ -131,7 +131,7 @@ A configuration file is generated at `config/helloworld.properties` on first lau
 ## Pre-Upload Checklist
 
 - [ ] Run `./gradlew build` to generate the JAR
-- [ ] Find `hello-world-mod-1.1.0.jar` in `build/libs/` (do NOT upload the `-sources.jar`)
+- [ ] Find `ai-builder-1.2.0.jar` in `build/libs/` (do NOT upload the `-sources.jar`)
 - [ ] Prepare a 512x512 mod icon (PNG)
 - [ ] Prepare 2-4 in-game screenshots showing:
   - AI chat interface

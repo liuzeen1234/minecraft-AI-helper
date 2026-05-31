@@ -52,10 +52,10 @@ public class ModPaths {
     }
 
     /**
-     * 获取配置文件路径：gameDir/ai-helper/config/helloworld.properties
+     * 获取配置文件路径：gameDir/ai-helper/config/ai-builder.properties
      */
     public static Path getConfigFile() {
-        return getConfigDir().resolve("helloworld.properties");
+        return getConfigDir().resolve("ai-builder.properties");
     }
 
     /**
