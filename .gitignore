@@ -6,6 +6,9 @@ gradle-8.5-bin.zip
 # Kiro settings (contains tokens)
 .kiro/settings/
 
+# Claude Code
+.claude/
+
 # IDE
 .vscode/
 .idea/
