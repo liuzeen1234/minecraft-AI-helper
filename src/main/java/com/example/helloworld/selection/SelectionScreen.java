@@ -163,7 +163,7 @@ public class SelectionScreen extends Screen {
                     Text.literal(com.example.helloworld.I18n.get("§a[选区] 已设置: (", "§a[Selection] Set: (") + x1 + "," + y1 + "," + z1 + ") → (" + x2 + "," + y2 + "," + z2 + ")"),
                     false);
             }
-            this.client.setScreen(this.parent);
+            this.client.setScreen(null);
         } catch (NumberFormatException e) {
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 请输入有效的整数坐标", "§c[Selection] Please enter valid integer coordinates")), false);
