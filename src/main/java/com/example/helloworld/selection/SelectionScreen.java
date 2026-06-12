@@ -128,10 +128,10 @@ public class SelectionScreen extends Screen {
     private void analyzeAndExport() {
         SelectionManager mgr = SelectionManager.getInstance();
         if (!mgr.isComplete()) {
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 请先确认选区再分析", "§c[Selection] Please confirm selection first")), false);
+            // 尝试自动确认：从输入框解析坐标
+            if (!tryAutoConfirm()) {
+                return;
             }
-            return;
         }
         SelectionAnalyzer.AnalysisResult result = SelectionAnalyzer.analyze(mgr.getPos1(), mgr.getPos2());
         if (result == null) {
@@ -168,6 +168,38 @@ public class SelectionScreen extends Screen {
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 请输入有效的整数坐标", "§c[Selection] Please enter valid integer coordinates")), false);
             }
+        }
+    }
+
+    /**
+     * 尝试从输入框自动确认选区（用于点导出时自动确认）。
+     * @return true 表示确认成功，false 表示坐标无效无法确认
+     */
+    private boolean tryAutoConfirm() {
+        try {
+            int x1 = Integer.parseInt(x1Field.getText().trim());
+            int y1 = Integer.parseInt(y1Field.getText().trim());
+            int z1 = Integer.parseInt(z1Field.getText().trim());
+            int x2 = Integer.parseInt(x2Field.getText().trim());
+            int y2 = Integer.parseInt(y2Field.getText().trim());
+            int z2 = Integer.parseInt(z2Field.getText().trim());
+
+            SelectionManager mgr = SelectionManager.getInstance();
+            mgr.setPos1(new BlockPos(x1, y1, z1));
+            mgr.setPos2(new BlockPos(x2, y2, z2));
+            mgr.clearDraft();
+
+            if (this.client != null && this.client.player != null) {
+                this.client.player.sendMessage(
+                    Text.literal(com.example.helloworld.I18n.get("§a[选区] 自动确认: (", "§a[Selection] Auto-confirmed: (") + x1 + "," + y1 + "," + z1 + ") → (" + x2 + "," + y2 + "," + z2 + ")"),
+                    false);
+            }
+            return true;
+        } catch (NumberFormatException e) {
+            if (this.client != null && this.client.player != null) {
+                this.client.player.sendMessage(Text.literal(com.example.helloworld.I18n.get("§c[选区] 请输入有效的整数坐标", "§c[Selection] Please enter valid integer coordinates")), false);
+            }
+            return false;
         }
     }
 
