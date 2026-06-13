@@ -4,7 +4,10 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtDouble;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
@@ -18,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 将解析后的 NBT 结构数据放置到世界中。
@@ -83,7 +87,53 @@ public class NbtStructurePlacer {
             placed++;
         }
 
-        LOGGER.info("放置完成: {} - 共 {} 个方块 (原点: {})", data.fileName, placed, origin.toShortString());
+        // 放置实体（画、物品展示框、盔甲架等）—— 在方块放完之后执行，确保附着面已存在
+        int entityCount = 0;
+        for (NbtStructureParser.EntityEntry ee : data.entities) {
+            if (ee.entityNbt == null) continue;
+
+            try {
+                NbtCompound nbt = ee.entityNbt.copy();
+
+                // 计算绝对坐标
+                double absX = origin.getX() + ee.posX;
+                double absY = origin.getY() + ee.posY;
+                double absZ = origin.getZ() + ee.posZ;
+
+                // 设置 Pos
+                NbtList posTag = new NbtList();
+                posTag.add(NbtDouble.of(absX));
+                posTag.add(NbtDouble.of(absY));
+                posTag.add(NbtDouble.of(absZ));
+                nbt.put("Pos", posTag);
+
+                // 更新悬挂实体的附着坐标（画、物品展示框）
+                if (nbt.contains("TileX")) {
+                    nbt.putInt("TileX", origin.getX() + ee.blockPosX);
+                    nbt.putInt("TileY", origin.getY() + ee.blockPosY);
+                    nbt.putInt("TileZ", origin.getZ() + ee.blockPosZ);
+                }
+
+                // 分配新 UUID
+                nbt.putUuid("UUID", UUID.randomUUID());
+
+                // 通过 EntityType 从 NBT 创建实体
+                Optional<Entity> opt = EntityType.getEntityFromNbt(nbt, world);
+                if (opt.isPresent()) {
+                    Entity entity = opt.get();
+                    world.spawnEntity(entity);
+                    entityCount++;
+                } else {
+                    String id = nbt.contains("id") ? nbt.getString("id") : "unknown";
+                    LOGGER.debug("无法创建实体: {}", id);
+                }
+            } catch (Exception e) {
+                LOGGER.debug("实体放置跳过: {}", e.getMessage());
+            }
+        }
+
+        LOGGER.info("放置完成: {} - 共 {} 个方块, {} 个实体 (原点: {})",
+                data.fileName, placed, entityCount, origin.toShortString());
         return placed;
     }
 

@@ -2,11 +2,22 @@ package com.example.helloworld.selection;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.decoration.AbstractDecorationEntity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.decoration.ItemFrameEntity;
+import net.minecraft.entity.decoration.painting.PaintingEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.entity.vehicle.AbstractMinecartEntity;
+import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.nbt.*;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -138,7 +150,45 @@ public class ServerSelectionExporter {
 
         root.put("palette", paletteList);
         root.put("blocks", blocksList);
-        root.put("entities", new NbtList());
+
+        // 扫描选区内的装饰类实体（画、物品展示框、盔甲架、矿车、船等），排除生物和玩家
+        NbtList entitiesList = new NbtList();
+        Box selectionBox = new Box(min.getX(), min.getY(), min.getZ(),
+                max.getX() + 1.0, max.getY() + 1.0, max.getZ() + 1.0);
+
+        List<Entity> entities = world.getEntitiesByClass(Entity.class, selectionBox,
+                ServerSelectionExporter::isExportableEntity);
+
+        for (Entity entity : entities) {
+            NbtCompound entityEntry = new NbtCompound();
+
+            // pos: 相对精确坐标 (double)
+            NbtList posTag = new NbtList();
+            posTag.add(NbtDouble.of(entity.getX() - min.getX()));
+            posTag.add(NbtDouble.of(entity.getY() - min.getY()));
+            posTag.add(NbtDouble.of(entity.getZ() - min.getZ()));
+            entityEntry.put("pos", posTag);
+
+            // blockPos: 相对方块坐标 (int)
+            NbtList blockPosTag = new NbtList();
+            blockPosTag.add(NbtInt.of(entity.getBlockPos().getX() - min.getX()));
+            blockPosTag.add(NbtInt.of(entity.getBlockPos().getY() - min.getY()));
+            blockPosTag.add(NbtInt.of(entity.getBlockPos().getZ() - min.getZ()));
+            entityEntry.put("blockPos", blockPosTag);
+
+            // nbt: 实体完整数据
+            NbtCompound nbt = new NbtCompound();
+            entity.writeNbt(nbt);
+            // 保留实体类型 id
+            nbt.putString("id", Registries.ENTITY_TYPE.getId(entity.getType()).toString());
+            // 移除绝对坐标和 UUID（放置时重新计算）
+            nbt.remove("Pos");
+            nbt.remove("UUID");
+            entityEntry.put("nbt", nbt);
+
+            entitiesList.add(entityEntry);
+        }
+        root.put("entities", entitiesList);
 
         // 写入文件
         Path dir = com.example.helloworld.ModPaths.getNbtsDir();
@@ -161,8 +211,8 @@ public class ServerSelectionExporter {
             NbtIo.writeCompressed(root, fos);
         }
 
-        LOGGER.info("服务端导出 NBT 完成: {} ({}x{}x{}, {} 个方块, {} 个方块实体)",
-                fileName, sizeX, sizeY, sizeZ, blocksList.size(), blockEntityCount);
+        LOGGER.info("服务端导出 NBT 完成: {} ({}x{}x{}, {} 个方块, {} 个方块实体, {} 个实体)",
+                fileName, sizeX, sizeY, sizeZ, blocksList.size(), blockEntityCount, entitiesList.size());
     }
 
     @SuppressWarnings("unchecked")
@@ -177,5 +227,25 @@ public class ServerSelectionExporter {
             sb.append("|").append(e.getKey()).append("=").append(e.getValue());
         }
         return sb.toString();
+    }
+
+    /**
+     * 判断一个实体是否应被导出（只保留装饰/载具类，排除生物和玩家）。
+     * 保留：画、物品展示框、荧光物品展示框、盔甲架、矿车、船等。
+     * 排除：玩家、所有 MobEntity（僵尸、骷髅、村民、动物等）、抛射物。
+     */
+    private static boolean isExportableEntity(Entity entity) {
+        if (entity instanceof PlayerEntity) return false;
+        if (entity instanceof MobEntity) return false;
+        if (entity instanceof ProjectileEntity) return false;
+
+        // 明确保留的类型
+        if (entity instanceof AbstractDecorationEntity) return true;  // 画、物品展示框
+        if (entity instanceof ArmorStandEntity) return true;           // 盔甲架
+        if (entity instanceof AbstractMinecartEntity) return true;     // 矿车
+        if (entity instanceof BoatEntity) return true;                 // 船
+
+        // 其他非生物实体也保留（如末影水晶、展示实体等）
+        return true;
     }
 }

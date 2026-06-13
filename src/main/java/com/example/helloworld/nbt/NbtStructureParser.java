@@ -45,13 +45,15 @@ public class NbtStructureParser {
         public int sizeX, sizeY, sizeZ;
         public List<PaletteEntry> palette = new ArrayList<>();
         public List<BlockEntry> blocks = new ArrayList<>();
+        public List<EntityEntry> entities = new ArrayList<>();
         public int dataVersion;
         public String fileName;
 
         @Override
         public String toString() {
             return "Structure[" + fileName + "] size=" + sizeX + "x" + sizeY + "x" + sizeZ
-                    + " palette=" + palette.size() + " blocks=" + blocks.size();
+                    + " palette=" + palette.size() + " blocks=" + blocks.size()
+                    + " entities=" + entities.size();
         }
     }
 
@@ -80,6 +82,15 @@ public class NbtStructureParser {
         public BlockPos getPos() {
             return new BlockPos(x, y, z);
         }
+    }
+
+    /**
+     * 实体条目：精确位置 + 方块位置 + 实体 NBT 数据
+     */
+    public static class EntityEntry {
+        public double posX, posY, posZ;           // 相对精确坐标
+        public int blockPosX, blockPosY, blockPosZ; // 相对方块坐标
+        public NbtCompound entityNbt;             // 完整实体数据（含 id）
     }
 
     /**
@@ -174,9 +185,38 @@ public class NbtStructureParser {
             }
         }
 
-        LOGGER.info("解析完成: {} ({}x{}x{}, {} 个方块, {} 种方块类型)",
+        // 解析实体列表
+        if (root.contains("entities", NbtElement.LIST_TYPE)) {
+            NbtList entitiesList = root.getList("entities", NbtElement.COMPOUND_TYPE);
+            for (int i = 0; i < entitiesList.size(); i++) {
+                NbtCompound entNbt = entitiesList.getCompound(i);
+                EntityEntry ee = new EntityEntry();
+
+                if (entNbt.contains("pos", NbtElement.LIST_TYPE)) {
+                    NbtList pos = entNbt.getList("pos", NbtElement.DOUBLE_TYPE);
+                    ee.posX = pos.getDouble(0);
+                    ee.posY = pos.getDouble(1);
+                    ee.posZ = pos.getDouble(2);
+                }
+
+                if (entNbt.contains("blockPos", NbtElement.LIST_TYPE)) {
+                    NbtList blockPos = entNbt.getList("blockPos", NbtElement.INT_TYPE);
+                    ee.blockPosX = blockPos.getInt(0);
+                    ee.blockPosY = blockPos.getInt(1);
+                    ee.blockPosZ = blockPos.getInt(2);
+                }
+
+                if (entNbt.contains("nbt", NbtElement.COMPOUND_TYPE)) {
+                    ee.entityNbt = entNbt.getCompound("nbt");
+                }
+
+                data.entities.add(ee);
+            }
+        }
+
+        LOGGER.info("解析完成: {} ({}x{}x{}, {} 个方块, {} 种方块类型, {} 个实体)",
                 fileName, data.sizeX, data.sizeY, data.sizeZ,
-                data.blocks.size(), data.palette.size());
+                data.blocks.size(), data.palette.size(), data.entities.size());
 
         return data;
     }
