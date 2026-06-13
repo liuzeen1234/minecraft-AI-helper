@@ -228,6 +228,7 @@ public class AICommandExecutor {
             case "teleport" -> executeTeleport(json, player);
             case "summon" -> executeSummon(json, player, world);
             case "clear_area" -> executeClearArea(json, player, world);
+            case "execute_command" -> executeMinecraftCommand(json, player);
             default -> "§c未知指令类型: " + type;
         };
     }
@@ -445,6 +446,36 @@ public class AICommandExecutor {
         return "§a已在 " + formatPos(pos) + " 生成 " + count + " 个 " + entityName;
     }
 
+    // ========== 执行 Minecraft 原版命令 ==========
+    private static final java.util.Set<String> COMMAND_BLACKLIST = java.util.Set.of(
+            "stop", "op", "deop", "ban", "ban-ip", "pardon", "pardon-ip",
+            "whitelist", "save-all", "save-off", "save-on", "kick"
+    );
+
+    private static String executeMinecraftCommand(String json, ServerPlayerEntity player) {
+        String command = extractJsonString(json, "command");
+        if (command == null || command.isBlank()) return "§c缺少 command 参数";
+
+        // 去掉开头的 /
+        if (command.startsWith("/")) command = command.substring(1);
+
+        // 安全检查：黑名单命令
+        String rootCommand = command.split("\\s+")[0].toLowerCase();
+        if (COMMAND_BLACKLIST.contains(rootCommand)) {
+            return "§c安全限制: 不允许执行 /" + rootCommand + " 命令";
+        }
+
+        try {
+            // 以 OP 权限等级 (level 2) 执行命令
+            var source = player.getCommandSource().withLevel(2);
+            player.getServer().getCommandManager().executeWithPrefix(source, command);
+            return "§a已执行命令: /" + command;
+        } catch (Exception e) {
+            LOGGER.error("执行命令失败: /{}", command, e);
+            return "§c命令执行失败: /" + command + " - " + e.getMessage();
+        }
+    }
+
     // ========== 工具方法 ==========
 
     /**
@@ -496,10 +527,14 @@ public class AICommandExecutor {
     // ========== 简易 JSON 解析 ==========
 
     static String extractJsonString(String json, String key) {
-        // 匹配 "key":"value" 或 "key": "value"
-        Pattern p = Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:\\s*\"([^\"]*?)\"");
+        // 匹配 "key":"value" 或 "key": "value"，支持值中包含转义引号 \"
+        Pattern p = Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
         Matcher m = p.matcher(json);
-        return m.find() ? m.group(1) : null;
+        if (m.find()) {
+            // 还原转义字符：\" → " 以及 \\ → \
+            return m.group(1).replace("\\\"", "\"").replace("\\\\", "\\");
+        }
+        return null;
     }
 
     static int extractJsonInt(String json, String key, int defaultValue) {
@@ -641,6 +676,15 @@ public class AICommandExecutor {
              + "[ACTION]{\"type\":\"teleport\",\"x\":X坐标,\"y\":Y坐标,\"z\":Z坐标}[/ACTION]\n\n"
              + "9. 生成实体:\n"
              + "[ACTION]{\"type\":\"summon\",\"entity\":\"实体ID\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离,\"count\":数量}[/ACTION]\n\n"
+             + "10. 执行任意 Minecraft 命令（万能后备）:\n"
+             + "[ACTION]{\"type\":\"execute_command\",\"command\":\"/命令内容\"}[/ACTION]\n"
+             + "示例:\n"
+             + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/effect give @s speed 60 2\"}[/ACTION]\n"
+             + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/gamemode creative\"}[/ACTION]\n"
+             + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/enchant @s sharpness 5\"}[/ACTION]\n"
+             + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/kill @e[type=zombie,distance=..30]\"}[/ACTION]\n"
+             + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/playsound minecraft:entity.ender_dragon.growl master @a\"}[/ACTION]\n"
+             + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/setblock ~ ~1 ~ minecraft:chest\"}[/ACTION]\n\n"
              + "========== 使用规则 ==========\n\n"
              + "方向说明（仅 [ACTION] 使用）：\n"
              + "- forward: 正数=玩家面朝方向前方，负数=后方\n"
@@ -654,7 +698,10 @@ public class AICommandExecutor {
              + "选择指令的原则：\n"
              + "- 建造建筑、房屋、结构等多方块建筑 → 使用 [BLUEPRINT] 蓝图格式（推荐）\n"
              + "- 放置单个方块、填充简单区域 → 使用 [ACTION] 指令\n"
-             + "- 给物品、传送、设置时间天气、生成实体 → 使用 [ACTION] 指令\n"
+             + "- 给物品、传送、设置时间天气、生成实体 → 使用对应的具体 [ACTION] 指令类型\n"
+             + "- 上述指令无法满足的操作（如 /effect、/enchant、/gamemode、/kill、/scoreboard、/particle、/title、/playsound、/data 等）→ 使用 execute_command\n"
+             + "- 优先使用具体的 ACTION 类型，只有它们不支持时才用 execute_command\n"
+             + "- execute_command 中的命令格式与 Minecraft 原版命令完全一致，前面加 / 即可\n"
              + "- 如果玩家只是聊天，正常回复即可，不需要加任何标签\n\n"
              + "其他规则：\n"
              + "- 可以一次执行多个操作（多个标签）\n"
