@@ -567,7 +567,8 @@ public class HelloWorldMod implements ModInitializer {
 
                 source.sendFeedback(() -> Text.literal(I18n.get("§7[AI] 正在思考...", "§7[AI] Thinking...")), false);
 
-                CompletableFuture.runAsync(() -> {
+                cancelRequested = false;
+                pendingAiTask = CompletableFuture.runAsync(() -> {
                     try {
                         String response;
                         boolean wasStreamed = false;
@@ -578,7 +579,8 @@ public class HelloWorldMod implements ModInitializer {
                             response = callKimiApi(message, finalBase64Image);
                         }
 
-                        // 检查 AI 是否请求抓取网页
+                        // 如果已被取消，直接返回不做后续处理
+                        if (cancelRequested) return;
                         String fetchUrl = extractFetchUrl(response);
                         if (fetchUrl != null) {
                             server.execute(() -> {
@@ -676,6 +678,8 @@ public class HelloWorldMod implements ModInitializer {
                         server.execute(() -> {
                             source.sendFeedback(() -> Text.literal(I18n.get("§c[AI] 请求失败: ", "§c[AI] Request failed: ") + e.getMessage()), false);
                         });
+                    } finally {
+                        pendingAiTask = null;
                     }
                 });
             });
@@ -882,6 +886,21 @@ public class HelloWorldMod implements ModInitializer {
                     LOGGER.error("模拟异常: NullPointerException at FakeClass.fakeMethod(FakeClass.java:42)");
                     LOGGER.info("这是一条测试 INFO 日志（默认级别下不会显示在聊天框）");
                     ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[测试] 已生成 2 条 WARN/ERROR + 1 条 INFO 日志，检查聊天框!", "§a[Test] Generated 2 WARN/ERROR + 1 INFO logs, check chat!")), false);
+                    return 1;
+                })
+            );
+
+            // /aistop - 终止当前 AI 思考/生成
+            dispatcher.register(CommandManager.literal("aistop")
+                .executes(ctx -> {
+                    cancelRequested = true;
+                    CompletableFuture<?> task = pendingAiTask;
+                    if (task != null) {
+                        task.cancel(true);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§e[AI] 已终止 AI 回复", "§e[AI] AI response stopped")), false);
+                    } else {
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§7[AI] 当前没有正在进行的 AI 请求", "§7[AI] No AI request in progress")), false);
+                    }
                     return 1;
                 })
             );

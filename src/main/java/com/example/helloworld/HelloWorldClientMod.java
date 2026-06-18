@@ -79,6 +79,11 @@ public class HelloWorldClientMod implements ClientModInitializer {
                 } else {
                     // 聊天界面已关闭，将 AI 回复显示到游戏内聊天框
                     if (client.player != null) {
+                        // 如果是终止消息，只显示简短提示，不需要完整回复格式
+                        if (response.equals("§7[思考已终止]")) {
+                            client.player.sendMessage(Text.literal(response), false);
+                            return;
+                        }
                         // 截取前200字符避免聊天框溢出，完整内容可在 AI 聊天界面查看
                         String displayResponse = response.length() > 200
                                 ? response.substring(0, 200) + "..."
