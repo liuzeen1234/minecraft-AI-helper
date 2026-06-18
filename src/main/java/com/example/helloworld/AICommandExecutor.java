@@ -553,6 +553,7 @@ public class AICommandExecutor {
 
     /**
      * 生成 system prompt，告诉 AI 可以使用哪些指令。
+     * 根据当前语言设置追加语言指令，使 AI 回复语言跟随 mod 语言。
      */
     public static String getSystemPrompt() {
         return "你是一个 Minecraft 游戏助手 AI。你可以和玩家聊天，也可以通过特殊指令帮玩家在游戏中执行操作。\n"
@@ -852,6 +853,21 @@ public class AICommandExecutor {
              + "- 每次回复最多使用一个 [FETCH] 标签\n"
              + "- 网页内容会自动提供给你，你再基于网页内容回答玩家的问题或执行操作\n"
              + "- 如果玩家要求你参考某个网页来搭建建筑，先用 [FETCH] 获取网页内容，系统会把内容返回给你，然后你再根据内容生成 [BLUEPRINT] 蓝图\n"
-             + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n";
+             + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n"
+             + getLanguageInstruction();
+    }
+
+    /**
+     * 根据 mod 的语言设置生成对应的语言指令，告知 AI 用什么语言回复。
+     */
+    private static String getLanguageInstruction() {
+        if (I18n.isEnglish()) {
+            return "\n========== LANGUAGE ==========\n\n"
+                 + "IMPORTANT: You MUST reply in English. The user has set the mod language to English.\n"
+                 + "All your conversational text must be in English. Technical tags like [BLUEPRINT], [ACTION], [SEARCH], [FETCH] remain unchanged.\n";
+        } else {
+            return "\n========== 语言 ==========\n\n"
+                 + "请使用中文回复玩家。所有对话文字使用中文。技术标签如 [BLUEPRINT]、[ACTION]、[SEARCH]、[FETCH] 保持不变。\n";
+        }
     }
 }
