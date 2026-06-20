@@ -275,6 +275,13 @@ public class HelloWorldMod implements ModInitializer {
                         // 检查是否需要抓取网页
                         String fetchUrl = extractFetchUrl(response);
                         if (fetchUrl != null) {
+                            // 通知聊天界面正在抓取网页
+                            server.execute(() -> {
+                                PacketByteBuf streamBuf = PacketByteBufs.create();
+                                streamBuf.writeString("\n\n§7" + I18n.get("正在抓取网页...", "Fetching page..."));
+                                ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                player.sendMessage(Text.literal(I18n.get("§7[AI] 正在抓取网页: ", "§7[AI] Fetching page: ") + fetchUrl), false);
+                            });
                             String pageContent = webFetchService.fetch(fetchUrl);
                             if (cancelRequested) {
                                 server.execute(() -> {
@@ -287,16 +294,32 @@ public class HelloWorldMod implements ModInitializer {
                             if (pageContent != null) {
                                 String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
                                         + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
-                                response = callKimiApi(fetchContext, "");
+                                if (CONFIG.isStreamOutputEnabled()) {
+                                    server.execute(() -> {
+                                        PacketByteBuf streamBuf = PacketByteBufs.create();
+                                        streamBuf.writeString("\n§7" + I18n.get("网页抓取完成，正在生成回复...", "Page fetched, generating reply...") + "\n\n");
+                                        ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                    });
+                                    response = callKimiApiStreaming(fetchContext, "", player, server);
+                                } else {
+                                    response = callKimiApi(fetchContext, "");
+                                }
                             } else {
                                 response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (response.isEmpty()) response = "网页抓取失败了，请检查 URL 是否正确。";
+                                if (response.isEmpty()) response = I18n.get("网页抓取失败了，请检查 URL 是否正确。", "Failed to fetch the page. Please check the URL.");
                             }
                         } else {
                             // 检查是否需要联网搜索
                             String searchQuery = extractSearchQuery(response);
                             if (searchQuery != null && CONFIG.isWebSearchEnabled()
                                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
+                                // 通知聊天界面正在搜索
+                                server.execute(() -> {
+                                    PacketByteBuf streamBuf = PacketByteBufs.create();
+                                    streamBuf.writeString("\n\n§7" + I18n.get("正在联网搜索...", "Searching the web..."));
+                                    ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                    player.sendMessage(Text.literal(I18n.get("§7[AI] 正在联网搜索: ", "§7[AI] Searching: ") + searchQuery), false);
+                                });
                                 String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
                                 if (cancelRequested) {
                                     server.execute(() -> {
@@ -309,10 +332,19 @@ public class HelloWorldMod implements ModInitializer {
                                 if (searchResults != null) {
                                     String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
                                             + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
-                                    response = callKimiApi(searchContext, "");
+                                    if (CONFIG.isStreamOutputEnabled()) {
+                                        server.execute(() -> {
+                                            PacketByteBuf streamBuf = PacketByteBufs.create();
+                                            streamBuf.writeString("\n§7" + I18n.get("搜索完成，正在生成回复...", "Search complete, generating reply...") + "\n\n");
+                                            ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                        });
+                                        response = callKimiApiStreaming(searchContext, "", player, server);
+                                    } else {
+                                        response = callKimiApi(searchContext, "");
+                                    }
                                 } else {
                                     response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (response.isEmpty()) response = "搜索失败了，请稍后再试。";
+                                    if (response.isEmpty()) response = I18n.get("搜索失败了，请稍后再试。", "Search failed. Please try again later.");
                                 }
                             } else {
                                 response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
@@ -328,6 +360,10 @@ public class HelloWorldMod implements ModInitializer {
                             });
                             return;
                         }
+
+                        // 清理响应中残留的标签
+                        response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
+                        response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
 
                         // 执行 AI 指令
                         String processed = AICommandExecutor.processResponse(response, player);
@@ -449,6 +485,13 @@ public class HelloWorldMod implements ModInitializer {
                         // 检查是否需要抓取网页
                         String fetchUrl = extractFetchUrl(response);
                         if (fetchUrl != null) {
+                            // 通知聊天界面正在抓取网页（替换流式内容中的 FETCH 标签显示）
+                            server.execute(() -> {
+                                PacketByteBuf streamBuf = PacketByteBufs.create();
+                                streamBuf.writeString("\n\n§7" + I18n.get("正在抓取网页...", "Fetching page..."));
+                                ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                player.sendMessage(Text.literal(I18n.get("§7[AI] 正在抓取网页: ", "§7[AI] Fetching page: ") + fetchUrl), false);
+                            });
                             String pageContent = webFetchService.fetch(fetchUrl);
                             if (cancelRequested) {
                                 server.execute(() -> {
@@ -461,15 +504,32 @@ public class HelloWorldMod implements ModInitializer {
                             if (pageContent != null) {
                                 String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
                                         + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
-                                response = callKimiApi(fetchContext, "");
+                                if (CONFIG.isStreamOutputEnabled()) {
+                                    // 流式模式：用流式输出让用户实时看到回复
+                                    server.execute(() -> {
+                                        PacketByteBuf streamBuf = PacketByteBufs.create();
+                                        streamBuf.writeString("\n§7" + I18n.get("网页抓取完成，正在生成回复...", "Page fetched, generating reply...") + "\n\n");
+                                        ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                    });
+                                    response = callKimiApiStreaming(fetchContext, "", player, server);
+                                } else {
+                                    response = callKimiApi(fetchContext, "");
+                                }
                             } else {
                                 response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (response.isEmpty()) response = "网页抓取失败了，请检查 URL 是否正确。";
+                                if (response.isEmpty()) response = I18n.get("网页抓取失败了，请检查 URL 是否正确。", "Failed to fetch the page. Please check the URL.");
                             }
                         } else {
                             String searchQuery = extractSearchQuery(response);
                             if (searchQuery != null && CONFIG.isWebSearchEnabled()
                                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
+                                // 通知聊天界面正在搜索
+                                server.execute(() -> {
+                                    PacketByteBuf streamBuf = PacketByteBufs.create();
+                                    streamBuf.writeString("\n\n§7" + I18n.get("正在联网搜索...", "Searching the web..."));
+                                    ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                    player.sendMessage(Text.literal(I18n.get("§7[AI] 正在联网搜索: ", "§7[AI] Searching: ") + searchQuery), false);
+                                });
                                 String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
                                 if (cancelRequested) {
                                     server.execute(() -> {
@@ -482,10 +542,20 @@ public class HelloWorldMod implements ModInitializer {
                                 if (searchResults != null) {
                                     String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
                                             + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
-                                    response = callKimiApi(searchContext, "");
+                                    if (CONFIG.isStreamOutputEnabled()) {
+                                        // 流式模式：用流式输出让用户实时看到回复
+                                        server.execute(() -> {
+                                            PacketByteBuf streamBuf = PacketByteBufs.create();
+                                            streamBuf.writeString("\n§7" + I18n.get("搜索完成，正在生成回复...", "Search complete, generating reply...") + "\n\n");
+                                            ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                                        });
+                                        response = callKimiApiStreaming(searchContext, "", player, server);
+                                    } else {
+                                        response = callKimiApi(searchContext, "");
+                                    }
                                 } else {
                                     response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (response.isEmpty()) response = "搜索失败了，请稍后再试。";
+                                    if (response.isEmpty()) response = I18n.get("搜索失败了，请稍后再试。", "Search failed. Please try again later.");
                                 }
                             } else {
                                 response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
@@ -500,6 +570,10 @@ public class HelloWorldMod implements ModInitializer {
                             });
                             return;
                         }
+
+                        // 清理响应中残留的标签
+                        response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
+                        response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
 
                         String processed = AICommandExecutor.processResponse(response, player);
                         String finalResponse = processed;
