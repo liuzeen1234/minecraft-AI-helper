@@ -184,7 +184,8 @@ public class AICommandExecutor {
      */
     private static String saveBlueprintToTxt(String blueprintText, String name) {
         try {
-            Path txtsDir = ModPaths.getTxtsDir();
+            // AI 生成的蓝图统一放在 txts/ai-generated/ 子文件夹下
+            Path txtsDir = ModPaths.getTxtsDir().resolve("ai-generated");
             if (!Files.exists(txtsDir)) {
                 Files.createDirectories(txtsDir);
             }
