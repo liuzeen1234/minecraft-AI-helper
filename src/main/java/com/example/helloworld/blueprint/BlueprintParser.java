@@ -54,17 +54,73 @@ public class BlueprintParser {
     // V2 解析
     // =========================================================================
 
+    // 物品行匹配：slot=N  item_id  count=C  [nbt={...}]
+    private static final Pattern V2_ITEM_PATTERN =
+            Pattern.compile("^slot=(\\d+)\\s+(\\S+)\\s+count=(\\d+)(.*)$");
+
     private static BlueprintData parseV2(String text) {
         String name = "unknown";
         int sizeX = 0, sizeY = 0, sizeZ = 0;
         List<BlueprintData.BlockEntry3D> blocks = new ArrayList<>();
 
         String[] lines = text.split("\n");
-        for (String rawLine : lines) {
-            String line = rawLine.replace("\r", "").trim();
+        // 临时变量：当前方块的待收集物品列表
+        int pendingX = 0, pendingY = 0, pendingZ = 0;
+        String pendingBlockId = null;
+        Map<String, String> pendingProps = null;
+        List<BlueprintData.ItemEntry> pendingItems = null;
+        boolean inItemsSection = false;
 
-            // 跳过空行
-            if (line.isEmpty()) continue;
+        for (String rawLine : lines) {
+            String lineNoR = rawLine.replace("\r", "");
+            String line = lineNoR.trim();
+
+            // 跳过空行（结束 items 段）
+            if (line.isEmpty()) {
+                if (inItemsSection) {
+                    // 空行结束当前 items 段，提交方块
+                    blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                            pendingBlockId, pendingProps, pendingItems));
+                    inItemsSection = false;
+                    pendingBlockId = null;
+                    pendingItems = null;
+                }
+                continue;
+            }
+
+            // 检查是否是 items: 标记行（以空格开头）
+            if (line.equals("items:") && lineNoR.startsWith("  ")) {
+                inItemsSection = true;
+                pendingItems = new ArrayList<>();
+                continue;
+            }
+
+            // 如果正在 items 段中，解析物品行（缩进4空格）
+            if (inItemsSection) {
+                Matcher itemMatcher = V2_ITEM_PATTERN.matcher(line);
+                if (itemMatcher.matches()) {
+                    int slot = Integer.parseInt(itemMatcher.group(1));
+                    String itemId = itemMatcher.group(2).trim();
+                    if (itemId.startsWith("minecraft:")) {
+                        itemId = itemId.substring("minecraft:".length());
+                    }
+                    int count = Integer.parseInt(itemMatcher.group(3));
+                    String remainder = itemMatcher.group(4).trim();
+                    String nbtStr = null;
+                    if (remainder.startsWith("nbt=")) {
+                        nbtStr = remainder.substring(4).trim();
+                    }
+                    pendingItems.add(new BlueprintData.ItemEntry(slot, itemId, count, nbtStr));
+                    continue;
+                }
+                // 如果不是物品行，说明 items 段结束
+                blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                        pendingBlockId, pendingProps, pendingItems));
+                inItemsSection = false;
+                pendingBlockId = null;
+                pendingItems = null;
+                // 继续处理当前行（fall through）
+            }
 
             // 注释行：提取元数据
             if (line.startsWith("#")) {
@@ -88,6 +144,13 @@ public class BlueprintParser {
             // 方块行
             Matcher blockMatcher = V2_BLOCK_PATTERN.matcher(line);
             if (blockMatcher.matches()) {
+                // 如果前一个方块还在等待（没有 items 段），先提交
+                if (pendingBlockId != null) {
+                    blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                            pendingBlockId, pendingProps));
+                    pendingBlockId = null;
+                }
+
                 int x = Integer.parseInt(blockMatcher.group(1));
                 int y = Integer.parseInt(blockMatcher.group(2));
                 int z = Integer.parseInt(blockMatcher.group(3));
@@ -100,9 +163,25 @@ public class BlueprintParser {
                 Map<String, String> properties = parseV2Properties(propsStr);
 
                 // 跳过空气
-                if (!blockId.equals("air")) {
-                    blocks.add(new BlueprintData.BlockEntry3D(x, y, z, blockId, properties));
-                }
+                if (blockId.equals("air")) continue;
+
+                // 暂存，等看下一行是否是 items:
+                pendingX = x;
+                pendingY = y;
+                pendingZ = z;
+                pendingBlockId = blockId;
+                pendingProps = properties;
+            }
+        }
+
+        // 文件结束，提交最后一个方块
+        if (pendingBlockId != null) {
+            if (inItemsSection && pendingItems != null) {
+                blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                        pendingBlockId, pendingProps, pendingItems));
+            } else {
+                blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                        pendingBlockId, pendingProps));
             }
         }
 

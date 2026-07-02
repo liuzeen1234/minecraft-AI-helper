@@ -48,6 +48,10 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier EXPORT_NBT_PACKET = new Identifier(MOD_ID, "export_nbt");
     // 服务端 -> 客户端：导出完成通知
     public static final Identifier EXPORT_NBT_RESULT_PACKET = new Identifier(MOD_ID, "export_nbt_result");
+    // 客户端 -> 服务端：请求导出选区为 TXT（含容器内容物）
+    public static final Identifier EXPORT_TXT_PACKET = new Identifier(MOD_ID, "export_txt");
+    // 服务端 -> 客户端：TXT 导出完成通知
+    public static final Identifier EXPORT_TXT_RESULT_PACKET = new Identifier(MOD_ID, "export_txt_result");
     // 客户端 -> 服务端：聊天界面发送消息
     public static final Identifier CHAT_SCREEN_MESSAGE_PACKET = new Identifier(MOD_ID, "chat_screen_msg");
     // 服务端 -> 客户端：聊天界面回复
@@ -213,6 +217,31 @@ public class HelloWorldMod implements ModInitializer {
                     PacketByteBuf resultBuf = PacketByteBufs.create();
                     resultBuf.writeString("§c[选区] NBT 导出失败: " + e.getMessage());
                     ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
+                }
+            });
+        });
+
+        // 注册接收客户端导出 TXT（含容器内容）请求的处理器
+        ServerPlayNetworking.registerGlobalReceiver(EXPORT_TXT_PACKET, (server, player, handler, buf, responseSender) -> {
+            int x1 = buf.readInt(), y1 = buf.readInt(), z1 = buf.readInt();
+            int x2 = buf.readInt(), y2 = buf.readInt(), z2 = buf.readInt();
+            String fileName = buf.readString();
+            String subPath = buf.isReadable() ? buf.readString() : "";
+            server.execute(() -> {
+                try {
+                    net.minecraft.server.world.ServerWorld world = player.getServerWorld();
+                    net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
+                    net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportTxt(world, pos1, pos2, fileName, subPath);
+                    String displayPath = subPath.isEmpty() ? fileName + ".txt" : subPath + "/" + fileName + ".txt";
+                    PacketByteBuf resultBuf = PacketByteBufs.create();
+                    resultBuf.writeString("§a[选区] TXT 已导出（含容器内容物）: " + displayPath);
+                    ServerPlayNetworking.send(player, EXPORT_TXT_RESULT_PACKET, resultBuf);
+                } catch (Exception e) {
+                    LOGGER.error("服务端导出 TXT 失败", e);
+                    PacketByteBuf resultBuf = PacketByteBufs.create();
+                    resultBuf.writeString("§c[选区] TXT 导出失败: " + e.getMessage());
+                    ServerPlayNetworking.send(player, EXPORT_TXT_RESULT_PACKET, resultBuf);
                 }
             });
         });

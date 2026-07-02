@@ -1,5 +1,6 @@
 package com.example.helloworld.blueprint;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -74,19 +75,47 @@ public class BlueprintData {
     }
 
     // -------------------------------------------------------------------------
-    // V2 方块条目：显式坐标 + 方块ID + 完整 block state 属性
+    // 容器物品条目：slot + 物品ID + 数量 + 可选 NBT（SNBT 格式）
+    // -------------------------------------------------------------------------
+    public static class ItemEntry {
+        private final int slot;
+        private final String itemId;
+        private final int count;
+        private final String nbtString; // 可选，SNBT 格式，可能为 null
+
+        public ItemEntry(int slot, String itemId, int count, String nbtString) {
+            this.slot = slot;
+            this.itemId = itemId;
+            this.count = count;
+            this.nbtString = nbtString;
+        }
+
+        public int getSlot() { return slot; }
+        public String getItemId() { return itemId; }
+        public int getCount() { return count; }
+        public String getNbtString() { return nbtString; }
+    }
+
+    // -------------------------------------------------------------------------
+    // V2 方块条目：显式坐标 + 方块ID + 完整 block state 属性 + 可选容器物品
     // -------------------------------------------------------------------------
     public static class BlockEntry3D {
         private final int x, y, z;
         private final String blockId;
         private final Map<String, String> properties;
+        private final List<ItemEntry> items; // 容器内容物，无则为空列表
 
         public BlockEntry3D(int x, int y, int z, String blockId, Map<String, String> properties) {
+            this(x, y, z, blockId, properties, Collections.emptyList());
+        }
+
+        public BlockEntry3D(int x, int y, int z, String blockId, Map<String, String> properties, List<ItemEntry> items) {
             this.x = x;
             this.y = y;
             this.z = z;
             this.blockId = blockId;
             this.properties = properties;
+            this.items = items != null ? items : Collections.emptyList();
         }
 
         public int getX() { return x; }
@@ -94,5 +123,7 @@ public class BlueprintData {
         public int getZ() { return z; }
         public String getBlockId() { return blockId; }
         public Map<String, String> getProperties() { return properties; }
+        public List<ItemEntry> getItems() { return items; }
+        public boolean hasItems() { return !items.isEmpty(); }
     }
 }

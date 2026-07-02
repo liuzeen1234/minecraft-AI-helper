@@ -1,9 +1,13 @@
 package com.example.helloworld.selection;
 
+import com.example.helloworld.HelloWorldMod;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
@@ -11,10 +15,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * P4 - 导出 TXT 页面：填写保存路径和文件名，点击"导出.txt"执行导出。
+ * 支持"含容器内容"选项：勾选后通过服务端导出（可读取完整 BlockEntity 数据）。
  */
 public class ExportTxtScreen extends Screen {
 
@@ -23,12 +27,13 @@ public class ExportTxtScreen extends Screen {
 
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
+    private boolean includeContainerItems = false; // 是否包含容器内容物
 
     private static final Path TXTS_DIR = com.example.helloworld.ModPaths.getTxtsDir();
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
-    private static final int POPUP_HEIGHT = 130;
+    private static final int POPUP_HEIGHT = 160;
 
     public ExportTxtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
         super(Text.literal(com.example.helloworld.I18n.get("导出 .txt", "Export .txt")));
@@ -63,8 +68,15 @@ public class ExportTxtScreen extends Screen {
         nameField.setMaxLength(64);
         this.addDrawableChild(nameField);
 
+        // 容器内容物复选按钮
+        int checkY = nameY + 24;
+        this.addDrawableChild(ButtonWidget.builder(getContainerToggleText(), button -> {
+            includeContainerItems = !includeContainerItems;
+            button.setMessage(getContainerToggleText());
+        }).dimensions(fieldLeft, checkY, fieldW, 20).build());
+
         // 导出按钮
-        int btnY = nameY + 26;
+        int btnY = checkY + 26;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§a导出 .txt", "§aExport .txt")), button -> doExportTxt())
                 .dimensions(fieldLeft, btnY, fieldW, 20).build());
 
@@ -72,6 +84,11 @@ public class ExportTxtScreen extends Screen {
         int cancelY = btnY + 26;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> close())
                 .dimensions(cx - 40, cancelY, 80, 20).build());
+    }
+
+    private Text getContainerToggleText() {
+        String prefix = includeContainerItems ? "§a✔ " : "§7✘ ";
+        return Text.literal(prefix + com.example.helloworld.I18n.get("包含容器内容物", "Include container items"));
     }
 
     @Override
@@ -98,32 +115,53 @@ public class ExportTxtScreen extends Screen {
         if (name.isEmpty()) name = "exported_blueprint";
         String pathText = pathField.getText().trim();
 
-        String blueprintText = SelectionAnalyzer.exportBlueprintV2(result, name);
+        if (includeContainerItems) {
+            // 走服务端导出路径（可读取 BlockEntity 容器数据）
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(result.min().getX());
+            buf.writeInt(result.min().getY());
+            buf.writeInt(result.min().getZ());
+            buf.writeInt(result.max().getX());
+            buf.writeInt(result.max().getY());
+            buf.writeInt(result.max().getZ());
+            buf.writeString(name);
+            buf.writeString(pathText);
+            ClientPlayNetworking.send(HelloWorldMod.EXPORT_TXT_PACKET, buf);
 
-        // 确定保存目录：如果用户通过文件夹选择器选了绝对路径就直接用，否则用默认 txts 目录
-        Path dir;
-        if (!pathText.isEmpty()) {
-            dir = Path.of(pathText);
-        } else {
-            dir = com.example.helloworld.ModPaths.getTxtsDir();
-        }
-        if (!Files.isDirectory(dir)) {
-            try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        }
-
-        String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".txt";
-        Path filePath = dir.resolve(fileName);
-
-        try {
-            Files.writeString(filePath, blueprintText, StandardCharsets.UTF_8);
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(
-                        Text.literal(com.example.helloworld.I18n.get("§a[选区] 蓝图已导出: ", "§a[Selection] Blueprint exported: ") + filePath.toAbsolutePath()), false);
+                        Text.literal(com.example.helloworld.I18n.get(
+                                "§7[选区] 正在服务端导出 TXT（含容器内容）...",
+                                "§7[Selection] Exporting TXT with container items...")), false);
             }
-        } catch (IOException e) {
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(
-                        Text.literal(com.example.helloworld.I18n.get("§c[选区] 导出失败: ", "§c[Selection] Export failed: ") + e.getMessage()), false);
+        } else {
+            // 走原有客户端导出路径（仅方块+属性，无容器数据）
+            String blueprintText = SelectionAnalyzer.exportBlueprintV2(result, name);
+
+            Path dir;
+            if (!pathText.isEmpty()) {
+                dir = Path.of(pathText);
+            } else {
+                dir = com.example.helloworld.ModPaths.getTxtsDir();
+            }
+            if (!Files.isDirectory(dir)) {
+                try { Files.createDirectories(dir); } catch (IOException ignored) {}
+            }
+
+            String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".txt";
+            Path filePath = dir.resolve(fileName);
+
+            try {
+                Files.writeString(filePath, blueprintText, StandardCharsets.UTF_8);
+                if (this.client != null && this.client.player != null) {
+                    this.client.player.sendMessage(
+                            Text.literal(com.example.helloworld.I18n.get("§a[选区] 蓝图已导出: ", "§a[Selection] Blueprint exported: ") + filePath.toAbsolutePath()), false);
+                }
+            } catch (IOException e) {
+                if (this.client != null && this.client.player != null) {
+                    this.client.player.sendMessage(
+                            Text.literal(com.example.helloworld.I18n.get("§c[选区] 导出失败: ", "§c[Selection] Export failed: ") + e.getMessage()), false);
+                }
             }
         }
         close();

@@ -3,6 +3,12 @@ package com.example.helloworld.blueprint;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -48,6 +54,7 @@ public class BlueprintBuilder {
     /**
      * V2 格式建造：直接按显式坐标放置方块，所有 block state 属性完整还原。
      * 分两阶段：先放实体方块，再放附着方块（按钮、火把等）。
+     * 如果方块带有 items 数据，放置后写入容器物品。
      */
     private static int buildV2(BlueprintData blueprint, BlockPos origin, ServerWorld world) {
         List<BlueprintData.BlockEntry3D> blocks = blueprint.getBlocks3d();
@@ -70,6 +77,10 @@ public class BlueprintBuilder {
             if (state != null) {
                 world.setBlockState(pos, state);
                 placedCount++;
+                // 写入容器物品
+                if (block.hasItems()) {
+                    applyContainerItems(world, pos, block.getItems());
+                }
             }
         }
 
@@ -89,6 +100,53 @@ public class BlueprintBuilder {
 
         LOGGER.info("V2 蓝图 '{}' 建造完成，放置 {} 个方块", blueprint.getName(), placedCount);
         return placedCount;
+    }
+
+    /**
+     * 将物品列表写入指定位置的容器方块实体（箱子、桶、漏斗、熔炉等）。
+     */
+    private static void applyContainerItems(ServerWorld world, BlockPos pos, List<BlueprintData.ItemEntry> items) {
+        BlockEntity be = world.getBlockEntity(pos);
+        if (be == null) {
+            LOGGER.debug("位置 {} 没有方块实体，跳过物品写入", pos.toShortString());
+            return;
+        }
+        if (!(be instanceof Inventory inv)) {
+            LOGGER.debug("位置 {} 的方块实体不是容器，跳过物品写入", pos.toShortString());
+            return;
+        }
+
+        for (BlueprintData.ItemEntry item : items) {
+            String itemId = item.getItemId();
+            if (!itemId.contains(":")) {
+                itemId = "minecraft:" + itemId;
+            }
+            Item mcItem = Registries.ITEM.get(new Identifier(itemId));
+            if (mcItem == net.minecraft.item.Items.AIR) {
+                LOGGER.warn("未知物品ID: {}", item.getItemId());
+                continue;
+            }
+
+            ItemStack stack = new ItemStack(mcItem, item.getCount());
+
+            // 如果有 NBT 数据，解析并应用
+            if (item.getNbtString() != null && !item.getNbtString().isEmpty()) {
+                try {
+                    NbtCompound nbt = StringNbtReader.parse(item.getNbtString());
+                    stack.setNbt(nbt);
+                } catch (Exception e) {
+                    LOGGER.warn("物品 NBT 解析失败 ({}): {}", item.getItemId(), e.getMessage());
+                }
+            }
+
+            int slot = item.getSlot();
+            if (slot >= 0 && slot < inv.size()) {
+                inv.setStack(slot, stack);
+            } else {
+                LOGGER.warn("物品槽位 {} 超出容器范围 (容器大小: {})", slot, inv.size());
+            }
+        }
+        be.markDirty();
     }
 
     /**
