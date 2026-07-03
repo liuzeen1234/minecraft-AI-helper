@@ -1,6 +1,6 @@
 # AI Builder User Manual
 
-> Version 1.2.0 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.3.0 | Minecraft 1.20.4 | Fabric Mod
 
 ---
 
@@ -31,7 +31,7 @@ Installation Steps:
 
 1. Install Fabric Loader (>= 0.15.0)
 2. Install Fabric API
-3. Place ai-builder-1.2.0.jar into .minecraft/mods/
+3. Place ai-builder-1.3.0.jar into .minecraft/mods/
 4. Launch the game
 
 ---
@@ -73,6 +73,8 @@ Quick Setup (choose one):
 
 ## Commands
 
+### AI Core Commands
+
 | Command | Description |
 |---------|-------------|
 | /ai <message> | Chat with AI, AI can auto-execute build operations |
@@ -80,11 +82,38 @@ Quick Setup (choose one):
 | /ai blueprints | List all loaded blueprints |
 | /ai reload_blueprints | Reload blueprint files from disk |
 | /ainew | Clear conversation history |
+| /aistop | Stop the current AI response |
+
+### Configuration Commands
+
+| Command | Description |
+|---------|-------------|
 | /aiconfig show | Show current configuration |
-| /aiconfig <key> <value> | Modify a config value |
-| /aipos | Show current player coordinates |
+| /aiconfig api_base_url <value> | Set API endpoint URL |
+| /aiconfig api_key <value> | Set API key |
+| /aiconfig model <value> | Set AI model name |
+| /aiconfig web_search <on/off> | Enable/disable web search |
+| /aiconfig tavily_api_key <value> | Set Tavily search API key |
+| /aiconfig reload | Reload configuration from file |
+
+### Utility Commands
+
+| Command | Description |
+|---------|-------------|
+| /aipos | Show current player coordinates and dimension |
 | /ailog [on/off] | Toggle log forwarding to chat |
-| /ainbt | Open NBT structure browser |
+| /ailog level <error/warn/info/debug> | Set minimum log display level |
+| /aitest | Generate test logs to verify log system |
+
+### NBT Structure Commands
+
+| Command | Description |
+|---------|-------------|
+| /ainbt | Open NBT structure browser (GUI) |
+| /ainbt list | List all .nbt files in nbts/ directory |
+| /ainbt info <filename> | View detailed info for an NBT file |
+| /ainbt all | View summary of all NBT files |
+| /ainbt place <filename> | Place NBT structure at player feet |
 
 ---
 
@@ -102,6 +131,7 @@ AI Chat Screen Features:
 - Reference TXT blueprint files as context (click "Ref" button)
 - Cancel ongoing AI requests ("Stop Thinking" button)
 - Screenshot support (AI can analyze your game screen)
+- Stop command: Use /aistop to cancel AI generation from command line
 
 Notes:
 - Chat history persists during game session; use /ainew or clear button to reset
@@ -124,6 +154,7 @@ AI can execute the following via natural language:
 | Set weather | "Make it sunny" |
 | Teleport | "Teleport me to 100 64 200" |
 | Spawn entity | "Spawn a pig in front of me" |
+| Execute command | AI can run vanilla Minecraft commands |
 | Build blueprint | "Build me a small cabin" (AI generates and places) |
 
 Coordinate System:
@@ -152,6 +183,12 @@ Features:
 - Delete files (requires confirmation)
 - Open system file manager
 
+Command-line usage:
+- /ainbt list - List all files
+- /ainbt info <filename> - View details
+- /ainbt place <filename> - Place structure
+- Filenames support spaces instead of path separators (e.g. "ancient_city barracks")
+
 Placement Rules:
 - Structure placed at player feet position as origin
 - Automatically skips air and structure_void blocks
@@ -174,7 +211,7 @@ Features:
 - Browse all .txt blueprint files in txts/ directory
 - Search/filter by filename
 - Double-click or click "Place" to build at player feet
-- AI-generated blueprints are auto-saved here
+- AI-generated blueprints are auto-saved to txts/ai-generated/
 
 Placement Rules:
 - Origin at player feet
@@ -205,15 +242,17 @@ Workflow:
    - View block statistics (types, quantities)
    - Export as V2 blueprint text
    - Export as .nbt file (preserves block entity data)
+   - Export as .txt file (preserves container contents)
 
 Export Formats:
 - NBT Export: Standard Minecraft structure file with block entities
+- TXT Export: MCBLUEPRINT v2 format with container contents
 - Blueprint Export: MCBLUEPRINT v2 format with all block state properties
 
 Notes:
 - Selection coordinates auto-save as draft when closing
 - Clearing selection removes highlight rendering
-- NBT export runs on server for complete block entity access
+- NBT and TXT export runs on server for complete block entity access
 
 ---
 
@@ -270,12 +309,12 @@ Config file location: ai-helper/config/ai-builder.properties
 | web_search_enabled | Boolean | true | Enable web search |
 | tavily_api_key | String | (empty) | Tavily search API key |
 | stream_output_enabled | Boolean | false | Enable streaming output |
-| language | String | zh_cn | UI language (zh_cn or en_us) |
+| language | String | en_us | UI language (zh_cn or en_us) |
 
 Modification Methods:
 - In-game command: /aiconfig <key> <value>
 - Press K -> AI Chat Settings (visual toggles)
-- Edit config file directly (requires game restart)
+- Edit config file directly, then use /aiconfig reload (no restart needed)
 
 ---
 
@@ -287,6 +326,8 @@ Modification Methods:
 # MCBLUEPRINT v2
 # name: my_building
 # size: 5x3x5
+# origin: 0,0,0
+# Origin at structure NW corner lowest layer, x=east, y=up, z=south
 
 ## BLOCKS
 0,0,0   oak_planks
@@ -300,6 +341,7 @@ Format Details:
 - First line must be "# MCBLUEPRINT v2"
 - "# name:" specifies blueprint name
 - "# size:" specifies dimensions (optional, informational)
+- "# origin:" specifies origin point (optional)
 - Block line format: x,y,z   block_id   [key=value ...]
 - Coordinates are relative (origin at 0,0,0)
 - Supports all vanilla block state properties
@@ -337,27 +379,29 @@ Format Details:
 
 ```
 .minecraft/
-|- ai-helper/                  <- Mod data root directory
+|- ai-helper/                    <- Mod data root directory
 |  |- config/
-|  |  |- ai-builder.properties <- Config file
-|  |- nbts/                    <- NBT structure files
+|  |  |- ai-builder.properties   <- Config file
+|  |- nbts/                      <- NBT structure files
 |  |  |- my_house.nbt
 |  |  |- ancient_city/
+|  |  |  |- city_center/
+|  |  |  |- structures/
 |  |  |- bastion/
-|  |- txts/                    <- TXT blueprint files
+|  |- txts/                      <- TXT blueprint files
 |  |  |- small_house.txt
-|  |  |- ai_generated/
-|  |- screenshots/             <- AI screenshot temp files
+|  |  |- ai-generated/           <- AI auto-generated blueprints
+|  |- screenshots/               <- AI screenshot temp files
 |     |- ai_temp.png
 |     |- ai_chat_temp.png
 |- mods/
-   |- ai-builder-1.2.0.jar
+   |- ai-builder-1.3.0.jar
 ```
 
 - ai-helper/: Mod data root, alongside mods/ and config/
 - ai-helper/config/: Configuration files
 - ai-helper/nbts/: NBT structure files (supports subfolders)
-- ai-helper/txts/: TXT blueprint files (AI-generated saved here too)
+- ai-helper/txts/: TXT blueprint files (AI-generated saved in ai-generated/ subfolder)
 - ai-helper/screenshots/: AI screenshot temp files
 - All directories support arbitrary subfolder depth
 
@@ -369,10 +413,15 @@ Format Details:
 - Check API key: /aiconfig show
 - Verify API URL is accessible
 - Use /ailog on for detailed logs
+- Use /aitest to verify the log system works
+
+### Q: How to stop AI response
+- In chat screen: Click "Stop Thinking" button
+- From command line: Type /aistop
 
 ### Q: Web search not working
 - Verify tavily_api_key is set
-- Verify web_search_enabled is true
+- Verify web_search_enabled is true (use /aiconfig web_search on to enable)
 - Check network connection
 
 ### Q: Blueprint placed in wrong position
@@ -399,6 +448,10 @@ Format Details:
 - Streaming: AI response appears word by word, less waiting
 - Normal: Waits for complete response then displays all at once
 - Toggle: /aiconfig stream_output_enabled true
+
+### Q: Do I need to restart after config changes?
+- Changes via /aiconfig command take effect immediately
+- After manually editing the config file, use /aiconfig reload (no restart needed)
 
 ### Security Notes
 - API keys stored in local config file; do not share
