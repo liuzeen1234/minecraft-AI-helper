@@ -70,12 +70,18 @@ public class BlueprintParser {
         Map<String, String> pendingProps = null;
         List<BlueprintData.ItemEntry> pendingItems = null;
         boolean inItemsSection = false;
+        // 告示牌文字解析状态
+        boolean inSignTextSection = false;
+        boolean inSignFront = false;
+        boolean inSignBack = false;
+        List<String> pendingSignFrontLines = null;
+        List<String> pendingSignBackLines = null;
 
         for (String rawLine : lines) {
             String lineNoR = rawLine.replace("\r", "");
             String line = lineNoR.trim();
 
-            // 跳过空行（结束 items 段）
+            // 跳过空行（结束 items/sign_text 段）
             if (line.isEmpty()) {
                 if (inItemsSection) {
                     // 空行结束当前 items 段，提交方块
@@ -84,6 +90,18 @@ public class BlueprintParser {
                     inItemsSection = false;
                     pendingBlockId = null;
                     pendingItems = null;
+                } else if (inSignTextSection) {
+                    // 空行结束当前 sign_text 段，提交方块
+                    BlueprintData.SignTextEntry signText = new BlueprintData.SignTextEntry(
+                            padSignLines(pendingSignFrontLines), padSignLines(pendingSignBackLines));
+                    blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                            pendingBlockId, pendingProps, Collections.emptyList(), signText));
+                    inSignTextSection = false;
+                    inSignFront = false;
+                    inSignBack = false;
+                    pendingBlockId = null;
+                    pendingSignFrontLines = null;
+                    pendingSignBackLines = null;
                 }
                 continue;
             }
@@ -93,6 +111,52 @@ public class BlueprintParser {
                 inItemsSection = true;
                 pendingItems = new ArrayList<>();
                 continue;
+            }
+
+            // 检查是否是 sign_text: 标记行（以空格开头）
+            if (line.equals("sign_text:") && lineNoR.startsWith("  ")) {
+                inSignTextSection = true;
+                inSignFront = false;
+                inSignBack = false;
+                pendingSignFrontLines = new ArrayList<>();
+                pendingSignBackLines = new ArrayList<>();
+                continue;
+            }
+
+            // 解析 sign_text 内的 front:/back: 标记和文字行
+            if (inSignTextSection) {
+                if (line.equals("front:")) {
+                    inSignFront = true;
+                    inSignBack = false;
+                    continue;
+                }
+                if (line.equals("back:")) {
+                    inSignBack = true;
+                    inSignFront = false;
+                    continue;
+                }
+                // 缩进6空格的文字行
+                if (lineNoR.startsWith("      ")) {
+                    String textContent = lineNoR.substring(6); // 去掉6空格缩进
+                    if (inSignFront) {
+                        pendingSignFrontLines.add(textContent);
+                    } else if (inSignBack) {
+                        pendingSignBackLines.add(textContent);
+                    }
+                    continue;
+                }
+                // 不是合法的 sign_text 内容行，结束 sign_text 段
+                BlueprintData.SignTextEntry signText = new BlueprintData.SignTextEntry(
+                        padSignLines(pendingSignFrontLines), padSignLines(pendingSignBackLines));
+                blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                        pendingBlockId, pendingProps, Collections.emptyList(), signText));
+                inSignTextSection = false;
+                inSignFront = false;
+                inSignBack = false;
+                pendingBlockId = null;
+                pendingSignFrontLines = null;
+                pendingSignBackLines = null;
+                // 继续处理当前行（fall through）
             }
 
             // 如果正在 items 段中，解析物品行（缩进4空格）
@@ -144,7 +208,7 @@ public class BlueprintParser {
             // 方块行
             Matcher blockMatcher = V2_BLOCK_PATTERN.matcher(line);
             if (blockMatcher.matches()) {
-                // 如果前一个方块还在等待（没有 items 段），先提交
+                // 如果前一个方块还在等待（没有 items/sign_text 段），先提交
                 if (pendingBlockId != null) {
                     blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
                             pendingBlockId, pendingProps));
@@ -165,7 +229,7 @@ public class BlueprintParser {
                 // 跳过空气
                 if (blockId.equals("air")) continue;
 
-                // 暂存，等看下一行是否是 items:
+                // 暂存，等看下一行是否是 items:/sign_text:
                 pendingX = x;
                 pendingY = y;
                 pendingZ = z;
@@ -179,6 +243,11 @@ public class BlueprintParser {
             if (inItemsSection && pendingItems != null) {
                 blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
                         pendingBlockId, pendingProps, pendingItems));
+            } else if (inSignTextSection) {
+                BlueprintData.SignTextEntry signText = new BlueprintData.SignTextEntry(
+                        padSignLines(pendingSignFrontLines), padSignLines(pendingSignBackLines));
+                blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
+                        pendingBlockId, pendingProps, Collections.emptyList(), signText));
             } else {
                 blocks.add(new BlueprintData.BlockEntry3D(pendingX, pendingY, pendingZ,
                         pendingBlockId, pendingProps));
@@ -196,6 +265,15 @@ public class BlueprintParser {
 
         LOGGER.info("解析 V2 蓝图 '{}': {} 个方块, 尺寸 {}x{}x{}", name, blocks.size(), sizeX, sizeY, sizeZ);
         return new BlueprintData(name, blocks, sizeX, sizeY, sizeZ);
+    }
+
+    /**
+     * 将告示牌文字行列表补齐/截断到恰好 4 行。
+     */
+    private static List<String> padSignLines(List<String> lines) {
+        if (lines == null) lines = new ArrayList<>();
+        while (lines.size() < 4) lines.add("");
+        return lines.subList(0, 4);
     }
 
     /**

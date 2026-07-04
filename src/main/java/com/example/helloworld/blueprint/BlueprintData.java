@@ -97,25 +97,54 @@ public class BlueprintData {
     }
 
     // -------------------------------------------------------------------------
-    // V2 方块条目：显式坐标 + 方块ID + 完整 block state 属性 + 可选容器物品
+    // 告示牌文字条目：front/back 各4行文字
+    // -------------------------------------------------------------------------
+    public static class SignTextEntry {
+        private final List<String> frontLines; // 正面4行
+        private final List<String> backLines;  // 背面4行
+
+        public SignTextEntry(List<String> frontLines, List<String> backLines) {
+            this.frontLines = frontLines != null ? frontLines : List.of("", "", "", "");
+            this.backLines = backLines != null ? backLines : List.of("", "", "", "");
+        }
+
+        public List<String> getFrontLines() { return frontLines; }
+        public List<String> getBackLines() { return backLines; }
+
+        /** 检查是否有非空文本 */
+        public boolean hasText() {
+            for (String line : frontLines) if (!line.isEmpty()) return true;
+            for (String line : backLines) if (!line.isEmpty()) return true;
+            return false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // V2 方块条目：显式坐标 + 方块ID + 完整 block state 属性 + 可选容器物品 + 可选告示牌文字
     // -------------------------------------------------------------------------
     public static class BlockEntry3D {
         private final int x, y, z;
         private final String blockId;
         private final Map<String, String> properties;
         private final List<ItemEntry> items; // 容器内容物，无则为空列表
+        private final SignTextEntry signText; // 告示牌文字，无则为 null
 
         public BlockEntry3D(int x, int y, int z, String blockId, Map<String, String> properties) {
-            this(x, y, z, blockId, properties, Collections.emptyList());
+            this(x, y, z, blockId, properties, Collections.emptyList(), null);
         }
 
         public BlockEntry3D(int x, int y, int z, String blockId, Map<String, String> properties, List<ItemEntry> items) {
+            this(x, y, z, blockId, properties, items, null);
+        }
+
+        public BlockEntry3D(int x, int y, int z, String blockId, Map<String, String> properties, List<ItemEntry> items, SignTextEntry signText) {
             this.x = x;
             this.y = y;
             this.z = z;
             this.blockId = blockId;
             this.properties = properties;
             this.items = items != null ? items : Collections.emptyList();
+            this.signText = signText;
         }
 
         public int getX() { return x; }
@@ -125,5 +154,7 @@ public class BlueprintData {
         public Map<String, String> getProperties() { return properties; }
         public List<ItemEntry> getItems() { return items; }
         public boolean hasItems() { return !items.isEmpty(); }
+        public SignTextEntry getSignText() { return signText; }
+        public boolean hasSignText() { return signText != null && signText.hasText(); }
     }
 }

@@ -4,6 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -81,6 +82,10 @@ public class BlueprintBuilder {
                 if (block.hasItems()) {
                     applyContainerItems(world, pos, block.getItems());
                 }
+                // 写入告示牌文字
+                if (block.hasSignText()) {
+                    applySignText(world, pos, block.getSignText());
+                }
             }
         }
 
@@ -147,6 +152,63 @@ public class BlueprintBuilder {
             }
         }
         be.markDirty();
+    }
+
+    /**
+     * 将告示牌文字写入指定位置的告示牌方块实体。
+     * 使用 NBT 方式写入，与 NbtStructurePlacer 保持一致。
+     */
+    private static void applySignText(ServerWorld world, BlockPos pos, BlueprintData.SignTextEntry signTextEntry) {
+        BlockEntity be = world.getBlockEntity(pos);
+        if (be == null) {
+            LOGGER.debug("位置 {} 没有方块实体，跳过告示牌文字写入", pos.toShortString());
+            return;
+        }
+        if (!(be instanceof SignBlockEntity)) {
+            LOGGER.debug("位置 {} 的方块实体不是告示牌，跳过文字写入", pos.toShortString());
+            return;
+        }
+
+        // 通过 NBT 写入告示牌文字（1.20+ 格式：front_text/back_text）
+        NbtCompound nbt = be.createNbt();
+
+        // 构建 front_text
+        NbtCompound frontText = new NbtCompound();
+        net.minecraft.nbt.NbtList frontMessages = new net.minecraft.nbt.NbtList();
+        for (String line : signTextEntry.getFrontLines()) {
+            String json = line.isEmpty() ? "{\"text\":\"\"}" : "{\"text\":\"" + escapeJson(line) + "\"}";
+            frontMessages.add(net.minecraft.nbt.NbtString.of(json));
+        }
+        frontText.put("messages", frontMessages);
+        frontText.putString("color", "black");
+        frontText.putBoolean("has_glowing_text", false);
+        nbt.put("front_text", frontText);
+
+        // 构建 back_text
+        NbtCompound backText = new NbtCompound();
+        net.minecraft.nbt.NbtList backMessages = new net.minecraft.nbt.NbtList();
+        for (String line : signTextEntry.getBackLines()) {
+            String json = line.isEmpty() ? "{\"text\":\"\"}" : "{\"text\":\"" + escapeJson(line) + "\"}";
+            backMessages.add(net.minecraft.nbt.NbtString.of(json));
+        }
+        backText.put("messages", backMessages);
+        backText.putString("color", "black");
+        backText.putBoolean("has_glowing_text", false);
+        nbt.put("back_text", backText);
+
+        be.readNbt(nbt);
+        be.markDirty();
+    }
+
+    /**
+     * 转义 JSON 字符串中的特殊字符。
+     */
+    private static String escapeJson(String text) {
+        return text.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "\\r")
+                   .replace("\t", "\\t");
     }
 
     /**

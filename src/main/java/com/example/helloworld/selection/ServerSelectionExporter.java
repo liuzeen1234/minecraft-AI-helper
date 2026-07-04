@@ -2,6 +2,8 @@ package com.example.helloworld.selection;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.SignBlockEntity;
+import net.minecraft.block.entity.SignText;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.AbstractDecorationEntity;
 import net.minecraft.entity.decoration.ArmorStandEntity;
@@ -18,6 +20,7 @@ import net.minecraft.nbt.*;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.property.Property;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import org.slf4j.Logger;
@@ -344,6 +347,27 @@ public class ServerSelectionExporter {
                             containerCount++;
                         }
                     }
+
+                    // 检查告示牌文字
+                    if (blockEntity instanceof SignBlockEntity signEntity) {
+                        List<String> frontLines = getSignTextLines(signEntity.getFrontText());
+                        List<String> backLines = getSignTextLines(signEntity.getBackText());
+                        boolean hasText = false;
+                        for (String line : frontLines) if (!line.isEmpty()) { hasText = true; break; }
+                        if (!hasText) for (String line : backLines) if (!line.isEmpty()) { hasText = true; break; }
+
+                        if (hasText) {
+                            sb.append("  sign_text:\n");
+                            sb.append("    front:\n");
+                            for (String line : frontLines) {
+                                sb.append("      ").append(line).append("\n");
+                            }
+                            sb.append("    back:\n");
+                            for (String line : backLines) {
+                                sb.append("      ").append(line).append("\n");
+                            }
+                        }
+                    }
                 }
             }
 
@@ -372,5 +396,18 @@ public class ServerSelectionExporter {
 
         LOGGER.info("服务端导出 TXT 完成: {} ({}x{}x{}, {} 个方块, {} 个容器)",
                 fileName, sizeX, sizeY, sizeZ, blockCount, containerCount);
+    }
+
+    /**
+     * 从 SignText 中提取 4 行纯文本内容。
+     */
+    private static List<String> getSignTextLines(SignText signText) {
+        List<String> lines = new ArrayList<>(4);
+        for (int i = 0; i < 4; i++) {
+            Text message = signText.getMessage(i, false);
+            String content = message.getString();
+            lines.add(content != null ? content : "");
+        }
+        return lines;
     }
 }
