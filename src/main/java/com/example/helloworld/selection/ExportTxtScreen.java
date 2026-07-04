@@ -27,7 +27,7 @@ public class ExportTxtScreen extends Screen {
 
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
-    private boolean includeContainerItems = false; // 是否包含容器内容物
+    private boolean includeContainerItems = true; // 始终包含容器内容物
 
     private static final Path TXTS_DIR = com.example.helloworld.ModPaths.getTxtsDir();
 
@@ -68,15 +68,8 @@ public class ExportTxtScreen extends Screen {
         nameField.setMaxLength(64);
         this.addDrawableChild(nameField);
 
-        // 容器内容物复选按钮
-        int checkY = nameY + 24;
-        this.addDrawableChild(ButtonWidget.builder(getContainerToggleText(), button -> {
-            includeContainerItems = !includeContainerItems;
-            button.setMessage(getContainerToggleText());
-        }).dimensions(fieldLeft, checkY, fieldW, 20).build());
-
         // 导出按钮
-        int btnY = checkY + 26;
+        int btnY = nameY + 24;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§a导出 .txt", "§aExport .txt")), button -> doExportTxt())
                 .dimensions(fieldLeft, btnY, fieldW, 20).build());
 
@@ -86,10 +79,7 @@ public class ExportTxtScreen extends Screen {
                 .dimensions(cx - 40, cancelY, 80, 20).build());
     }
 
-    private Text getContainerToggleText() {
-        String prefix = includeContainerItems ? "§a✔ " : "§7✘ ";
-        return Text.literal(prefix + com.example.helloworld.I18n.get("包含容器内容物", "Include container items"));
-    }
+
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
