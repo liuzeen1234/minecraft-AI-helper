@@ -79,6 +79,9 @@ public class AiApiSettingsScreen extends Screen {
         );
     }
     
+    private String validationStatusMessage = null;
+    private int validationStatusColor = 0xFFFFFF;
+
     private void saveSettings() {
         String apiUrl = apiUrlField.getText().trim();
         String apiKey = apiKeyField.getText().trim();
@@ -97,6 +100,26 @@ public class AiApiSettingsScreen extends Screen {
         config.setTavilyApiKey(tavilyApiKey);
         
         HelloWorldMod.LOGGER.info("AI API 设置已保存: model={}, url={}", model, apiUrl);
+
+        // 保存后验证 API Key
+        validationStatusMessage = I18n.get("§7正在验证 API 连接...", "§7Validating API connection...");
+        validationStatusColor = 0xAAAAAA;
+        
+        ApiKeyValidator.validateAsync(
+                apiUrl.isEmpty() ? config.getApiBaseUrl() : apiUrl,
+                apiKey.isEmpty() ? config.getApiKey() : apiKey,
+                model.isEmpty() ? config.getModel() : model
+        ).thenAccept(result -> {
+            // 在渲染线程中更新状态
+            validationStatusMessage = ApiKeyValidator.getResultMessage(result);
+            if (result == ApiKeyValidator.ValidationResult.VALID) {
+                validationStatusColor = 0x55FF55;
+            } else if (result == ApiKeyValidator.ValidationResult.NETWORK_ERROR || result == ApiKeyValidator.ValidationResult.UNKNOWN_ERROR) {
+                validationStatusColor = 0xFFFF55;
+            } else {
+                validationStatusColor = 0xFF5555;
+            }
+        });
     }
 
     @Override
@@ -116,6 +139,14 @@ public class AiApiSettingsScreen extends Screen {
         context.drawTextWithShadow(this.textRenderer, "API Key:", labelX, startY + 25, 0xAAAAAA);
         context.drawTextWithShadow(this.textRenderer, "Model:", labelX, startY + 60, 0xAAAAAA);
         context.drawTextWithShadow(this.textRenderer, "Tavily API Key:", labelX, startY + 95, 0xAAAAAA);
+        
+        // 绘制验证状态消息
+        if (validationStatusMessage != null) {
+            // 去掉颜色代码后绘制（使用纯文本）
+            String cleanMessage = validationStatusMessage.replaceAll("§[0-9a-fk-or]", "");
+            int buttonY = startY + 145;
+            context.drawCenteredTextWithShadow(this.textRenderer, cleanMessage, centerX, buttonY + 25, validationStatusColor);
+        }
         
         super.render(context, mouseX, mouseY, delta);
     }

@@ -101,6 +101,21 @@ public class HelloWorldMod implements ModInitializer {
             ServerPlayerEntity player = handler.getPlayer();
             player.sendMessage(Text.literal(I18n.get("AI Builder 已加载! 输入 /ai <问题> 来和 AI 对话", "AI Builder loaded! Type /ai <question> to chat with AI")), false);
 
+            // 检查 API Key 有效性
+            ApiKeyValidator.ValidationResult quickResult = ApiKeyValidator.quickCheck(CONFIG.getApiKey());
+            if (quickResult != ApiKeyValidator.ValidationResult.VALID) {
+                // 格式不对，直接提示
+                server.execute(() -> player.sendMessage(Text.literal(ApiKeyValidator.getResultMessage(quickResult)), false));
+            } else {
+                // 格式正确，后台静默验证
+                ApiKeyValidator.validateAsync(CONFIG.getApiBaseUrl(), CONFIG.getApiKey(), CONFIG.getModel())
+                        .thenAccept(result -> {
+                            if (result != ApiKeyValidator.ValidationResult.VALID) {
+                                server.execute(() -> player.sendMessage(Text.literal(ApiKeyValidator.getResultMessage(result)), false));
+                            }
+                        });
+            }
+
             // 检查该存档是否是第一次加载本 mod，如果是则提示用户查看手册
             server.execute(() -> {
                 try {
