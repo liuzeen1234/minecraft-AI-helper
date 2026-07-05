@@ -21,7 +21,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.2.0 |
+| **Version** | 1.3.1 |
 | **Minecraft Version** | 1.20.4 |
 | **Mod Loader** | Fabric |
 | **Fabric Loader Version** | >= 0.15.0 |
@@ -47,8 +47,12 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
   - Place, fill, or clear blocks
   - Give items, spawn entities
   - Set time/weather, teleport players
+  - Execute arbitrary Minecraft commands
 - **Multi-turn conversation memory** — AI remembers context across messages
 - **Screenshot support** — AI can analyze your game screen and respond accordingly
+- **`/aistop`** — Terminate AI response via command (no need to open chat UI)
+- **`/aiconfig reload`** — Hot-reload configuration without restarting the game
+- **API Key validation** — Automatically verifies API key on world entry and settings save
 
 ### Structure Management
 - **NBT Structure Browser** — A graphical interface for browsing, searching, and placing `.nbt` structure files with folder navigation and file management
@@ -61,8 +65,8 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 ### Selection Tools
 - Two-point graphical selection interface with real-time highlight rendering
 - **Selection Analysis** — Count block types and quantities within a selected region
-- **Export to NBT** — Save selection as `.nbt` file (preserves block entity data such as chest contents and sign text)
-- **Export to Blueprint** — Export selection as V2 format blueprint text
+- **Export to NBT** — Save selection as `.nbt` file (preserves block entity data such as chest contents and sign text; includes decorative entities like armor stands, item frames, and paintings)
+- **Export to Blueprint** — Export selection as V2 format blueprint text (includes container inventories and sign text by default)
 
 ### Web Search
 - **Web Search** — AI searches for the latest information via Tavily API
@@ -84,10 +88,15 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 | `/ai blueprints` | List all blueprints |
 | `/ai reload_blueprints` | Reload blueprint files |
 | `/ainew` | Clear conversation history |
+| `/aistop` | Terminate AI response |
 | `/aiconfig show` | View current configuration |
+| `/aiconfig reload` | Hot-reload configuration |
+| `/aiconfig web_search <on/off>` | Toggle web search |
 | `/aiconfig <key> <value>` | Modify a configuration value |
 | `/aipos` | Show current coordinates |
 | `/ailog [on/off]` | Toggle log display |
+| `/ailog level <level>` | Set log display level |
+| `/aitest` | Generate test log entry |
 | `/ainbt` | Open NBT browser |
 
 ## Configuration
@@ -103,6 +112,7 @@ A configuration file is generated at `config/ai-builder.properties` on first lau
 | `context_enabled` | Multi-turn conversation | true |
 | `web_search_enabled` | Web search | true |
 | `tavily_api_key` | Tavily search API key | (empty) |
+| `language` | Interface language (zh_cn / en_us) | en_us |
 
 > You must configure your own AI API key before use. Any OpenAI-compatible API is supported.
 
@@ -110,6 +120,7 @@ A configuration file is generated at `config/ai-builder.properties` on first lau
 
 - `nbts/` — Store `.nbt` structure files (supports subfolders)
 - `txts/` — Store `.txt` blueprint files
+- `txts/ai-generated/` — AI-generated blueprint files (auto-saved here)
 - `config/ai-builder.properties` — Mod configuration file
 
 ## Keybinds
@@ -131,7 +142,7 @@ A configuration file is generated at `config/ai-builder.properties` on first lau
 ## Pre-Upload Checklist
 
 - [ ] Run `./gradlew build` to generate the JAR
-- [ ] Find `ai-builder-1.2.0.jar` in `build/libs/` (do NOT upload the `-sources.jar`)
+- [ ] Find `ai-builder-1.3.1.jar` in `build/libs/` (do NOT upload the `-sources.jar`)
 - [ ] Prepare a 512x512 mod icon (PNG)
 - [ ] Prepare 2-4 in-game screenshots showing:
   - AI chat interface
