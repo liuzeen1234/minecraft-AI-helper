@@ -13,15 +13,17 @@ public class SelectionExportPopupScreen extends Screen {
 
     private final Screen parent;
     private final SelectionAnalyzer.AnalysisResult result;
+    private final boolean includeEntities;
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
     private static final int POPUP_HEIGHT = 110;
 
-    public SelectionExportPopupScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
+    public SelectionExportPopupScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
         super(Text.literal(com.example.helloworld.I18n.get("导出选区", "Export Selection")));
         this.parent = parent;
         this.result = result;
+        this.includeEntities = includeEntities;
     }
 
     @Override
@@ -43,7 +45,7 @@ public class SelectionExportPopupScreen extends Screen {
         // "导出.nbt" 按钮 → 跳转到 P3 (ExportNbtScreen)
         int nbtBtnY = txtBtnY + 26;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§b导出 .nbt", "§bExport .nbt")), button -> {
-            this.client.setScreen(new ExportNbtScreen(this, result));
+            this.client.setScreen(new ExportNbtScreen(this, result, includeEntities));
         }).dimensions(btnLeft, nbtBtnY, btnW, 20).build());
 
         // 返回按钮

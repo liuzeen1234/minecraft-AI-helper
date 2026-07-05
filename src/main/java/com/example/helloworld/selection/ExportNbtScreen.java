@@ -24,6 +24,7 @@ public class ExportNbtScreen extends Screen {
 
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
+    private final boolean includeEntities; // 从选区分析页面传入
 
     private static final Path NBTS_DIR = com.example.helloworld.ModPaths.getNbtsDir();
 
@@ -31,10 +32,11 @@ public class ExportNbtScreen extends Screen {
     private static final int POPUP_WIDTH = 260;
     private static final int POPUP_HEIGHT = 130;
 
-    public ExportNbtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
+    public ExportNbtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
         super(Text.literal(com.example.helloworld.I18n.get("导出 .nbt", "Export .nbt")));
         this.parent = parent;
         this.result = result;
+        this.includeEntities = includeEntities;
     }
 
     @Override
@@ -108,6 +110,7 @@ public class ExportNbtScreen extends Screen {
         buf.writeInt(result.max().getZ());
         buf.writeString(name);
         buf.writeString(pathText);
+        buf.writeBoolean(includeEntities);
         ClientPlayNetworking.send(HelloWorldMod.EXPORT_NBT_PACKET, buf);
 
         String displayPath = pathText.isEmpty()

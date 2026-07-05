@@ -216,12 +216,13 @@ public class HelloWorldMod implements ModInitializer {
             int x2 = buf.readInt(), y2 = buf.readInt(), z2 = buf.readInt();
             String fileName = buf.readString();
             String subPath = buf.isReadable() ? buf.readString() : "";
+            boolean includeEntities = buf.isReadable() ? buf.readBoolean() : true;
             server.execute(() -> {
                 try {
                     net.minecraft.server.world.ServerWorld world = player.getServerWorld();
                     net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
                     net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
-                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName, subPath);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName, subPath, includeEntities);
                     String displayPath = subPath.isEmpty() ? fileName + ".nbt" : subPath + "/" + fileName + ".nbt";
                     // 通知客户端导出完成
                     PacketByteBuf resultBuf = PacketByteBufs.create();

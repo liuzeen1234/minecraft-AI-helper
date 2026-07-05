@@ -21,6 +21,9 @@ public class SelectionExportScreen extends Screen {
     private int scrollOffset = 0;
     private List<Map.Entry<String, Integer>> blockList;
 
+    // 导出时是否包含实体（默认开）
+    private boolean includeEntities = true;
+
     public SelectionExportScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
         super(Text.literal(com.example.helloworld.I18n.get("选区分析", "Selection Analysis")));
         this.parent = parent;
@@ -36,10 +39,17 @@ public class SelectionExportScreen extends Screen {
         blockList = new ArrayList<>(result.blockCounts().entrySet());
 
         // 导出选区按钮（点击后弹出导出菜单）
-        int exportBtnY = this.height - 58;
+        int exportBtnY = this.height - 80;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§e导出选区", "§eExport")), button -> {
-            this.client.setScreen(new SelectionExportPopupScreen(this, result));
+            this.client.setScreen(new SelectionExportPopupScreen(this, result, includeEntities));
         }).dimensions(leftX, exportBtnY, totalW, 20).build());
+
+        // 包含实体开关
+        int entityToggleY = exportBtnY + 24;
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(getEntityToggleText()), button -> {
+            includeEntities = !includeEntities;
+            button.setMessage(Text.literal(getEntityToggleText()));
+        }).dimensions(leftX, entityToggleY, totalW, 20).build());
 
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> {
@@ -73,7 +83,7 @@ public class SelectionExportScreen extends Screen {
 
         // 方块列表
         int listY = infoY + 42;
-        int listMaxY = this.height - 66; // 导出按钮上方留出空间
+        int listMaxY = this.height - 88; // 导出按钮上方留出空间
         context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.get("--- 方块统计 ---", "--- Block Stats ---"), leftX, listY, 0xFFFF55);
         listY += 12;
 
@@ -101,6 +111,24 @@ public class SelectionExportScreen extends Screen {
             scrollOffset = Math.min(maxScroll, scrollOffset + 1);
         }
         return true;
+    }
+
+    /**
+     * 获取实体开关按钮的显示文本。
+     */
+    private String getEntityToggleText() {
+        if (includeEntities) {
+            return com.example.helloworld.I18n.get("包含实体: §a开", "Include entities: §aON");
+        } else {
+            return com.example.helloworld.I18n.get("包含实体: §c关", "Include entities: §cOFF");
+        }
+    }
+
+    /**
+     * 获取当前实体导出设置。
+     */
+    public boolean isIncludeEntities() {
+        return includeEntities;
     }
 
     @Override

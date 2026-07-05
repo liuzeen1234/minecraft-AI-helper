@@ -1,28 +1,20 @@
 package com.example.helloworld.selection;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.block.entity.SignText;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.AbstractDecorationEntity;
-import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.decoration.ItemFrameEntity;
-import net.minecraft.entity.decoration.painting.PaintingEntity;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.ProjectileEntity;
-import net.minecraft.entity.vehicle.AbstractMinecartEntity;
-import net.minecraft.entity.vehicle.BoatEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.*;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.state.property.Property;
+import net.minecraft.structure.StructureTemplate;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +24,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
  * 服务端选区导出器：在服务端扫描选区方块并导出为 NBT 文件。
+ * 使用原版 StructureTemplate 进行 NBT 导出，与结构方块保存格式完全一致。
  * 因为在服务端执行，可以完整读取 BlockEntity 数据（箱子内容、告示牌文字、熔炉物品等）。
  */
 public class ServerSelectionExporter {
@@ -44,18 +36,27 @@ public class ServerSelectionExporter {
     private static final Logger LOGGER = LoggerFactory.getLogger("ServerSelectionExporter");
 
     /**
-     * 在服务端扫描选区并导出为 NBT 文件（含完整 BlockEntity 数据）。
+     * 使用原版 StructureTemplate 在服务端导出选区为 NBT 文件（含完整 BlockEntity + 实体数据）。
      */
-    @SuppressWarnings("unchecked")
     public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name) throws IOException {
-        exportNbt(world, pos1, pos2, name, "");
+        exportNbt(world, pos1, pos2, name, "", true);
     }
 
     /**
-     * 在服务端扫描选区并导出为 NBT 文件（含完整 BlockEntity 数据），可指定子目录。
+     * 使用原版 StructureTemplate 在服务端导出选区为 NBT 文件，可指定子目录。
+     * 调用 Minecraft 原版结构方块的同一套保存逻辑，无大小限制，
+     * 完整保留方块状态、BlockEntity 数据和实体信息。
      */
-    @SuppressWarnings("unchecked")
     public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath) throws IOException {
+        exportNbt(world, pos1, pos2, name, subPath, true);
+    }
+
+    /**
+     * 使用原版 StructureTemplate 在服务端导出选区为 NBT 文件，可指定子目录和是否包含实体。
+     *
+     * @param includeEntities 是否保存实体（盔甲架、物品展示框、矿车等）
+     */
+    public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath, boolean includeEntities) throws IOException {
         BlockPos min = new BlockPos(
                 Math.min(pos1.getX(), pos2.getX()),
                 Math.min(pos1.getY(), pos2.getY()),
@@ -69,130 +70,15 @@ public class ServerSelectionExporter {
         int sizeY = max.getY() - min.getY() + 1;
         int sizeZ = max.getZ() - min.getZ() + 1;
 
-        NbtCompound root = new NbtCompound();
-        root.putInt("DataVersion", 3465);
+        // 使用原版 StructureTemplate 保存选区
+        StructureTemplate template = new StructureTemplate();
+        Vec3i size = new Vec3i(sizeX, sizeY, sizeZ);
+        // saveFromWorld: 从世界中保存方块和实体到模板
+        // 参数: world, origin, size, includeEntities, ignoredBlock(结构空位方块)
+        template.saveFromWorld(world, min, size, includeEntities, Blocks.STRUCTURE_VOID);
 
-        // size
-        NbtList sizeList = new NbtList();
-        sizeList.add(NbtInt.of(sizeX));
-        sizeList.add(NbtInt.of(sizeY));
-        sizeList.add(NbtInt.of(sizeZ));
-        root.put("size", sizeList);
-
-        // 构建调色板和方块列表
-        Map<String, Integer> paletteIndexMap = new LinkedHashMap<>();
-        NbtList paletteList = new NbtList();
-        NbtList blocksList = new NbtList();
-
-        // 空气占索引 0
-        NbtCompound airEntry = new NbtCompound();
-        airEntry.putString("Name", "minecraft:air");
-        paletteList.add(airEntry);
-        paletteIndexMap.put("minecraft:air", 0);
-
-        int blockEntityCount = 0;
-
-        for (int y = min.getY(); y <= max.getY(); y++) {
-            for (int z = min.getZ(); z <= max.getZ(); z++) {
-                for (int x = min.getX(); x <= max.getX(); x++) {
-                    BlockPos pos = new BlockPos(x, y, z);
-                    BlockState state = world.getBlockState(pos);
-
-                    if (state.isAir()) continue;
-
-                    String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
-                    Map<String, String> props = new LinkedHashMap<>();
-                    for (Property<?> prop : state.getProperties()) {
-                        props.put(prop.getName(), getPropertyValueString(state, prop));
-                    }
-
-                    // 构建调色板键
-                    String paletteKey = buildPaletteKey(blockId, props);
-                    if (!paletteIndexMap.containsKey(paletteKey)) {
-                        int idx = paletteList.size();
-                        paletteIndexMap.put(paletteKey, idx);
-
-                        NbtCompound pe = new NbtCompound();
-                        pe.putString("Name", blockId);
-                        if (!props.isEmpty()) {
-                            NbtCompound propsNbt = new NbtCompound();
-                            for (Map.Entry<String, String> e : props.entrySet()) {
-                                propsNbt.putString(e.getKey(), e.getValue());
-                            }
-                            pe.put("Properties", propsNbt);
-                        }
-                        paletteList.add(pe);
-                    }
-
-                    int stateIdx = paletteIndexMap.get(paletteKey);
-
-                    NbtCompound blockNbt = new NbtCompound();
-                    NbtList posNbt = new NbtList();
-                    posNbt.add(NbtInt.of(x - min.getX()));
-                    posNbt.add(NbtInt.of(y - min.getY()));
-                    posNbt.add(NbtInt.of(z - min.getZ()));
-                    blockNbt.put("pos", posNbt);
-                    blockNbt.putInt("state", stateIdx);
-
-                    // 读取 BlockEntity 数据（箱子内容、告示牌文字、熔炉物品等）
-                    BlockEntity blockEntity = world.getBlockEntity(pos);
-                    if (blockEntity != null) {
-                        NbtCompound beNbt = blockEntity.createNbt();
-                        // 移除坐标信息（放置时会重新设置）
-                        beNbt.remove("x");
-                        beNbt.remove("y");
-                        beNbt.remove("z");
-                        // 保留 id 以便识别类型
-                        blockNbt.put("nbt", beNbt);
-                        blockEntityCount++;
-                    }
-
-                    blocksList.add(blockNbt);
-                }
-            }
-        }
-
-        root.put("palette", paletteList);
-        root.put("blocks", blocksList);
-
-        // 扫描选区内的装饰类实体（画、物品展示框、盔甲架、矿车、船等），排除生物和玩家
-        NbtList entitiesList = new NbtList();
-        Box selectionBox = new Box(min.getX(), min.getY(), min.getZ(),
-                max.getX() + 1.0, max.getY() + 1.0, max.getZ() + 1.0);
-
-        List<Entity> entities = world.getEntitiesByClass(Entity.class, selectionBox,
-                ServerSelectionExporter::isExportableEntity);
-
-        for (Entity entity : entities) {
-            NbtCompound entityEntry = new NbtCompound();
-
-            // pos: 相对精确坐标 (double)
-            NbtList posTag = new NbtList();
-            posTag.add(NbtDouble.of(entity.getX() - min.getX()));
-            posTag.add(NbtDouble.of(entity.getY() - min.getY()));
-            posTag.add(NbtDouble.of(entity.getZ() - min.getZ()));
-            entityEntry.put("pos", posTag);
-
-            // blockPos: 相对方块坐标 (int)
-            NbtList blockPosTag = new NbtList();
-            blockPosTag.add(NbtInt.of(entity.getBlockPos().getX() - min.getX()));
-            blockPosTag.add(NbtInt.of(entity.getBlockPos().getY() - min.getY()));
-            blockPosTag.add(NbtInt.of(entity.getBlockPos().getZ() - min.getZ()));
-            entityEntry.put("blockPos", blockPosTag);
-
-            // nbt: 实体完整数据
-            NbtCompound nbt = new NbtCompound();
-            entity.writeNbt(nbt);
-            // 保留实体类型 id
-            nbt.putString("id", Registries.ENTITY_TYPE.getId(entity.getType()).toString());
-            // 移除绝对坐标和 UUID（放置时重新计算）
-            nbt.remove("Pos");
-            nbt.remove("UUID");
-            entityEntry.put("nbt", nbt);
-
-            entitiesList.add(entityEntry);
-        }
-        root.put("entities", entitiesList);
+        // 序列化为 NBT（与结构方块保存格式一致）
+        NbtCompound nbt = template.writeNbt(new NbtCompound());
 
         // 写入文件
         Path dir = com.example.helloworld.ModPaths.getNbtsDir();
@@ -212,11 +98,11 @@ public class ServerSelectionExporter {
         File file = dir.resolve(fileName).toFile();
 
         try (FileOutputStream fos = new FileOutputStream(file)) {
-            NbtIo.writeCompressed(root, fos);
+            NbtIo.writeCompressed(nbt, fos);
         }
 
-        LOGGER.info("服务端导出 NBT 完成: {} ({}x{}x{}, {} 个方块, {} 个方块实体, {} 个实体)",
-                fileName, sizeX, sizeY, sizeZ, blocksList.size(), blockEntityCount, entitiesList.size());
+        LOGGER.info("服务端导出 NBT 完成 (StructureTemplate): {} ({}x{}x{})",
+                fileName, sizeX, sizeY, sizeZ);
     }
 
     @SuppressWarnings("unchecked")
@@ -224,34 +110,7 @@ public class ServerSelectionExporter {
         return prop.name(state.get(prop));
     }
 
-    private static String buildPaletteKey(String fullBlockId, Map<String, String> properties) {
-        if (properties.isEmpty()) return fullBlockId;
-        StringBuilder sb = new StringBuilder(fullBlockId);
-        for (Map.Entry<String, String> e : properties.entrySet()) {
-            sb.append("|").append(e.getKey()).append("=").append(e.getValue());
-        }
-        return sb.toString();
-    }
 
-    /**
-     * 判断一个实体是否应被导出（只保留装饰/载具类，排除生物和玩家）。
-     * 保留：画、物品展示框、荧光物品展示框、盔甲架、矿车、船等。
-     * 排除：玩家、所有 MobEntity（僵尸、骷髅、村民、动物等）、抛射物。
-     */
-    private static boolean isExportableEntity(Entity entity) {
-        if (entity instanceof PlayerEntity) return false;
-        if (entity instanceof MobEntity) return false;
-        if (entity instanceof ProjectileEntity) return false;
-
-        // 明确保留的类型
-        if (entity instanceof AbstractDecorationEntity) return true;  // 画、物品展示框
-        if (entity instanceof ArmorStandEntity) return true;           // 盔甲架
-        if (entity instanceof AbstractMinecartEntity) return true;     // 矿车
-        if (entity instanceof BoatEntity) return true;                 // 船
-
-        // 其他非生物实体也保留（如末影水晶、展示实体等）
-        return true;
-    }
 
     // =========================================================================
     // TXT 导出（含容器内容物）
