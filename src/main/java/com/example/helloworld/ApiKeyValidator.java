@@ -113,27 +113,13 @@ public class ApiKeyValidator {
      */
     public static String getResultMessage(ValidationResult result) {
         return switch (result) {
-            case VALID -> I18n.get(
-                    "§a[AI Builder] API 连接验证成功！",
-                    "§a[AI Builder] API connection verified successfully!");
-            case EMPTY -> I18n.get(
-                    "§c[AI Builder] API Key 未填写！请按 K 键打开设置界面配置 API Key。",
-                    "§c[AI Builder] API Key is empty! Press K to open settings and configure your API Key.");
-            case DEFAULT_VALUE -> I18n.get(
-                    "§c[AI Builder] API Key 仍为默认值，请按 K 键打开设置界面填写有效的 API Key。",
-                    "§c[AI Builder] API Key is still the default value. Press K to open settings and enter a valid API Key.");
-            case INVALID_FORMAT -> I18n.get(
-                    "§c[AI Builder] API Key 格式不正确（过短），请检查是否填写完整。",
-                    "§c[AI Builder] API Key format is invalid (too short). Please check if it's complete.");
-            case AUTH_FAILED -> I18n.get(
-                    "§c[AI Builder] API Key 验证失败（认证错误），请检查 Key 是否正确或已过期。",
-                    "§c[AI Builder] API Key validation failed (auth error). Please check if the key is correct or expired.");
-            case NETWORK_ERROR -> I18n.get(
-                    "§e[AI Builder] API 连接测试失败（网络错误），请检查网络连接和 API URL 是否正确。",
-                    "§e[AI Builder] API connection test failed (network error). Please check your network and API URL.");
-            case UNKNOWN_ERROR -> I18n.get(
-                    "§e[AI Builder] API 验证返回异常，请检查 API URL 和 Model 配置是否正确。",
-                    "§e[AI Builder] API validation returned an error. Please check your API URL and Model settings.");
+            case VALID -> I18n.tr("apikey.valid");
+            case EMPTY -> I18n.tr("apikey.empty");
+            case DEFAULT_VALUE -> I18n.tr("apikey.default_value");
+            case INVALID_FORMAT -> I18n.tr("apikey.invalid_format");
+            case AUTH_FAILED -> I18n.tr("apikey.auth_failed");
+            case NETWORK_ERROR -> I18n.tr("apikey.network_error");
+            case UNKNOWN_ERROR -> I18n.tr("apikey.unknown_error");
         };
     }
 }

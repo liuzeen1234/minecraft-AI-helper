@@ -29,6 +29,9 @@ public class HelloWorldClientMod implements ClientModInitializer {
     private String pendingMessage = null;
     private int delayTicks = 0;
 
+    // 启动时是否已根据游戏语言重置过 language 字段（每次运行重置一次）
+    private boolean languageReset = false;
+
     // 按键绑定：打开设置页面
     private static KeyBinding openSettingsKey;
 
@@ -90,8 +93,8 @@ public class HelloWorldClientMod implements ClientModInitializer {
                     // 聊天界面已关闭，将 AI 回复显示到游戏内聊天框
                     if (client.player != null) {
                         // 如果是终止消息，只显示简短提示，不需要完整回复格式
-                        if (response.equals("§7[思考已终止]")) {
-                            client.player.sendMessage(Text.literal(response), false);
+                        if (response.equals(HelloWorldMod.THINKING_CANCELLED_SENTINEL)) {
+                            client.player.sendMessage(Text.literal(HelloWorldMod.thinkingCancelledDisplay()), false);
                             return;
                         }
                         // 截取前200字符避免聊天框溢出，完整内容可在 AI 聊天界面查看
@@ -100,13 +103,13 @@ public class HelloWorldClientMod implements ClientModInitializer {
                                 : response;
                         // 按换行分割，逐行发送到聊天框
                         String[] lines = displayResponse.split("\n");
-                        client.player.sendMessage(Text.literal(I18n.get("§a[AI 回复]", "§a[AI Reply]")), false);
+                        client.player.sendMessage(Text.literal(I18n.tr("client.ai.reply")), false);
                         for (String line : lines) {
                             if (!line.trim().isEmpty()) {
                                 client.player.sendMessage(Text.literal("§f" + line), false);
                             }
                         }
-                        client.player.sendMessage(Text.literal(I18n.get("§7(完整内容请打开 AI 聊天界面查看)", "§7(Open AI Chat screen for full content)")), false);
+                        client.player.sendMessage(Text.literal(I18n.tr("client.ai.reply.hint")), false);
                     }
                 }
             });
@@ -127,6 +130,17 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
         // 每个客户端 tick 检查是否需要截图 & 刷新日志到聊天框
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // 启动后首次可用时，将 language 字段重置为当前游戏语言（每次运行重置一次）
+            if (!languageReset && client.getLanguageManager() != null) {
+                String mcLang = client.getLanguageManager().getLanguage();
+                String normalized = I18n.normalizeLanguage(mcLang);
+                if (!normalized.equals(HelloWorldMod.getConfig().getLanguage())) {
+                    HelloWorldMod.getConfig().setLanguage(normalized);
+                }
+                languageReset = true;
+                HelloWorldMod.LOGGER.info("已根据游戏语言重置显示语言: {} -> {}", mcLang, normalized);
+            }
+
             // 按键打开设置页面
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new ModSettingsScreen(client.currentScreen));

@@ -67,7 +67,7 @@ public class AICommandExecutor {
                 results.add(result);
             } catch (Exception e) {
                 LOGGER.error("执行蓝图放置失败", e);
-                results.add("§c蓝图放置失败: " + e.getMessage());
+                results.add(I18n.tr("cmd.blueprint.failed", e.getMessage()));
             }
         }
 
@@ -83,10 +83,10 @@ public class AICommandExecutor {
                 try {
                     String result = executeBlueprint(blueprintText, player, world);
                     results.add(result);
-                    results.add("§e注意: AI 输出被截断，蓝图可能不完整。可以尝试让 AI 继续生成剩余部分。");
+                    results.add(I18n.tr("cmd.blueprint.truncated_note"));
                 } catch (Exception e) {
                     LOGGER.error("执行截断蓝图放置失败", e);
-                    results.add("§c截断蓝图放置失败: " + e.getMessage());
+                    results.add(I18n.tr("cmd.blueprint.truncated_failed", e.getMessage()));
                 }
             }
         }
@@ -100,7 +100,7 @@ public class AICommandExecutor {
                 results.add(result);
             } catch (Exception e) {
                 LOGGER.error("执行 AI 指令失败: {}", json, e);
-                results.add("§c指令执行失败: " + e.getMessage());
+                results.add(I18n.tr("cmd.action.failed", e.getMessage()));
             }
         }
 
@@ -116,7 +116,7 @@ public class AICommandExecutor {
         if (!results.isEmpty()) {
             StringBuilder sb = new StringBuilder(cleanResponse);
             if (!cleanResponse.isEmpty()) sb.append("\n");
-            sb.append("§e--- 指令执行结果 ---");
+            sb.append(I18n.tr("cmd.result.header"));
             for (String r : results) {
                 sb.append("\n").append(r);
             }
@@ -160,7 +160,7 @@ public class AICommandExecutor {
 
         BlueprintData data = BlueprintParser.parse(text);
         if (data == null) {
-            return "§c蓝图解析失败";
+            return I18n.tr("cmd.blueprint.parse_failed");
         }
 
         int count = BlueprintBuilder.build(data, player, world);
@@ -168,10 +168,10 @@ public class AICommandExecutor {
 
         // 自动保存蓝图为 txt 文件到 txts/ 文件夹
         String savedPath = saveBlueprintToTxt(text, data.getName());
-        String saveMsg = savedPath != null ? " §7(已保存: " + savedPath + ")" : "";
+        String saveMsg = savedPath != null ? I18n.tr("cmd.blueprint.saved", savedPath) : "";
 
-        return "§a蓝图 '" + data.getName() + "' 放置完成! 共 " + count + " 个方块 (原点: "
-                + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")" + saveMsg;
+        String originStr = origin.getX() + ", " + origin.getY() + ", " + origin.getZ();
+        return I18n.tr("cmd.blueprint.placed", data.getName(), count, originStr) + saveMsg;
     }
 
     /**
@@ -218,7 +218,7 @@ public class AICommandExecutor {
     private static String executeAction(String json, ServerPlayerEntity player, ServerWorld world) {
         // 简易 JSON 解析（避免引入额外依赖）
         String type = extractJsonString(json, "type");
-        if (type == null) return "§c未知指令类型";
+        if (type == null) return I18n.tr("cmd.action.unknown_type");
 
         return switch (type) {
             case "place_block" -> executePlaceBlock(json, player, world);
@@ -230,30 +230,30 @@ public class AICommandExecutor {
             case "summon" -> executeSummon(json, player, world);
             case "clear_area" -> executeClearArea(json, player, world);
             case "execute_command" -> executeMinecraftCommand(json, player);
-            default -> "§c未知指令类型: " + type;
+            default -> I18n.tr("cmd.action.unknown_type_arg", type);
         };
     }
 
     // ========== 放置单个方块 ==========
     private static String executePlaceBlock(String json, ServerPlayerEntity player, ServerWorld world) {
         String blockName = extractJsonString(json, "block");
-        if (blockName == null) return "§c缺少 block 参数";
+        if (blockName == null) return I18n.tr("cmd.arg.missing_block");
 
         Block block = getBlock(blockName);
-        if (block == null) return "§c未知方块: " + blockName;
+        if (block == null) return I18n.tr("cmd.block.unknown", blockName);
 
         BlockPos pos = calculateRelativePos(json, player);
         world.setBlockState(pos, block.getDefaultState());
-        return "§a已放置 " + blockName + " 在 " + formatPos(pos);
+        return I18n.tr("cmd.block.placed", blockName, formatPos(pos));
     }
 
     // ========== 批量填充方块 ==========
     private static String executeFillBlocks(String json, ServerPlayerEntity player, ServerWorld world) {
         String blockName = extractJsonString(json, "block");
-        if (blockName == null) return "§c缺少 block 参数";
+        if (blockName == null) return I18n.tr("cmd.arg.missing_block");
 
         Block block = getBlock(blockName);
-        if (block == null) return "§c未知方块: " + blockName;
+        if (block == null) return I18n.tr("cmd.block.unknown", blockName);
 
         // 支持两种模式：相对坐标范围 或 绝对坐标范围
         int x1 = extractJsonInt(json, "x1", Integer.MIN_VALUE);
@@ -290,7 +290,7 @@ public class AICommandExecutor {
 
         // 安全限制：最多 10000 个方块
         int volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-        if (volume > 10000) return "§c填充范围过大 (" + volume + " 方块)，最多 10000";
+        if (volume > 10000) return I18n.tr("cmd.fill.too_large", volume);
 
         BlockState state = block.getDefaultState();
         int count = 0;
@@ -302,7 +302,7 @@ public class AICommandExecutor {
                 }
             }
         }
-        return "§a已填充 " + count + " 个 " + blockName;
+        return I18n.tr("cmd.fill.done", count, blockName);
     }
 
     // ========== 清除区域（替换为空气） ==========
@@ -325,7 +325,7 @@ public class AICommandExecutor {
         int maxZ = Math.max(from.getZ(), to.getZ());
 
         int volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-        if (volume > 10000) return "§c清除范围过大 (" + volume + " 方块)，最多 10000";
+        if (volume > 10000) return I18n.tr("cmd.clear.too_large", volume);
 
         int count = 0;
         for (int x = minX; x <= maxX; x++) {
@@ -336,30 +336,30 @@ public class AICommandExecutor {
                 }
             }
         }
-        return "§a已清除 " + count + " 个方块";
+        return I18n.tr("cmd.clear.done", count);
     }
 
     // ========== 给予物品 ==========
     private static String executeGiveItem(String json, ServerPlayerEntity player) {
         String itemName = extractJsonString(json, "item");
-        if (itemName == null) return "§c缺少 item 参数";
+        if (itemName == null) return I18n.tr("cmd.arg.missing_item");
 
         int count = extractJsonInt(json, "count", 1);
         count = Math.max(1, Math.min(count, 64));
 
         Identifier id = new Identifier("minecraft", itemName);
         Optional<Item> itemOpt = Registries.ITEM.getOrEmpty(id);
-        if (itemOpt.isEmpty()) return "§c未知物品: " + itemName;
+        if (itemOpt.isEmpty()) return I18n.tr("cmd.item.unknown", itemName);
 
         ItemStack stack = new ItemStack(itemOpt.get(), count);
         player.getInventory().insertStack(stack);
-        return "§a已给予 " + count + " 个 " + itemName;
+        return I18n.tr("cmd.item.given", count, itemName);
     }
 
     // ========== 设置时间 ==========
     private static String executeSetTime(String json, ServerWorld world) {
         String timeStr = extractJsonString(json, "value");
-        if (timeStr == null) return "§c缺少 value 参数";
+        if (timeStr == null) return I18n.tr("cmd.arg.missing_value");
 
         long time = switch (timeStr.toLowerCase()) {
             case "day" -> 1000;
@@ -377,31 +377,31 @@ public class AICommandExecutor {
             }
         };
 
-        if (time < 0) return "§c无效的时间值: " + timeStr;
+        if (time < 0) return I18n.tr("cmd.time.invalid", timeStr);
         world.setTimeOfDay(time);
-        return "§a已设置时间为 " + timeStr + " (" + time + ")";
+        return I18n.tr("cmd.time.set", timeStr, time);
     }
 
     // ========== 设置天气 ==========
     private static String executeSetWeather(String json, ServerWorld world) {
         String weather = extractJsonString(json, "value");
-        if (weather == null) return "§c缺少 value 参数";
+        if (weather == null) return I18n.tr("cmd.arg.missing_value");
 
         int duration = 6000; // 默认 5 分钟
         switch (weather.toLowerCase()) {
             case "clear" -> {
                 world.setWeather(duration, 0, false, false);
-                return "§a已设置天气为晴天";
+                return I18n.tr("cmd.weather.clear");
             }
             case "rain" -> {
                 world.setWeather(0, duration, true, false);
-                return "§a已设置天气为下雨";
+                return I18n.tr("cmd.weather.rain");
             }
             case "thunder" -> {
                 world.setWeather(0, duration, true, true);
-                return "§a已设置天气为雷暴";
+                return I18n.tr("cmd.weather.thunder");
             }
-            default -> { return "§c未知天气: " + weather + " (可选: clear/rain/thunder)"; }
+            default -> { return I18n.tr("cmd.weather.unknown", weather); }
         }
     }
 
@@ -414,7 +414,7 @@ public class AICommandExecutor {
 
         if (absX != Integer.MIN_VALUE && absY != Integer.MIN_VALUE && absZ != Integer.MIN_VALUE) {
             player.teleport(absX + 0.5, absY, absZ + 0.5);
-            return "§a已传送到 " + absX + ", " + absY + ", " + absZ;
+            return I18n.tr("cmd.teleport.abs", absX, absY, absZ);
         }
 
         // 相对坐标
@@ -423,20 +423,20 @@ public class AICommandExecutor {
         int up = extractJsonInt(json, "up", 0);
         BlockPos pos = calculatePos(player, forward, right, up);
         player.teleport(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
-        return "§a已传送到 " + formatPos(pos);
+        return I18n.tr("cmd.teleport.rel", formatPos(pos));
     }
 
     // ========== 生成实体 ==========
     private static String executeSummon(String json, ServerPlayerEntity player, ServerWorld world) {
         String entityName = extractJsonString(json, "entity");
-        if (entityName == null) return "§c缺少 entity 参数";
+        if (entityName == null) return I18n.tr("cmd.arg.missing_entity");
 
         int count = extractJsonInt(json, "count", 1);
         count = Math.max(1, Math.min(count, 20));
 
         Identifier id = new Identifier("minecraft", entityName);
         Optional<EntityType<?>> entityTypeOpt = Registries.ENTITY_TYPE.getOrEmpty(id);
-        if (entityTypeOpt.isEmpty()) return "§c未知实体: " + entityName;
+        if (entityTypeOpt.isEmpty()) return I18n.tr("cmd.entity.unknown", entityName);
 
         BlockPos pos = calculateRelativePos(json, player);
         EntityType<?> entityType = entityTypeOpt.get();
@@ -444,7 +444,7 @@ public class AICommandExecutor {
         for (int i = 0; i < count; i++) {
             entityType.spawn(world, pos, net.minecraft.entity.SpawnReason.COMMAND);
         }
-        return "§a已在 " + formatPos(pos) + " 生成 " + count + " 个 " + entityName;
+        return I18n.tr("cmd.summon.done", formatPos(pos), count, entityName);
     }
 
     // ========== 执行 Minecraft 原版命令 ==========
@@ -455,7 +455,7 @@ public class AICommandExecutor {
 
     private static String executeMinecraftCommand(String json, ServerPlayerEntity player) {
         String command = extractJsonString(json, "command");
-        if (command == null || command.isBlank()) return "§c缺少 command 参数";
+        if (command == null || command.isBlank()) return I18n.tr("cmd.arg.missing_command");
 
         // 去掉开头的 /
         if (command.startsWith("/")) command = command.substring(1);
@@ -463,17 +463,17 @@ public class AICommandExecutor {
         // 安全检查：黑名单命令
         String rootCommand = command.split("\\s+")[0].toLowerCase();
         if (COMMAND_BLACKLIST.contains(rootCommand)) {
-            return "§c安全限制: 不允许执行 /" + rootCommand + " 命令";
+            return I18n.tr("cmd.command.blacklisted", rootCommand);
         }
 
         try {
             // 以 OP 权限等级 (level 2) 执行命令
             var source = player.getCommandSource().withLevel(2);
             player.getServer().getCommandManager().executeWithPrefix(source, command);
-            return "§a已执行命令: /" + command;
+            return I18n.tr("cmd.command.executed", command);
         } catch (Exception e) {
             LOGGER.error("执行命令失败: /{}", command, e);
-            return "§c命令执行失败: /" + command + " - " + e.getMessage();
+            return I18n.tr("cmd.command.failed", command, e.getMessage());
         }
     }
 

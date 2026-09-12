@@ -24,7 +24,7 @@ public class AiApiSettingsScreen extends Screen {
     private static final int BUTTON_HEIGHT = 20;
 
     public AiApiSettingsScreen(Screen parent) {
-        super(Text.literal(I18n.get("AI API 设置", "AI API Settings")));
+        super(Text.literal(I18n.tr("settings.api.title")));
         this.parent = parent;
         this.config = HelloWorldMod.getConfig();
     }
@@ -64,7 +64,7 @@ public class AiApiSettingsScreen extends Screen {
         // 保存按钮
         int buttonY = startY + 145;
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("保存", "Save")),
+                Text.literal(I18n.tr("settings.api.save")),
                 button -> saveSettings())
                 .dimensions(centerX - BUTTON_WIDTH - 5, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build()
@@ -72,7 +72,7 @@ public class AiApiSettingsScreen extends Screen {
         
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("返回", "Back")),
+                Text.literal(I18n.tr("button.back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(centerX + 5, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT)
                 .build()
@@ -102,7 +102,7 @@ public class AiApiSettingsScreen extends Screen {
         HelloWorldMod.LOGGER.info("AI API 设置已保存: model={}, url={}", model, apiUrl);
 
         // 保存后验证 API Key
-        validationStatusMessage = I18n.get("§7正在验证 API 连接...", "§7Validating API connection...");
+        validationStatusMessage = I18n.tr("settings.api.validating");
         validationStatusColor = 0xAAAAAA;
         
         ApiKeyValidator.validateAsync(

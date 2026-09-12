@@ -32,6 +32,17 @@ public class AiChatScreen extends Screen {
 
     private final Screen parent;
 
+    /**
+     * "正在思考" 状态消息的稳定哨兵值（用于消息历史内部标识与逻辑判断，语言无关）。
+     * 展示时通过 {@link #thinkingDisplay()} 按当前语言渲染。
+     */
+    private static final String THINKING_SENTINEL = "\u0000__AI_THINKING__";
+
+    /** 返回"正在思考"的本地化显示文本（跟随 Minecraft 语言）。 */
+    private static String thinkingDisplay() {
+        return I18n.tr("chat.thinking");
+    }
+
     /** 聊天消息 */
     private static class ChatMessage {
         final String role;   // "user" 或 "assistant" 或 "system"
@@ -93,7 +104,7 @@ public class AiChatScreen extends Screen {
     private static final int PADDING = 8;
 
     public AiChatScreen(Screen parent) {
-        super(Text.literal(I18n.get("AI 聊天", "AI Chat")));
+        super(Text.literal(I18n.tr("chat.title")));
         this.parent = parent;
     }
 
@@ -117,8 +128,8 @@ public class AiChatScreen extends Screen {
         int inputY = this.height - margin - inputAreaHeight + 5;
         int buttonsWidth = 76; // 引用(28) + 发送(20) + 清空(20) + 间距(8)
         int inputWidth = this.width - margin * 2 - buttonsWidth;
-        inputField = new TextFieldWidget(this.textRenderer, margin, inputY, inputWidth, 20, Text.literal(I18n.get("输入消息...", "Message...")));
-        inputField.setPlaceholder(Text.literal(I18n.get("§7输入消息，按 Enter 发送...", "§7Type a message, press Enter to send...")));
+        inputField = new TextFieldWidget(this.textRenderer, margin, inputY, inputWidth, 20, Text.literal(I18n.tr("chat.input.message")));
+        inputField.setPlaceholder(Text.literal(I18n.tr("chat.input.placeholder")));
         inputField.setMaxLength(1024);
         inputField.setEditable(true);
         this.addDrawableChild(inputField);
@@ -126,7 +137,7 @@ public class AiChatScreen extends Screen {
         int btnX = margin + inputWidth + 4;
 
         // 引用按钮
-        referenceButton = ButtonWidget.builder(Text.literal(I18n.get("引用", "Ref")), button -> openFileSelection())
+        referenceButton = ButtonWidget.builder(Text.literal(I18n.tr("chat.button.reference")), button -> openFileSelection())
                 .dimensions(btnX, inputY, 28, 20)
                 .build();
         this.addDrawableChild(referenceButton);
@@ -168,7 +179,7 @@ public class AiChatScreen extends Screen {
         // 构建显示消息（给用户看的）
         String displayText = text;
         if (!referencedFiles.isEmpty()) {
-            displayText = text + "\n§7[引用了 " + referencedFiles.size() + " 个文件]";
+            displayText = text + I18n.tr("chat.referenced.count", referencedFiles.size());
         }
 
         // 添加用户消息到历史（显示用）
@@ -179,7 +190,7 @@ public class AiChatScreen extends Screen {
         isWaiting = true;
         thinkingStartTime = System.currentTimeMillis();
         sendButton.active = false;
-        messageHistory.add(new ChatMessage("system", "正在思考..."));
+        messageHistory.add(new ChatMessage("system", THINKING_SENTINEL));
 
         rebuildWrappedLines();
         scrollToBottom();
@@ -315,7 +326,7 @@ public class AiChatScreen extends Screen {
         // 移除 "正在思考..." 消息
         if (!messageHistory.isEmpty()) {
             ChatMessage last = messageHistory.get(messageHistory.size() - 1);
-            if (last.role.equals("system") && last.content.equals("正在思考...")) {
+            if (last.role.equals("system") && last.content.equals(THINKING_SENTINEL)) {
                 messageHistory.remove(messageHistory.size() - 1);
             }
         }
@@ -330,14 +341,14 @@ public class AiChatScreen extends Screen {
         streamingMessage = null;
 
         // 如果是服务端发来的终止消息，且本地已经有终止提示了，跳过
-        if (response.equals("§7[思考已终止]")) {
+        if (response.equals(HelloWorldMod.THINKING_CANCELLED_SENTINEL)) {
             if (!messageHistory.isEmpty()) {
                 ChatMessage last = messageHistory.get(messageHistory.size() - 1);
-                if (last.role.equals("system") && last.content.equals("§7[思考已终止]")) {
+                if (last.role.equals("system") && last.content.equals(HelloWorldMod.THINKING_CANCELLED_SENTINEL)) {
                     return; // 已经有了，不重复添加
                 }
             }
-            messageHistory.add(new ChatMessage("system", "§7[思考已终止]"));
+            messageHistory.add(new ChatMessage("system", HelloWorldMod.THINKING_CANCELLED_SENTINEL));
             return;
         }
 
@@ -356,7 +367,7 @@ public class AiChatScreen extends Screen {
         if (streamingMessage == null) {
             if (!messageHistory.isEmpty()) {
                 ChatMessage last = messageHistory.get(messageHistory.size() - 1);
-                if (last.role.equals("system") && last.content.equals("正在思考...")) {
+                if (last.role.equals("system") && last.content.equals(THINKING_SENTINEL)) {
                     messageHistory.remove(messageHistory.size() - 1);
                 }
             }
@@ -403,11 +414,11 @@ public class AiChatScreen extends Screen {
         // 移除 "正在思考..." 消息，替换为终止提示
         if (!messageHistory.isEmpty()) {
             ChatMessage last = messageHistory.get(messageHistory.size() - 1);
-            if (last.role.equals("system") && last.content.equals("正在思考...")) {
+            if (last.role.equals("system") && last.content.equals(THINKING_SENTINEL)) {
                 messageHistory.remove(messageHistory.size() - 1);
             }
         }
-        messageHistory.add(new ChatMessage("system", "§7[思考已终止]"));
+        messageHistory.add(new ChatMessage("system", HelloWorldMod.THINKING_CANCELLED_SENTINEL));
 
         rebuildWrappedLines();
         scrollToBottom();
@@ -437,16 +448,24 @@ public class AiChatScreen extends Screen {
             String prefix;
             int color;
             switch (msg.role) {
-                case "user" -> { prefix = "§b[你] "; color = 0xFF55FFFF; }
+                case "user" -> { prefix = I18n.tr("chat.prefix.user"); color = 0xFF55FFFF; }
                 case "assistant" -> { prefix = "§a[AI] "; color = 0xFF55FF55; }
                 default -> { prefix = "§7"; color = 0xFFAAAAAA; }
             }
 
-            // 对"正在思考..."消息追加计时
+            // 将内部哨兵值渲染为本地化文本
             String content = msg.content;
-            if (msg.role.equals("system") && content.equals("正在思考...") && isWaiting && thinkingStartTime > 0) {
-                long elapsedSeconds = (System.currentTimeMillis() - thinkingStartTime) / 1000;
-                content = "正在思考... §8[" + elapsedSeconds + "s]";
+            if (msg.role.equals("system")) {
+                if (content.equals(THINKING_SENTINEL)) {
+                    // "正在思考..." 消息追加计时
+                    content = thinkingDisplay();
+                    if (isWaiting && thinkingStartTime > 0) {
+                        long elapsedSeconds = (System.currentTimeMillis() - thinkingStartTime) / 1000;
+                        content = content + " §8[" + elapsedSeconds + "s]";
+                    }
+                } else if (content.equals(HelloWorldMod.THINKING_CANCELLED_SENTINEL)) {
+                    content = HelloWorldMod.thinkingCancelledDisplay();
+                }
             }
 
             // 按行分割内容
@@ -522,7 +541,7 @@ public class AiChatScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         // 标题
-        context.drawCenteredTextWithShadow(this.textRenderer, "§e✦ " + I18n.get("AI 聊天", "AI Chat") + " ✦", this.width / 2, 12, 0xFFFFFF55);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§e✦ " + I18n.tr("chat.title") + " ✦", this.width / 2, 12, 0xFFFFFF55);
 
         // 聊天区域背景
         context.fill(chatAreaLeft, chatAreaTop, chatAreaRight, chatAreaBottom, 0xCC000000);
@@ -565,13 +584,13 @@ public class AiChatScreen extends Screen {
         if (isWaiting) {
             long dots = (System.currentTimeMillis() / 500) % 4;
             long elapsedSeconds = (System.currentTimeMillis() - thinkingStartTime) / 1000;
-            String thinkingText = I18n.get("AI 正在思考", "AI Thinking");
+            String thinkingText = I18n.tr("chat.ai.thinking");
             String indicator = "§7" + thinkingText + ".".repeat((int) dots) + " §8[" + elapsedSeconds + "s]";
             context.drawTextWithShadow(this.textRenderer, Text.literal(indicator),
                     chatAreaLeft + PADDING, chatAreaBottom + 2, 0xFFAAAAAA);
 
             // 红色可点击 "终止思考" 文本
-            String cancelText = I18n.get("终止思考", "Cancel");
+            String cancelText = I18n.tr("chat.cancel");
             cancelTextWidth = this.textRenderer.getWidth(cancelText);
             cancelTextX = chatAreaLeft + PADDING + this.textRenderer.getWidth(
                     (thinkingText + ".".repeat((int) dots) + " [" + elapsedSeconds + "s]  "));
@@ -588,7 +607,7 @@ public class AiChatScreen extends Screen {
 
         // 引用文件指示器
         if (!referencedFiles.isEmpty()) {
-            String refText = "§6\uD83D\uDCCE " + I18n.get("已引用 " + referencedFiles.size() + " 个文件", referencedFiles.size() + " file(s) referenced");
+            String refText = "§6\uD83D\uDCCE " + I18n.tr("chat.referenced.indicator", referencedFiles.size());
             int refTextWidth = this.textRenderer.getWidth(refText.replaceAll("§[0-9a-fk-or]", ""));
             int refX = isWaiting ? cancelTextX + cancelTextWidth + 10 : chatAreaLeft + PADDING;
             context.drawTextWithShadow(this.textRenderer, Text.literal(refText),
@@ -596,7 +615,7 @@ public class AiChatScreen extends Screen {
         }
 
         // 提示文字
-        String hint = "§8" + I18n.get("ESC 返回 | Enter 发送 | 滚轮翻页", "ESC Back | Enter Send | Scroll");
+        String hint = "§8" + I18n.tr("chat.hint");
         context.drawTextWithShadow(this.textRenderer, Text.literal(hint),
                 this.width - this.textRenderer.getWidth(hint.replaceAll("§[0-9a-fk-or]", "")) - 12,
                 12, 0xFF888888);

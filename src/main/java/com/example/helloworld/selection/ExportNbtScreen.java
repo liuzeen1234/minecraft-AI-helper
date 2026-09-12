@@ -33,7 +33,7 @@ public class ExportNbtScreen extends Screen {
     private static final int POPUP_HEIGHT = 130;
 
     public ExportNbtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
-        super(Text.literal(com.example.helloworld.I18n.get("导出 .nbt", "Export .nbt")));
+        super(Text.literal(com.example.helloworld.I18n.tr("export.nbt.title")));
         this.parent = parent;
         this.result = result;
         this.includeEntities = includeEntities;
@@ -53,27 +53,27 @@ public class ExportNbtScreen extends Screen {
         int pathY = popTop + 28;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("📁"), button -> openFolderChooser())
                 .dimensions(fieldLeft, pathY, 20, 18).build());
-        pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal(com.example.helloworld.I18n.get("路径", "Path")));
+        pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal(com.example.helloworld.I18n.tr("export.nbt.path")));
         pathField.setText("");
-        pathField.setPlaceholder(Text.literal(com.example.helloworld.I18n.get("§7保存路径（留空=nbts根目录）", "§7Save path (empty=nbts root)")));
+        pathField.setPlaceholder(Text.literal(com.example.helloworld.I18n.tr("export.nbt.path.placeholder")));
         pathField.setMaxLength(512);
         this.addDrawableChild(pathField);
 
         // 文件名输入
         int nameY = pathY + 24;
-        nameField = new TextFieldWidget(this.textRenderer, fieldLeft, nameY, fieldW, 18, Text.literal(com.example.helloworld.I18n.get("名称", "Name")));
+        nameField = new TextFieldWidget(this.textRenderer, fieldLeft, nameY, fieldW, 18, Text.literal(com.example.helloworld.I18n.tr("export.nbt.name")));
         nameField.setText("exported_structure");
         nameField.setMaxLength(64);
         this.addDrawableChild(nameField);
 
         // 导出按钮
         int btnY = nameY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§b导出 .nbt", "§bExport .nbt")), button -> doExportNbt())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("export.nbt.button")), button -> doExportNbt())
                 .dimensions(fieldLeft, btnY, fieldW, 20).build());
 
         // 返回按钮
         int cancelY = btnY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> close())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("button.back")), button -> close())
                 .dimensions(cx - 40, cancelY, 80, 20).build());
     }
 
@@ -118,7 +118,7 @@ public class ExportNbtScreen extends Screen {
                 : pathText + "/" + name + ".nbt";
         if (this.client != null && this.client.player != null) {
             this.client.player.sendMessage(
-                    Text.literal(com.example.helloworld.I18n.get("§7[选区] 正在服务端导出 NBT 到 ", "§7[Selection] Exporting NBT to ") + displayPath + " ..."), false);
+                    Text.literal(com.example.helloworld.I18n.tr("export.nbt.exporting_server", displayPath)), false);
         }
         close();
     }
@@ -133,7 +133,7 @@ public class ExportNbtScreen extends Screen {
             defaultDir = Path.of(System.getProperty("user.home"));
         }
         String selected = TinyFileDialogs.tinyfd_selectFolderDialog(
-                "选择保存文件夹", defaultDir.toString());
+                com.example.helloworld.I18n.tr("export.nbt.choose_folder"), defaultDir.toString());
         if (selected != null) {
             pathField.setText(selected);
         }

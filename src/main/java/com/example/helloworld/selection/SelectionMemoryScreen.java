@@ -19,7 +19,7 @@ public class SelectionMemoryScreen extends Screen {
     private static final int ROW_HEIGHT = 22;
 
     public SelectionMemoryScreen(Screen parent) {
-        super(Text.literal(com.example.helloworld.I18n.get("已保存的选区", "Saved Selections")));
+        super(Text.literal(com.example.helloworld.I18n.tr("selection.memory.title")));
         this.parent = parent;
     }
 
@@ -51,7 +51,7 @@ public class SelectionMemoryScreen extends Screen {
                 mgr.clearDraft();
                 if (this.client != null && this.client.player != null) {
                     this.client.player.sendMessage(
-                        Text.literal("§a[选区] 已加载: " + entry.name()), false);
+                        Text.literal(com.example.helloworld.I18n.tr("selection.memory.loaded", entry.name())), false);
                 }
             }).dimensions(listLeft, rowY, listW - 24, 20).build());
 
@@ -66,17 +66,17 @@ public class SelectionMemoryScreen extends Screen {
         // 翻页
         int navY = startY + PAGE_SIZE * ROW_HEIGHT + 4;
         if (entries.size() > PAGE_SIZE) {
-            this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("▲ 上一页", "▲ Prev")), button -> {
+            this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.memory.prev")), button -> {
                 if (scrollOffset > 0) { scrollOffset -= PAGE_SIZE; if (scrollOffset < 0) scrollOffset = 0; rebuildUI(); }
             }).dimensions(cx - 104, navY, 100, 20).build());
 
-            this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("▼ 下一页", "▼ Next")), button -> {
+            this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.memory.next")), button -> {
                 if (scrollOffset + PAGE_SIZE < entries.size()) { scrollOffset += PAGE_SIZE; rebuildUI(); }
             }).dimensions(cx + 4, navY, 100, 20).build());
         }
 
         // 返回
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> this.client.setScreen(this.parent))
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("button.back")), button -> this.client.setScreen(this.parent))
                 .dimensions(cx - 50, this.height - 30, 100, 20).build());
     }
 
@@ -93,11 +93,12 @@ public class SelectionMemoryScreen extends Screen {
 
         List<SelectionMemory.Entry> entries = SelectionMemory.load();
         if (entries.isEmpty()) {
-            context.drawCenteredTextWithShadow(this.textRenderer, com.example.helloworld.I18n.get("§7暂无保存的选区", "§7No saved selections"), cx, this.height / 2, 0x888888);
+            context.drawCenteredTextWithShadow(this.textRenderer, com.example.helloworld.I18n.tr("selection.memory.empty"), cx, this.height / 2, 0x888888);
         } else {
-            String info = com.example.helloworld.I18n.get(
-                "共 " + entries.size() + " 条  (第 " + (scrollOffset + 1) + "-" + Math.min(scrollOffset + PAGE_SIZE, entries.size()) + " 条)",
-                "Total " + entries.size() + "  (" + (scrollOffset + 1) + "-" + Math.min(scrollOffset + PAGE_SIZE, entries.size()) + ")"
+            String info = com.example.helloworld.I18n.tr("selection.memory.info",
+                entries.size(),
+                (scrollOffset + 1),
+                Math.min(scrollOffset + PAGE_SIZE, entries.size())
             );
             context.drawCenteredTextWithShadow(this.textRenderer, info, cx, 40, 0x888888);
         }

@@ -25,7 +25,7 @@ public class SelectionExportScreen extends Screen {
     private boolean includeEntities = true;
 
     public SelectionExportScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
-        super(Text.literal(com.example.helloworld.I18n.get("选区分析", "Selection Analysis")));
+        super(Text.literal(com.example.helloworld.I18n.tr("selection.export.title")));
         this.parent = parent;
         this.result = result;
     }
@@ -40,7 +40,7 @@ public class SelectionExportScreen extends Screen {
 
         // 导出选区按钮（点击后弹出导出菜单）
         int exportBtnY = this.height - 80;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§e导出选区", "§eExport")), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.export_button")), button -> {
             this.client.setScreen(new SelectionExportPopupScreen(this, result, includeEntities));
         }).dimensions(leftX, exportBtnY, totalW, 20).build());
 
@@ -52,7 +52,7 @@ public class SelectionExportScreen extends Screen {
         }).dimensions(leftX, entityToggleY, totalW, 20).build());
 
         // 返回按钮
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("button.back")), button -> {
             this.client.setScreen(this.parent);
         }).dimensions(cx - 50, this.height - 30, 100, 20).build());
     }
@@ -70,21 +70,21 @@ public class SelectionExportScreen extends Screen {
         // 基本信息
         int infoY = 26;
         context.drawTextWithShadow(this.textRenderer,
-                String.format(com.example.helloworld.I18n.get("选区大小: %d × %d × %d", "Size: %d × %d × %d"), result.sizeX(), result.sizeY(), result.sizeZ()),
+                com.example.helloworld.I18n.tr("selection.export.size", result.sizeX(), result.sizeY(), result.sizeZ()),
                 leftX, infoY, 0xAAAAAA);
         context.drawTextWithShadow(this.textRenderer,
-                String.format(com.example.helloworld.I18n.get("方块总数: %d  空气: %d  实体: %d", "Total: %d  Air: %d  Solid: %d"),
+                com.example.helloworld.I18n.tr("selection.export.counts",
                         result.totalBlocks(), result.airBlocks(),
                         result.totalBlocks() - result.airBlocks()),
                 leftX, infoY + 12, 0xAAAAAA);
         context.drawTextWithShadow(this.textRenderer,
-                String.format(com.example.helloworld.I18n.get("方块种类: %d", "Block types: %d"), result.blockCounts().size()),
+                com.example.helloworld.I18n.tr("selection.export.types", result.blockCounts().size()),
                 leftX, infoY + 24, 0xAAAAAA);
 
         // 方块列表
         int listY = infoY + 42;
         int listMaxY = this.height - 88; // 导出按钮上方留出空间
-        context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.get("--- 方块统计 ---", "--- Block Stats ---"), leftX, listY, 0xFFFF55);
+        context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.tr("selection.export.block_stats"), leftX, listY, 0xFFFF55);
         listY += 12;
 
         int maxVisible = Math.max(1, (listMaxY - listY) / 11);
@@ -118,9 +118,9 @@ public class SelectionExportScreen extends Screen {
      */
     private String getEntityToggleText() {
         if (includeEntities) {
-            return com.example.helloworld.I18n.get("包含实体: §a开", "Include entities: §aON");
+            return com.example.helloworld.I18n.tr("selection.export.entities.on");
         } else {
-            return com.example.helloworld.I18n.get("包含实体: §c关", "Include entities: §cOFF");
+            return com.example.helloworld.I18n.tr("selection.export.entities.off");
         }
     }
 

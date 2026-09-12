@@ -20,7 +20,7 @@ public class SelectionExportPopupScreen extends Screen {
     private static final int POPUP_HEIGHT = 110;
 
     public SelectionExportPopupScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
-        super(Text.literal(com.example.helloworld.I18n.get("导出选区", "Export Selection")));
+        super(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.title")));
         this.parent = parent;
         this.result = result;
         this.includeEntities = includeEntities;
@@ -38,19 +38,19 @@ public class SelectionExportPopupScreen extends Screen {
 
         // "导出.txt" 按钮 → 跳转到 P4 (ExportTxtScreen)
         int txtBtnY = popTop + 28;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§a导出 .txt", "§aExport .txt")), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.txt")), button -> {
             this.client.setScreen(new ExportTxtScreen(this, result));
         }).dimensions(btnLeft, txtBtnY, btnW, 20).build());
 
         // "导出.nbt" 按钮 → 跳转到 P3 (ExportNbtScreen)
         int nbtBtnY = txtBtnY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§b导出 .nbt", "§bExport .nbt")), button -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.nbt")), button -> {
             this.client.setScreen(new ExportNbtScreen(this, result, includeEntities));
         }).dimensions(btnLeft, nbtBtnY, btnW, 20).build());
 
         // 返回按钮
         int cancelY = nbtBtnY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> close())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("button.back")), button -> close())
                 .dimensions(cx - 40, cancelY, 80, 20).build());
     }
 

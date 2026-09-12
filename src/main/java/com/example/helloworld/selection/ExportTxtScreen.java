@@ -36,7 +36,7 @@ public class ExportTxtScreen extends Screen {
     private static final int POPUP_HEIGHT = 160;
 
     public ExportTxtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
-        super(Text.literal(com.example.helloworld.I18n.get("导出 .txt", "Export .txt")));
+        super(Text.literal(com.example.helloworld.I18n.tr("export.txt.title")));
         this.parent = parent;
         this.result = result;
     }
@@ -55,27 +55,27 @@ public class ExportTxtScreen extends Screen {
         int pathY = popTop + 28;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("📁"), button -> openFolderChooser())
                 .dimensions(fieldLeft, pathY, 20, 18).build());
-        pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal(com.example.helloworld.I18n.get("路径", "Path")));
+        pathField = new TextFieldWidget(this.textRenderer, fieldLeft + 22, pathY, fieldW - 22, 18, Text.literal(com.example.helloworld.I18n.tr("export.txt.path")));
         pathField.setText("");
-        pathField.setPlaceholder(Text.literal(com.example.helloworld.I18n.get("§7保存路径（留空=txts根目录）", "§7Save path (empty=txts root)")));
+        pathField.setPlaceholder(Text.literal(com.example.helloworld.I18n.tr("export.txt.path.placeholder")));
         pathField.setMaxLength(512);
         this.addDrawableChild(pathField);
 
         // 文件名输入
         int nameY = pathY + 24;
-        nameField = new TextFieldWidget(this.textRenderer, fieldLeft, nameY, fieldW, 18, Text.literal(com.example.helloworld.I18n.get("名称", "Name")));
+        nameField = new TextFieldWidget(this.textRenderer, fieldLeft, nameY, fieldW, 18, Text.literal(com.example.helloworld.I18n.tr("export.txt.name")));
         nameField.setText("exported_blueprint");
         nameField.setMaxLength(64);
         this.addDrawableChild(nameField);
 
         // 导出按钮
         int btnY = nameY + 24;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("§a导出 .txt", "§aExport .txt")), button -> doExportTxt())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("export.txt.button")), button -> doExportTxt())
                 .dimensions(fieldLeft, btnY, fieldW, 20).build());
 
         // 返回按钮
         int cancelY = btnY + 26;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.get("返回", "Back")), button -> close())
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("button.back")), button -> close())
                 .dimensions(cx - 40, cancelY, 80, 20).build());
     }
 
@@ -120,9 +120,7 @@ public class ExportTxtScreen extends Screen {
 
             if (this.client != null && this.client.player != null) {
                 this.client.player.sendMessage(
-                        Text.literal(com.example.helloworld.I18n.get(
-                                "§7[选区] 正在服务端导出 TXT（含容器内容）...",
-                                "§7[Selection] Exporting TXT with container items...")), false);
+                        Text.literal(com.example.helloworld.I18n.tr("export.txt.exporting_server")), false);
             }
         } else {
             // 走原有客户端导出路径（仅方块+属性，无容器数据）
@@ -145,12 +143,12 @@ public class ExportTxtScreen extends Screen {
                 Files.writeString(filePath, blueprintText, StandardCharsets.UTF_8);
                 if (this.client != null && this.client.player != null) {
                     this.client.player.sendMessage(
-                            Text.literal(com.example.helloworld.I18n.get("§a[选区] 蓝图已导出: ", "§a[Selection] Blueprint exported: ") + filePath.toAbsolutePath()), false);
+                            Text.literal(com.example.helloworld.I18n.tr("export.txt.exported", filePath.toAbsolutePath())), false);
                 }
             } catch (IOException e) {
                 if (this.client != null && this.client.player != null) {
                     this.client.player.sendMessage(
-                            Text.literal(com.example.helloworld.I18n.get("§c[选区] 导出失败: ", "§c[Selection] Export failed: ") + e.getMessage()), false);
+                            Text.literal(com.example.helloworld.I18n.tr("export.txt.export_failed", e.getMessage())), false);
                 }
             }
         }
@@ -167,7 +165,7 @@ public class ExportTxtScreen extends Screen {
             defaultDir = Path.of(System.getProperty("user.home"));
         }
         String selected = TinyFileDialogs.tinyfd_selectFolderDialog(
-                "选择保存文件夹", defaultDir.toString());
+                com.example.helloworld.I18n.tr("export.txt.choose_folder"), defaultDir.toString());
         if (selected != null) {
             pathField.setText(selected);
         }

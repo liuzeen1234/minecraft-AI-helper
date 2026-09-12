@@ -42,7 +42,7 @@ public class UserManualScreen extends Screen {
     }
 
     public UserManualScreen(Screen parent) {
-        super(Text.literal(I18n.get("用户手册", "User Manual")));
+        super(Text.literal(I18n.tr("manual.title")));
         this.parent = parent;
     }
 
@@ -53,7 +53,7 @@ public class UserManualScreen extends Screen {
 
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("返回", "Back")),
+                Text.literal(I18n.tr("manual.button.back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(this.width / 2 - 50, this.height - 26, 100, 20)
                 .build()
@@ -66,15 +66,14 @@ public class UserManualScreen extends Screen {
     private void loadManual() {
         lines.clear();
         try {
-            // 根据 Mod 语言设置加载对应版本的手册
-            String lang = HelloWorldMod.getConfig().getLanguage();
-            String manualFile = "en_us".equals(lang)
+            // 跟随 Minecraft 语言设置加载对应版本的手册
+            String manualFile = I18n.isEnglish()
                     ? "/assets/helloworld/manual_en.txt"
                     : "/assets/helloworld/manual_zh.txt";
 
             InputStream is = getClass().getResourceAsStream(manualFile);
             if (is == null) {
-                lines.add(new ManualLine(I18n.get("无法加载用户手册", "Failed to load user manual"), 0xFF5555, false, 0));
+                lines.add(new ManualLine(I18n.tr("manual.load.failed"), 0xFF5555, false, 0));
                 return;
             }
             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
@@ -86,7 +85,7 @@ public class UserManualScreen extends Screen {
             }
             reader.close();
         } catch (Exception e) {
-            lines.add(new ManualLine(I18n.get("加载手册出错: ", "Error loading manual: ") + e.getMessage(), 0xFF5555, false, 0));
+            lines.add(new ManualLine(I18n.tr("manual.load.error", e.getMessage()), 0xFF5555, false, 0));
         }
     }
 

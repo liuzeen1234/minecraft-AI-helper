@@ -66,7 +66,7 @@ public class NbtBrowserScreen extends Screen {
     private static final int ITEM_HEIGHT = 14;
 
     public NbtBrowserScreen(Screen parent) {
-        super(Text.literal(com.example.helloworld.I18n.get("NBT 结构浏览器", "NBT Structure Browser")));
+        super(Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.title")));
         this.parent = parent;
     }
 
@@ -87,8 +87,8 @@ public class NbtBrowserScreen extends Screen {
         detailHeight = listHeight;
 
         // 搜索框
-        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal(com.example.helloworld.I18n.get("搜索...", "Search...")));
-        searchField.setPlaceholder(Text.literal(com.example.helloworld.I18n.get("§7搜索文件名...", "§7Search filename...")));
+        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.search")));
+        searchField.setPlaceholder(Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.search.placeholder")));
         searchField.setMaxLength(100);
         searchField.setChangedListener(this::onSearchChanged);
         this.addDrawableChild(searchField);
@@ -99,21 +99,21 @@ public class NbtBrowserScreen extends Screen {
         int btnSpacing = 6;
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("放置结构", "Place")),
+                Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.place")),
                 button -> placeSelected())
                 .dimensions(listLeft, btnY, btnWidth, 20)
                 .build()
         );
 
         deleteButton = ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("删除", "Delete")),
+                Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.delete")),
                 button -> onDeleteClicked())
                 .dimensions(listLeft + btnWidth + btnSpacing, btnY, 60, 20)
                 .build();
         this.addDrawableChild(deleteButton);
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("刷新", "Refresh")),
+                Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.refresh")),
                 button -> refreshCurrentDir())
                 .dimensions(listLeft + btnWidth + btnSpacing + 60 + btnSpacing, btnY, 60, 20)
                 .build()
@@ -122,14 +122,14 @@ public class NbtBrowserScreen extends Screen {
         int createFolderX = listLeft + btnWidth + btnSpacing + 60 + btnSpacing + 60 + btnSpacing;
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("管理文件", "Files")),
+                Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.files")),
                 button -> openNbtsFolder())
                 .dimensions(createFolderX, btnY, 70, 20)
                 .build()
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("返回", "Back")),
+                Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(this.width - margin - btnWidth, btnY, btnWidth, 20)
                 .build()
@@ -217,14 +217,14 @@ public class NbtBrowserScreen extends Screen {
     private void updateDetail() {
         detailLines.clear();
         if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) {
-            detailLines.add("§7" + com.example.helloworld.I18n.get("未选择文件", "No file selected"));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.noselection"));
             return;
         }
 
         ListEntry entry = filteredEntries.get(selectedIndex);
 
         if (entry.isFolder) {
-            detailLines.add("§e" + com.example.helloworld.I18n.get("文件夹:", "Folder:"));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.folder"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
             // 统计文件夹内容
@@ -233,33 +233,33 @@ public class NbtBrowserScreen extends Screen {
                 long count = walk.filter(Files::isRegularFile)
                                  .filter(p -> p.toString().endsWith(".nbt"))
                                  .count();
-                detailLines.add("§e" + com.example.helloworld.I18n.get("包含: §f" + count + " 个 NBT 文件", "Contains: §f" + count + " NBT files"));
+                detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.contains", count));
             } catch (IOException e) {
-                detailLines.add("§c" + com.example.helloworld.I18n.get("无法读取文件夹", "Cannot read folder"));
+                detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.folder.unreadable"));
             }
             detailLines.add("");
-            detailLines.add("§7" + com.example.helloworld.I18n.get("双击或按 Enter 进入文件夹", "Double-click or press Enter to open"));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.folder.hint"));
             return;
         }
 
         File file = NBTS_DIR.resolve(entry.fullPath).toFile();
         if (!file.exists()) {
-            detailLines.add("§c" + com.example.helloworld.I18n.get("文件不存在", "File not found"));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.filenotfound"));
             return;
         }
 
         try {
             NbtStructureParser.StructureData data = NbtStructureParser.parse(file);
-            detailLines.add("§e" + com.example.helloworld.I18n.get("名称:", "Name:"));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.name"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
-            detailLines.add("§e" + com.example.helloworld.I18n.get("尺寸: ", "Size: ") + "§f" + data.sizeX + " x " + data.sizeY + " x " + data.sizeZ);
-            detailLines.add("§e" + com.example.helloworld.I18n.get("方块数: ", "Blocks: ") + "§f" + data.blocks.size());
-            detailLines.add("§e" + com.example.helloworld.I18n.get("方块类型: ", "Block types: ") + "§f" + data.palette.size() + com.example.helloworld.I18n.get(" 种", ""));
-            detailLines.add("§e" + com.example.helloworld.I18n.get("文件大小: ", "File size: ") + "§f" + file.length() + " bytes");
-            detailLines.add("§e" + com.example.helloworld.I18n.get("数据版本: ", "Data version: ") + "§f" + data.dataVersion);
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.size", data.sizeX, data.sizeY, data.sizeZ));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.blocks", data.blocks.size()));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.blocktypes", data.palette.size()));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.filesize", file.length()));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.dataversion", data.dataVersion));
             detailLines.add("");
-            detailLines.add("§e" + com.example.helloworld.I18n.get("方块列表:", "Block list:"));
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.blocklist"));
 
             Map<Integer, Integer> counts = new HashMap<>();
             for (NbtStructureParser.BlockEntry block : data.blocks) {
@@ -273,7 +273,7 @@ public class NbtBrowserScreen extends Screen {
                 detailLines.add("§7  " + name + " §8x" + count);
             }
         } catch (Exception e) {
-            detailLines.add("§c" + com.example.helloworld.I18n.get("解析失败: ", "Parse failed: ") + e.getMessage());
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.parsefailed", e.getMessage()));
         }
     }
 
@@ -304,12 +304,12 @@ public class NbtBrowserScreen extends Screen {
         if (confirmingDelete) {
             deleteSelected();
             confirmingDelete = false;
-            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("删除", "Delete")));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.delete")));
         } else {
             confirmingDelete = true;
             ListEntry entry = filteredEntries.get(selectedIndex);
-            String typeName = entry.isFolder ? com.example.helloworld.I18n.get("文件夹", "folder") : com.example.helloworld.I18n.get("文件", "file");
-            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("§c确认删除?", "§cConfirm?")));
+            String typeName = entry.isFolder ? com.example.helloworld.I18n.tr("nbtbrowser.type.folder") : com.example.helloworld.I18n.tr("nbtbrowser.type.file");
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.confirmdelete")));
         }
     }
 
@@ -317,7 +317,7 @@ public class NbtBrowserScreen extends Screen {
     private void resetDeleteConfirm() {
         if (confirmingDelete) {
             confirmingDelete = false;
-            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("删除", "Delete")));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.button.delete")));
         }
     }
 
@@ -336,7 +336,7 @@ public class NbtBrowserScreen extends Screen {
             refreshCurrentDir();
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c" + com.example.helloworld.I18n.get("删除失败: ", "Delete failed: ") + e.getMessage());
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.deletefailed", e.getMessage()));
         }
     }
 
@@ -378,7 +378,7 @@ public class NbtBrowserScreen extends Screen {
             }
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c" + com.example.helloworld.I18n.get("无法打开文件管理器: ", "Cannot open file manager: ") + e.getMessage());
+            detailLines.add(com.example.helloworld.I18n.tr("nbtbrowser.detail.openfoldererror", e.getMessage()));
         }
     }
 
@@ -401,7 +401,7 @@ public class NbtBrowserScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         // 标题 + 当前路径
-        String titleText = com.example.helloworld.I18n.get("NBT 结构浏览器", "NBT Structure Browser");
+        String titleText = com.example.helloworld.I18n.tr("nbtbrowser.title");
         if (!currentDir.isEmpty()) {
             titleText += " §7- " + currentDir;
         }
@@ -428,7 +428,7 @@ public class NbtBrowserScreen extends Screen {
             if (hovered) {
                 context.fill(listLeft, itemY, listLeft + listWidth, itemY + ITEM_HEIGHT, 0xFF303050);
             }
-            context.drawTextWithShadow(this.textRenderer, Text.literal("§e↑ .. (" + com.example.helloworld.I18n.get("返回上级", "Go up") + ")"),
+            context.drawTextWithShadow(this.textRenderer, Text.literal(com.example.helloworld.I18n.tr("nbtbrowser.list.goup")),
                     listLeft + 4, itemY + 3, 0xFFFFFF);
             renderStartY += ITEM_HEIGHT;
         }
@@ -490,7 +490,7 @@ public class NbtBrowserScreen extends Screen {
         }
 
         // 文件计数
-        String countText = "§7" + filteredEntries.size() + " " + com.example.helloworld.I18n.get("项", "items");
+        String countText = com.example.helloworld.I18n.tr("nbtbrowser.list.count", filteredEntries.size());
         context.drawTextWithShadow(this.textRenderer, Text.literal(countText),
                 listLeft, listTop + listHeight + 3, 0xFFFFFF);
 

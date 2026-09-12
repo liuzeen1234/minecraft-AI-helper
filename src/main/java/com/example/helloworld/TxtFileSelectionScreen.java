@@ -41,7 +41,7 @@ public class TxtFileSelectionScreen extends Screen {
     private static final int PADDING = 10;
 
     public TxtFileSelectionScreen(Screen parent, Set<String> preSelected, Consumer<List<String>> onConfirm) {
-        super(Text.literal(I18n.get("选择引用文件", "Select Reference Files")));
+        super(Text.literal(I18n.tr("txtselect.title")));
         this.parent = parent;
         this.onConfirm = onConfirm;
         this.preSelected = preSelected != null ? preSelected : new HashSet<>();
@@ -68,26 +68,26 @@ public class TxtFileSelectionScreen extends Screen {
         // 确认按钮
         int buttonWidth = 80;
         int buttonY = this.height - 35;
-        ButtonWidget confirmButton = ButtonWidget.builder(Text.literal(I18n.get("确认", "OK")), button -> {
+        ButtonWidget confirmButton = ButtonWidget.builder(Text.literal(I18n.tr("txtselect.button.confirm")), button -> {
             onConfirm.accept(new ArrayList<>(selectedFiles));
             this.close();
         }).dimensions(this.width / 2 - buttonWidth - 5, buttonY, buttonWidth, 20).build();
         this.addDrawableChild(confirmButton);
 
         // 取消按钮
-        ButtonWidget cancelButton = ButtonWidget.builder(Text.literal(I18n.get("取消", "Cancel")), button -> {
+        ButtonWidget cancelButton = ButtonWidget.builder(Text.literal(I18n.tr("txtselect.button.cancel")), button -> {
             this.close();
         }).dimensions(this.width / 2 + 5, buttonY, buttonWidth, 20).build();
         this.addDrawableChild(cancelButton);
 
         // 全选按钮
-        ButtonWidget selectAllButton = ButtonWidget.builder(Text.literal(I18n.get("全选", "All")), button -> {
+        ButtonWidget selectAllButton = ButtonWidget.builder(Text.literal(I18n.tr("txtselect.button.all")), button -> {
             selectedFiles.addAll(availableFiles);
         }).dimensions(this.width / 2 + buttonWidth + 15, buttonY, 50, 20).build();
         this.addDrawableChild(selectAllButton);
 
         // 清空按钮
-        ButtonWidget clearAllButton = ButtonWidget.builder(Text.literal(I18n.get("清空", "None")), button -> {
+        ButtonWidget clearAllButton = ButtonWidget.builder(Text.literal(I18n.tr("txtselect.button.none")), button -> {
             selectedFiles.clear();
         }).dimensions(this.width / 2 - buttonWidth - 65, buttonY, 50, 20).build();
         this.addDrawableChild(clearAllButton);
@@ -129,11 +129,10 @@ public class TxtFileSelectionScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         // 标题
-        context.drawCenteredTextWithShadow(this.textRenderer, "§e" + I18n.get("选择引用文件 (txts/)", "Select Reference Files (txts/)"), this.width / 2, 15, 0xFFFFFF55);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§e" + I18n.tr("txtselect.title.header"), this.width / 2, 15, 0xFFFFFF55);
 
         // 已选数量提示
-        String countText = I18n.get("§7已选择 §f" + selectedFiles.size() + " §7个文件",
-                "§7Selected §f" + selectedFiles.size() + " §7file(s)");
+        String countText = I18n.tr("txtselect.selected.count", selectedFiles.size());
         context.drawCenteredTextWithShadow(this.textRenderer, Text.literal(countText), this.width / 2, 28, 0xFFAAAAAA);
 
         // 列表背景
@@ -145,7 +144,7 @@ public class TxtFileSelectionScreen extends Screen {
         context.fill(listRight - 1, listTop, listRight, listBottom, 0xFF444444);
 
         if (availableFiles.isEmpty()) {
-            context.drawCenteredTextWithShadow(this.textRenderer, I18n.get("§c未找到 txts/ 文件夹或其中没有 .txt 文件", "§cNo txts/ folder found or no .txt files in it"),
+            context.drawCenteredTextWithShadow(this.textRenderer, I18n.tr("txtselect.empty"),
                     this.width / 2, listTop + 30, 0xFFFF5555);
             super.render(context, mouseX, mouseY, delta);
             return;

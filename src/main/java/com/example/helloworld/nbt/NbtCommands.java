@@ -60,7 +60,7 @@ public class NbtCommands {
         File dir = NBTS_DIR.toFile();
 
         if (!dir.exists() || !dir.isDirectory()) {
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§cnbts/ 目录不存在", "§cnbts/ directory not found")), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.dir.notfound")), false);
             return 0;
         }
 
@@ -72,16 +72,16 @@ public class NbtCommands {
                     .filter(p -> Files.isRegularFile(p))
                     .toList();
         } catch (IOException e) {
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§c扫描目录失败: ", "§cFailed to scan directory: ") + e.getMessage()), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.scan.failed", e.getMessage())), false);
             return 0;
         }
 
         if (nbtFiles.isEmpty()) {
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§enbts/ 目录下没有 .nbt 文件", "§eNo .nbt files in nbts/ directory")), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.list.empty")), false);
             return 0;
         }
 
-        source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§e找到 " + nbtFiles.size() + " 个 NBT 文件:", "§eFound " + nbtFiles.size() + " NBT file(s):")), false);
+        source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.list.found", nbtFiles.size())), false);
         for (Path p : nbtFiles) {
             // 显示相对于 nbts/ 的路径，方便用户复制使用
             String relativePath = NBTS_DIR.relativize(p).toString().replace('\\', '/');
@@ -132,7 +132,7 @@ public class NbtCommands {
         File file = resolveNbtFile(filename);
         if (file == null || !file.exists()) {
             String fn = filename;
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§c文件不存在: " + fn + " (提示: 子文件夹用空格分隔，如 woodland_mansion roof)", "§cFile not found: " + fn + " (tip: use spaces for subfolders, e.g. woodland_mansion roof)")), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.file.notfound", fn)), false);
             return 0;
         }
 
@@ -144,7 +144,7 @@ public class NbtCommands {
                 source.sendFeedback(() -> Text.literal(l), false);
             }
         } catch (Exception e) {
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§c解析失败: ", "§cParse failed: ") + e.getMessage()), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.parse.failed", e.getMessage())), false);
         }
         return 1;
     }
@@ -154,11 +154,11 @@ public class NbtCommands {
         List<NbtStructureParser.StructureData> all = NbtStructureParser.parseAll(NBTS_DIR);
 
         if (all.isEmpty()) {
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§enbts/ 目录下没有可解析的 .nbt 文件", "§eNo parseable .nbt files in nbts/ directory")), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.all.empty")), false);
             return 0;
         }
 
-        source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§e=== NBT 结构文件摘要 ===", "§e=== NBT Structure Summary ===")), false);
+        source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.all.header")), false);
         for (NbtStructureParser.StructureData data : all) {
             String summary = NbtStructureParser.getSummary(data);
             for (String line : summary.split("\n")) {
@@ -175,7 +175,7 @@ public class NbtCommands {
         ServerPlayerEntity player = source.getPlayer();
 
         if (player == null) {
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§c只有玩家可以执行此命令", "§cOnly players can execute this command")), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.player.only")), false);
             return 0;
         }
 
@@ -184,13 +184,13 @@ public class NbtCommands {
         File file = resolveNbtFile(filename);
         if (file == null || !file.exists()) {
             String fn = filename;
-            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§c文件不存在: " + fn + " (提示: 子文件夹用空格分隔，如 woodland_mansion roof)", "§cFile not found: " + fn + " (tip: use spaces for subfolders, e.g. woodland_mansion roof)")), false);
+            source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.file.notfound", fn)), false);
             return 0;
         }
 
         String fn = file.getName();
         BlockPos origin = player.getBlockPos();
-        source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§e[NBT] 正在放置结构: " + fn + " ...", "§e[NBT] Placing structure: " + fn + " ...")), false);
+        source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.place.placing", fn)), false);
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -198,14 +198,13 @@ public class NbtCommands {
                 player.getServer().execute(() -> {
                     int count = NbtStructurePlacer.place(data, player.getServerWorld(), origin);
                     source.sendFeedback(() -> Text.literal(
-                            com.example.helloworld.I18n.get(
-                                "§a[NBT] " + fn + " 放置完成! 共 " + count + " 个方块 (原点: " + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")",
-                                "§a[NBT] " + fn + " placed! " + count + " blocks (origin: " + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")")
+                            com.example.helloworld.I18n.tr("nbtcmd.place.done",
+                                fn, count, origin.getX(), origin.getY(), origin.getZ())
                     ), false);
                 });
             } catch (Exception e) {
                 player.getServer().execute(() -> {
-                    source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.get("§c[NBT] 放置失败: ", "§c[NBT] Place failed: ") + e.getMessage()), false);
+                    source.sendFeedback(() -> Text.literal(com.example.helloworld.I18n.tr("nbtcmd.place.failed", e.getMessage())), false);
                 });
             }
         });

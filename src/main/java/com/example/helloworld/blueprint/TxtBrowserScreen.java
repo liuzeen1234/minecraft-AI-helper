@@ -67,7 +67,7 @@ public class TxtBrowserScreen extends Screen {
     private static final int ITEM_HEIGHT = 14;
 
     public TxtBrowserScreen(Screen parent) {
-        super(Text.literal(com.example.helloworld.I18n.get("TXT 结构设计图浏览器", "TXT Blueprint Browser")));
+        super(Text.literal(com.example.helloworld.I18n.tr("txtbrowser.title")));
         this.parent = parent;
     }
 
@@ -88,8 +88,8 @@ public class TxtBrowserScreen extends Screen {
         detailHeight = listHeight;
 
         // 搜索框
-        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal(com.example.helloworld.I18n.get("搜索...", "Search...")));
-        searchField.setPlaceholder(Text.literal(com.example.helloworld.I18n.get("§7搜索文件名...", "§7Search filename...")));
+        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal(com.example.helloworld.I18n.tr("txtbrowser.search")));
+        searchField.setPlaceholder(Text.literal(com.example.helloworld.I18n.tr("txtbrowser.search.placeholder")));
         searchField.setMaxLength(100);
         searchField.setChangedListener(this::onSearchChanged);
         this.addDrawableChild(searchField);
@@ -100,21 +100,21 @@ public class TxtBrowserScreen extends Screen {
         int btnSpacing = 6;
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("放置结构", "Place")),
+                Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.place")),
                 button -> placeSelected())
                 .dimensions(listLeft, btnY, btnWidth, 20)
                 .build()
         );
 
         deleteButton = ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("删除", "Delete")),
+                Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.delete")),
                 button -> onDeleteClicked())
                 .dimensions(listLeft + btnWidth + btnSpacing, btnY, 60, 20)
                 .build();
         this.addDrawableChild(deleteButton);
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("刷新", "Refresh")),
+                Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.refresh")),
                 button -> refreshCurrentDir())
                 .dimensions(listLeft + btnWidth + btnSpacing + 60 + btnSpacing, btnY, 60, 20)
                 .build()
@@ -123,14 +123,14 @@ public class TxtBrowserScreen extends Screen {
         int manageBtnX = listLeft + btnWidth + btnSpacing + 60 + btnSpacing + 60 + btnSpacing;
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("管理文件", "Files")),
+                Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.files")),
                 button -> openTxtsFolder())
                 .dimensions(manageBtnX, btnY, 70, 20)
                 .build()
         );
 
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.get("返回", "Back")),
+                Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(this.width - margin - btnWidth, btnY, btnWidth, 20)
                 .build()
@@ -215,14 +215,14 @@ public class TxtBrowserScreen extends Screen {
     private void updateDetail() {
         detailLines.clear();
         if (selectedIndex < 0 || selectedIndex >= filteredEntries.size()) {
-            detailLines.add("§7" + com.example.helloworld.I18n.get("未选择文件", "No file selected"));
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.noselection"));
             return;
         }
 
         ListEntry entry = filteredEntries.get(selectedIndex);
 
         if (entry.isFolder) {
-            detailLines.add("§e" + com.example.helloworld.I18n.get("文件夹:", "Folder:"));
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.folder"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
             Path folderPath = TXTS_DIR.resolve(entry.fullPath);
@@ -230,18 +230,18 @@ public class TxtBrowserScreen extends Screen {
                 long count = walk.filter(Files::isRegularFile)
                                  .filter(p -> p.toString().endsWith(".txt"))
                                  .count();
-                detailLines.add("§e" + com.example.helloworld.I18n.get("包含: §f" + count + " 个 TXT 文件", "Contains: §f" + count + " TXT files"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.contains", count));
             } catch (IOException e) {
-                detailLines.add("§c" + com.example.helloworld.I18n.get("无法读取文件夹", "Cannot read folder"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.folder.unreadable"));
             }
             detailLines.add("");
-            detailLines.add("§7" + com.example.helloworld.I18n.get("双击或按 Enter 进入文件夹", "Double-click or press Enter to open"));
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.folder.hint"));
             return;
         }
 
         File file = TXTS_DIR.resolve(entry.fullPath).toFile();
         if (!file.exists()) {
-            detailLines.add("§c" + com.example.helloworld.I18n.get("文件不存在", "File not found"));
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.filenotfound"));
             return;
         }
 
@@ -249,29 +249,29 @@ public class TxtBrowserScreen extends Screen {
             String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
             BlueprintData data = BlueprintParser.parse(content);
 
-            detailLines.add("§e" + com.example.helloworld.I18n.get("名称:", "Name:"));
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.name"));
             detailLines.add("§f  " + data.getName());
             detailLines.add("");
-            detailLines.add("§e" + com.example.helloworld.I18n.get("文件路径:", "File path:"));
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.filepath"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
-            detailLines.add("§e" + com.example.helloworld.I18n.get("文件大小: ", "File size: ") + "§f" + file.length() + " bytes");
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.filesize", file.length()));
 
             if (data.isV2()) {
                 // ---- V2 格式详情 ----
-                detailLines.add("§e" + com.example.helloworld.I18n.get("格式: ", "Format: ") + "§fMCBLUEPRINT v2");
-                detailLines.add("§e" + com.example.helloworld.I18n.get("尺寸: ", "Size: ") + "§f" + data.getSizeX() + " x " + data.getSizeY() + " x " + data.getSizeZ());
-                detailLines.add("§e" + com.example.helloworld.I18n.get("方块总数: ", "Total blocks: ") + "§f" + data.getBlocks3d().size());
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.format.v2"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.size", data.getSizeX(), data.getSizeY(), data.getSizeZ()));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.totalblocks", data.getBlocks3d().size()));
 
                 // 统计不同方块种类
                 java.util.Set<String> blockTypes = new java.util.LinkedHashSet<>();
                 for (BlueprintData.BlockEntry3D b : data.getBlocks3d()) {
                     blockTypes.add(b.getBlockId());
                 }
-                detailLines.add("§e" + com.example.helloworld.I18n.get("方块种类: ", "Block types: ") + "§f" + blockTypes.size() + com.example.helloworld.I18n.get(" 种", ""));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.blocktypes", blockTypes.size()));
 
                 detailLines.add("");
-                detailLines.add("§e" + com.example.helloworld.I18n.get("方块列表:", "Block list:"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.blocklist"));
                 int shown = 0;
                 for (String blockId : blockTypes) {
                     detailLines.add("§7  §f" + blockId.replace("_", " "));
@@ -282,9 +282,9 @@ public class TxtBrowserScreen extends Screen {
                 }
             } else {
                 // ---- V1 格式详情 ----
-                detailLines.add("§e" + com.example.helloworld.I18n.get("格式: §f旧版字符网格", "Format: §fLegacy char grid"));
-                detailLines.add("§e" + com.example.helloworld.I18n.get("层数: ", "Layers: ") + "§f" + data.getLayers().size());
-                detailLines.add("§e" + com.example.helloworld.I18n.get("图例数: ", "Legend entries: ") + "§f" + data.getLegend().size() + com.example.helloworld.I18n.get(" 种方块", " block types"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.format.v1"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.layers", data.getLayers().size()));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.legendcount", data.getLegend().size()));
 
                 // 计算总方块数（非空格字符）
                 int totalBlocks = 0;
@@ -297,7 +297,7 @@ public class TxtBrowserScreen extends Screen {
                         }
                     }
                 }
-                detailLines.add("§e" + com.example.helloworld.I18n.get("方块总数: ", "Total blocks: ") + "§f" + totalBlocks);
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.totalblocks", totalBlocks));
 
                 // 显示尺寸（宽x高x深）
                 if (!data.getLayers().isEmpty()) {
@@ -305,11 +305,11 @@ public class TxtBrowserScreen extends Screen {
                     int depth = firstLayer.length;
                     int width = depth > 0 ? firstLayer[0].length : 0;
                     int height = data.getLayers().size();
-                    detailLines.add("§e" + com.example.helloworld.I18n.get("尺寸: ", "Size: ") + "§f" + width + " x " + height + " x " + depth);
+                    detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.size", width, height, depth));
                 }
 
                 detailLines.add("");
-                detailLines.add("§e" + com.example.helloworld.I18n.get("图例:", "Legend:"));
+                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.legend"));
                 for (Map.Entry<Character, BlueprintData.BlockEntry> legendEntry : data.getLegend().entrySet()) {
                     String blockName = legendEntry.getValue().getBlockId().replace("_", " ");
                     detailLines.add("§7  '" + legendEntry.getKey() + "' §8= §f" + blockName);
@@ -320,7 +320,7 @@ public class TxtBrowserScreen extends Screen {
                 }
             }
         } catch (Exception e) {
-            detailLines.add("§c" + com.example.helloworld.I18n.get("解析失败: ", "Parse failed: ") + e.getMessage());
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.parsefailed", e.getMessage()));
         }
     }
 
@@ -351,10 +351,10 @@ public class TxtBrowserScreen extends Screen {
         if (confirmingDelete) {
             deleteSelected();
             confirmingDelete = false;
-            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("删除", "Delete")));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.delete")));
         } else {
             confirmingDelete = true;
-            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("§c确认删除?", "§cConfirm?")));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.confirmdelete")));
         }
     }
 
@@ -362,7 +362,7 @@ public class TxtBrowserScreen extends Screen {
     private void resetDeleteConfirm() {
         if (confirmingDelete) {
             confirmingDelete = false;
-            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.get("删除", "Delete")));
+            deleteButton.setMessage(Text.literal(com.example.helloworld.I18n.tr("txtbrowser.button.delete")));
         }
     }
 
@@ -381,7 +381,7 @@ public class TxtBrowserScreen extends Screen {
             refreshCurrentDir();
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c" + com.example.helloworld.I18n.get("删除失败: ", "Delete failed: ") + e.getMessage());
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.deletefailed", e.getMessage()));
         }
     }
 
@@ -421,7 +421,7 @@ public class TxtBrowserScreen extends Screen {
             }
         } catch (IOException e) {
             detailLines.clear();
-            detailLines.add("§c" + com.example.helloworld.I18n.get("无法打开文件管理器: ", "Cannot open file manager: ") + e.getMessage());
+            detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.openfoldererror", e.getMessage()));
         }
     }
 
@@ -444,7 +444,7 @@ public class TxtBrowserScreen extends Screen {
         this.renderBackground(context, mouseX, mouseY, delta);
 
         // 标题 + 当前路径
-        String titleText = com.example.helloworld.I18n.get("TXT 结构设计图浏览器", "TXT Blueprint Browser");
+        String titleText = com.example.helloworld.I18n.tr("txtbrowser.title");
         if (!currentDir.isEmpty()) {
             titleText += " §7- " + currentDir;
         }
@@ -469,7 +469,7 @@ public class TxtBrowserScreen extends Screen {
             if (hovered) {
                 context.fill(listLeft, itemY, listLeft + listWidth, itemY + ITEM_HEIGHT, 0xFF303050);
             }
-            context.drawTextWithShadow(this.textRenderer, Text.literal("§e↑ .. (" + com.example.helloworld.I18n.get("返回上级", "Go up") + ")"),
+            context.drawTextWithShadow(this.textRenderer, Text.literal(com.example.helloworld.I18n.tr("txtbrowser.list.goup")),
                     listLeft + 4, itemY + 3, 0xFFFFFF);
             renderStartY += ITEM_HEIGHT;
         }
@@ -531,7 +531,7 @@ public class TxtBrowserScreen extends Screen {
         }
 
         // 文件计数
-        String countText = "§7" + filteredEntries.size() + " " + com.example.helloworld.I18n.get("项", "items");
+        String countText = com.example.helloworld.I18n.tr("txtbrowser.list.count", filteredEntries.size());
         context.drawTextWithShadow(this.textRenderer, Text.literal(countText),
                 listLeft, listTop + listHeight + 3, 0xFFFFFF);
 

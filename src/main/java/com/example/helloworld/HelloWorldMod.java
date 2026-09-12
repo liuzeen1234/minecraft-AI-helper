@@ -63,6 +63,17 @@ public class HelloWorldMod implements ModInitializer {
     // 客户端 -> 服务端：聊天界面发送消息（带截图）
     public static final Identifier CHAT_SCREEN_MSG_WITH_IMG_PACKET = new Identifier(MOD_ID, "chat_screen_msg_img");
 
+    /**
+     * "思考已终止" 消息的稳定哨兵值（跨端网络协议 + 客户端逻辑判断使用）。
+     * 该值本身不直接展示给玩家，语言无关；实际展示文本由 {@link #thinkingCancelledDisplay()} 按当前语言生成。
+     */
+    public static final String THINKING_CANCELLED_SENTINEL = "\u0000__AI_THINKING_CANCELLED__";
+
+    /** 返回"思考已终止"的本地化显示文本（跟随 Minecraft 语言）。 */
+    public static String thinkingCancelledDisplay() {
+        return I18n.tr("server.thinking_cancelled");
+    }
+
     private static final ModConfig CONFIG = new ModConfig();
 
     public static ModConfig getConfig() {
@@ -95,11 +106,12 @@ public class HelloWorldMod implements ModInitializer {
     public void onInitialize() {
         LOGGER.info("AI Builder 已加载!");
         CONFIG.load();
+        I18n.load();
         blueprintRegistry.loadAll();
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
-            player.sendMessage(Text.literal(I18n.get("AI Builder 已加载! 输入 /ai <问题> 来和 AI 对话", "AI Builder loaded! Type /ai <question> to chat with AI")), false);
+            player.sendMessage(Text.literal(I18n.tr("server.welcome")), false);
 
             // 检查 API Key 有效性
             ApiKeyValidator.ValidationResult quickResult = ApiKeyValidator.quickCheck(CONFIG.getApiKey());
@@ -124,22 +136,10 @@ public class HelloWorldMod implements ModInitializer {
                     if (!java.nio.file.Files.exists(markerFile)) {
                         // 第一次加载，发送用户手册提示
                         player.sendMessage(Text.literal(""), false);
-                        player.sendMessage(Text.literal(I18n.get(
-                                "§e§l[AI Builder] §r§6欢迎首次使用 AI Builder 模组！",
-                                "§e§l[AI Builder] §r§6Welcome to AI Builder mod for the first time!"
-                        )), false);
-                        player.sendMessage(Text.literal(I18n.get(
-                                "§e建议您阅读用户手册以了解所有功能。",
-                                "§eWe recommend reading the user manual to learn all features."
-                        )), false);
-                        player.sendMessage(Text.literal(I18n.get(
-                                "§b打开方式: §f按 §aK 键§f 打开设置界面，点击 §a\"用户手册\"§f 按钮即可在游戏内查看。",
-                                "§bHow to open: §fPress §aK key§f to open settings, then click §a\"User Manual\"§f button to view in-game."
-                        )), false);
-                        player.sendMessage(Text.literal(I18n.get(
-                                "§b快速上手: §f按 §aK 键§f 打开设置界面 | 输入 §a/ai <问题>§f 与 AI 对话 | 输入 §a/nbt§f 管理结构文件",
-                                "§bQuick start: §fPress §aK key§f to open settings | Type §a/ai <question>§f to chat with AI | Type §a/nbt§f to manage structures"
-                        )), false);
+                        player.sendMessage(Text.literal(I18n.tr("server.first_join.welcome")), false);
+                        player.sendMessage(Text.literal(I18n.tr("server.first_join.manual_tip")), false);
+                        player.sendMessage(Text.literal(I18n.tr("server.first_join.how_to_open")), false);
+                        player.sendMessage(Text.literal(I18n.tr("server.first_join.quick_start")), false);
                         player.sendMessage(Text.literal(""), false);
 
                         // 创建标记文件，下次不再提示
@@ -159,7 +159,7 @@ public class HelloWorldMod implements ModInitializer {
                 try {
                     java.io.File file = com.example.helloworld.nbt.NbtCommands.resolveNbtFile(filename);
                     if (file == null || !file.exists()) {
-                        player.sendMessage(Text.literal(I18n.get("§c[NBT] 文件不存在: ", "§c[NBT] File not found: ") + filename), false);
+                        player.sendMessage(Text.literal(I18n.tr("server.nbt.file_notfound", filename)), false);
                         return;
                     }
                     com.example.helloworld.nbt.NbtStructureParser.StructureData data =
@@ -167,13 +167,12 @@ public class HelloWorldMod implements ModInitializer {
                     net.minecraft.util.math.BlockPos origin = player.getBlockPos();
                     int count = com.example.helloworld.nbt.NbtStructurePlacer.place(
                             data, player.getServerWorld(), origin);
-                    player.sendMessage(Text.literal(
-                            "§a[NBT] " + file.getName() + " 放置完成! 共 " + count + " 个方块 (原点: "
-                                    + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")"
+                    player.sendMessage(Text.literal(I18n.tr("server.nbt.placed",
+                            file.getName(), count, origin.getX(), origin.getY(), origin.getZ())
                     ), false);
                 } catch (Exception e) {
                     LOGGER.error("放置 NBT 结构失败", e);
-                    player.sendMessage(Text.literal(I18n.get("§c[NBT] 放置失败: ", "§c[NBT] Place failed: ") + e.getMessage()), false);
+                    player.sendMessage(Text.literal(I18n.tr("server.nbt.place_failed", e.getMessage())), false);
                 }
             });
         });
@@ -190,7 +189,7 @@ public class HelloWorldMod implements ModInitializer {
                     }
                     java.io.File file = txtsDir.resolve(relativePath).toFile();
                     if (!file.exists()) {
-                        player.sendMessage(Text.literal(I18n.get("§c[TXT] 文件不存在: ", "§c[TXT] File not found: ") + relativePath), false);
+                        player.sendMessage(Text.literal(I18n.tr("server.txt.file_notfound", relativePath)), false);
                         return;
                     }
                     String content = java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
@@ -199,13 +198,12 @@ public class HelloWorldMod implements ModInitializer {
                     net.minecraft.util.math.BlockPos origin = player.getBlockPos();
                     int count = com.example.helloworld.blueprint.BlueprintBuilder.build(
                             data, player, player.getServerWorld());
-                    player.sendMessage(Text.literal(
-                            "§a[TXT] " + data.getName() + " 放置完成! 共 " + count + " 个方块 (原点: "
-                                    + origin.getX() + ", " + origin.getY() + ", " + origin.getZ() + ")"
+                    player.sendMessage(Text.literal(I18n.tr("server.txt.placed",
+                            data.getName(), count, origin.getX(), origin.getY(), origin.getZ())
                     ), false);
                 } catch (Exception e) {
                     LOGGER.error("放置 TXT 结构失败", e);
-                    player.sendMessage(Text.literal(I18n.get("§c[TXT] 放置失败: ", "§c[TXT] Place failed: ") + e.getMessage()), false);
+                    player.sendMessage(Text.literal(I18n.tr("server.txt.place_failed", e.getMessage())), false);
                 }
             });
         });
@@ -226,12 +224,12 @@ public class HelloWorldMod implements ModInitializer {
                     String displayPath = subPath.isEmpty() ? fileName + ".nbt" : subPath + "/" + fileName + ".nbt";
                     // 通知客户端导出完成
                     PacketByteBuf resultBuf = PacketByteBufs.create();
-                    resultBuf.writeString("§a[选区] NBT 已导出（含方块实体数据）: " + displayPath);
+                    resultBuf.writeString(I18n.tr("server.export.nbt.done", displayPath));
                     ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
                 } catch (Exception e) {
                     LOGGER.error("服务端导出 NBT 失败", e);
                     PacketByteBuf resultBuf = PacketByteBufs.create();
-                    resultBuf.writeString("§c[选区] NBT 导出失败: " + e.getMessage());
+                    resultBuf.writeString(I18n.tr("server.export.nbt.failed", e.getMessage()));
                     ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
                 }
             });
@@ -251,12 +249,12 @@ public class HelloWorldMod implements ModInitializer {
                     com.example.helloworld.selection.ServerSelectionExporter.exportTxt(world, pos1, pos2, fileName, subPath);
                     String displayPath = subPath.isEmpty() ? fileName + ".txt" : subPath + "/" + fileName + ".txt";
                     PacketByteBuf resultBuf = PacketByteBufs.create();
-                    resultBuf.writeString("§a[选区] TXT 已导出（含容器内容物）: " + displayPath);
+                    resultBuf.writeString(I18n.tr("server.export.txt.done", displayPath));
                     ServerPlayNetworking.send(player, EXPORT_TXT_RESULT_PACKET, resultBuf);
                 } catch (Exception e) {
                     LOGGER.error("服务端导出 TXT 失败", e);
                     PacketByteBuf resultBuf = PacketByteBufs.create();
-                    resultBuf.writeString("§c[选区] TXT 导出失败: " + e.getMessage());
+                    resultBuf.writeString(I18n.tr("server.export.txt.failed", e.getMessage()));
                     ServerPlayNetworking.send(player, EXPORT_TXT_RESULT_PACKET, resultBuf);
                 }
             });
@@ -275,7 +273,7 @@ public class HelloWorldMod implements ModInitializer {
             server.execute(() -> {
                 if ("__CLEAR_HISTORY__".equals(message)) {
                     conversationHistory.clear();
-                    player.sendMessage(Text.literal(I18n.get("§a[AI] 对话历史已清空", "§a[AI] Chat history cleared")), false);
+                    player.sendMessage(Text.literal(I18n.tr("server.ai.history_cleared")), false);
                     return;
                 }
 
@@ -301,7 +299,7 @@ public class HelloWorldMod implements ModInitializer {
                         String response;
                         if (CONFIG.isStreamOutputEnabled()) {
                             // 流式模式：实时输出到聊天框
-                            server.execute(() -> player.sendMessage(Text.literal(I18n.get("§7[AI] 开始回复...", "§7[AI] Generating...")), false));
+                            server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.generating")), false));
                             response = callKimiApiStreaming(fullMessage, "", player, server);
                         } else {
                             response = callKimiApi(fullMessage, "");
@@ -311,7 +309,7 @@ public class HelloWorldMod implements ModInitializer {
                         if (cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString("§7[思考已终止]");
+                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                             return;
@@ -323,15 +321,15 @@ public class HelloWorldMod implements ModInitializer {
                             // 通知聊天界面正在抓取网页
                             server.execute(() -> {
                                 PacketByteBuf streamBuf = PacketByteBufs.create();
-                                streamBuf.writeString("\n\n§7" + I18n.get("正在抓取网页...", "Fetching page..."));
+                                streamBuf.writeString("\n\n§7" + I18n.tr("server.fetching"));
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                player.sendMessage(Text.literal(I18n.get("§7[AI] 正在抓取网页: ", "§7[AI] Fetching page: ") + fetchUrl), false);
+                                player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false);
                             });
                             String pageContent = webFetchService.fetch(fetchUrl);
                             if (cancelRequested) {
                                 server.execute(() -> {
                                     PacketByteBuf respBuf = PacketByteBufs.create();
-                                    respBuf.writeString("§7[思考已终止]");
+                                    respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                     ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                                 });
                                 return;
@@ -342,7 +340,7 @@ public class HelloWorldMod implements ModInitializer {
                                 if (CONFIG.isStreamOutputEnabled()) {
                                     server.execute(() -> {
                                         PacketByteBuf streamBuf = PacketByteBufs.create();
-                                        streamBuf.writeString("\n§7" + I18n.get("网页抓取完成，正在生成回复...", "Page fetched, generating reply...") + "\n\n");
+                                        streamBuf.writeString("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
                                         ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
                                     });
                                     response = callKimiApiStreaming(fetchContext, "", player, server);
@@ -351,7 +349,7 @@ public class HelloWorldMod implements ModInitializer {
                                 }
                             } else {
                                 response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (response.isEmpty()) response = I18n.get("网页抓取失败了，请检查 URL 是否正确。", "Failed to fetch the page. Please check the URL.");
+                                if (response.isEmpty()) response = I18n.tr("server.fetch_failed");
                             }
                         } else {
                             // 检查是否需要联网搜索
@@ -361,15 +359,15 @@ public class HelloWorldMod implements ModInitializer {
                                 // 通知聊天界面正在搜索
                                 server.execute(() -> {
                                     PacketByteBuf streamBuf = PacketByteBufs.create();
-                                    streamBuf.writeString("\n\n§7" + I18n.get("正在联网搜索...", "Searching the web..."));
+                                    streamBuf.writeString("\n\n§7" + I18n.tr("server.searching"));
                                     ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                    player.sendMessage(Text.literal(I18n.get("§7[AI] 正在联网搜索: ", "§7[AI] Searching: ") + searchQuery), false);
+                                    player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false);
                                 });
                                 String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
                                 if (cancelRequested) {
                                     server.execute(() -> {
                                         PacketByteBuf respBuf = PacketByteBufs.create();
-                                        respBuf.writeString("§7[思考已终止]");
+                                        respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                         ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                                     });
                                     return;
@@ -380,7 +378,7 @@ public class HelloWorldMod implements ModInitializer {
                                     if (CONFIG.isStreamOutputEnabled()) {
                                         server.execute(() -> {
                                             PacketByteBuf streamBuf = PacketByteBufs.create();
-                                            streamBuf.writeString("\n§7" + I18n.get("搜索完成，正在生成回复...", "Search complete, generating reply...") + "\n\n");
+                                            streamBuf.writeString("\n§7" + I18n.tr("server.search_done") + "\n\n");
                                             ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
                                         });
                                         response = callKimiApiStreaming(searchContext, "", player, server);
@@ -389,7 +387,7 @@ public class HelloWorldMod implements ModInitializer {
                                     }
                                 } else {
                                     response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (response.isEmpty()) response = I18n.get("搜索失败了，请稍后再试。", "Search failed. Please try again later.");
+                                    if (response.isEmpty()) response = I18n.tr("server.search_failed");
                                 }
                             } else {
                                 response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
@@ -400,7 +398,7 @@ public class HelloWorldMod implements ModInitializer {
                         if (cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString("§7[思考已终止]");
+                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                             return;
@@ -424,7 +422,7 @@ public class HelloWorldMod implements ModInitializer {
                         if (cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString("§7[思考已终止]");
+                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                             return;
@@ -432,7 +430,7 @@ public class HelloWorldMod implements ModInitializer {
                         LOGGER.error("聊天界面 AI 请求失败", e);
                         server.execute(() -> {
                             PacketByteBuf respBuf = PacketByteBufs.create();
-                            respBuf.writeString("§c请求失败: " + e.getMessage());
+                            respBuf.writeString(I18n.tr("server.request_failed", e.getMessage()));
                             ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                         });
                     } finally {
@@ -489,7 +487,7 @@ public class HelloWorldMod implements ModInitializer {
             server.execute(() -> {
                 if ("__CLEAR_HISTORY__".equals(message)) {
                     conversationHistory.clear();
-                    player.sendMessage(Text.literal(I18n.get("§a[AI] 对话历史已清空", "§a[AI] Chat history cleared")), false);
+                    player.sendMessage(Text.literal(I18n.tr("server.ai.history_cleared")), false);
                     return;
                 }
 
@@ -512,7 +510,7 @@ public class HelloWorldMod implements ModInitializer {
                     try {
                         String response;
                         if (CONFIG.isStreamOutputEnabled()) {
-                            server.execute(() -> player.sendMessage(Text.literal(I18n.get("§7[AI] 开始回复...", "§7[AI] Generating...")), false));
+                            server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.generating")), false));
                             response = callKimiApiStreaming(fullMessage, finalBase64, player, server);
                         } else {
                             response = callKimiApi(fullMessage, finalBase64);
@@ -521,7 +519,7 @@ public class HelloWorldMod implements ModInitializer {
                         if (cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString("§7[思考已终止]");
+                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                             return;
@@ -533,15 +531,15 @@ public class HelloWorldMod implements ModInitializer {
                             // 通知聊天界面正在抓取网页（替换流式内容中的 FETCH 标签显示）
                             server.execute(() -> {
                                 PacketByteBuf streamBuf = PacketByteBufs.create();
-                                streamBuf.writeString("\n\n§7" + I18n.get("正在抓取网页...", "Fetching page..."));
+                                streamBuf.writeString("\n\n§7" + I18n.tr("server.fetching"));
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                player.sendMessage(Text.literal(I18n.get("§7[AI] 正在抓取网页: ", "§7[AI] Fetching page: ") + fetchUrl), false);
+                                player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false);
                             });
                             String pageContent = webFetchService.fetch(fetchUrl);
                             if (cancelRequested) {
                                 server.execute(() -> {
                                     PacketByteBuf respBuf = PacketByteBufs.create();
-                                    respBuf.writeString("§7[思考已终止]");
+                                    respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                     ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                                 });
                                 return;
@@ -553,7 +551,7 @@ public class HelloWorldMod implements ModInitializer {
                                     // 流式模式：用流式输出让用户实时看到回复
                                     server.execute(() -> {
                                         PacketByteBuf streamBuf = PacketByteBufs.create();
-                                        streamBuf.writeString("\n§7" + I18n.get("网页抓取完成，正在生成回复...", "Page fetched, generating reply...") + "\n\n");
+                                        streamBuf.writeString("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
                                         ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
                                     });
                                     response = callKimiApiStreaming(fetchContext, "", player, server);
@@ -562,7 +560,7 @@ public class HelloWorldMod implements ModInitializer {
                                 }
                             } else {
                                 response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (response.isEmpty()) response = I18n.get("网页抓取失败了，请检查 URL 是否正确。", "Failed to fetch the page. Please check the URL.");
+                                if (response.isEmpty()) response = I18n.tr("server.fetch_failed");
                             }
                         } else {
                             String searchQuery = extractSearchQuery(response);
@@ -571,15 +569,15 @@ public class HelloWorldMod implements ModInitializer {
                                 // 通知聊天界面正在搜索
                                 server.execute(() -> {
                                     PacketByteBuf streamBuf = PacketByteBufs.create();
-                                    streamBuf.writeString("\n\n§7" + I18n.get("正在联网搜索...", "Searching the web..."));
+                                    streamBuf.writeString("\n\n§7" + I18n.tr("server.searching"));
                                     ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                    player.sendMessage(Text.literal(I18n.get("§7[AI] 正在联网搜索: ", "§7[AI] Searching: ") + searchQuery), false);
+                                    player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false);
                                 });
                                 String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
                                 if (cancelRequested) {
                                     server.execute(() -> {
                                         PacketByteBuf respBuf = PacketByteBufs.create();
-                                        respBuf.writeString("§7[思考已终止]");
+                                        respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                         ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                                     });
                                     return;
@@ -591,7 +589,7 @@ public class HelloWorldMod implements ModInitializer {
                                         // 流式模式：用流式输出让用户实时看到回复
                                         server.execute(() -> {
                                             PacketByteBuf streamBuf = PacketByteBufs.create();
-                                            streamBuf.writeString("\n§7" + I18n.get("搜索完成，正在生成回复...", "Search complete, generating reply...") + "\n\n");
+                                            streamBuf.writeString("\n§7" + I18n.tr("server.search_done") + "\n\n");
                                             ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
                                         });
                                         response = callKimiApiStreaming(searchContext, "", player, server);
@@ -600,7 +598,7 @@ public class HelloWorldMod implements ModInitializer {
                                     }
                                 } else {
                                     response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (response.isEmpty()) response = I18n.get("搜索失败了，请稍后再试。", "Search failed. Please try again later.");
+                                    if (response.isEmpty()) response = I18n.tr("server.search_failed");
                                 }
                             } else {
                                 response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
@@ -610,7 +608,7 @@ public class HelloWorldMod implements ModInitializer {
                         if (cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString("§7[思考已终止]");
+                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                             return;
@@ -631,7 +629,7 @@ public class HelloWorldMod implements ModInitializer {
                         if (cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString("§7[思考已终止]");
+                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                             return;
@@ -639,7 +637,7 @@ public class HelloWorldMod implements ModInitializer {
                         LOGGER.error("聊天界面 AI 请求失败", e);
                         server.execute(() -> {
                             PacketByteBuf respBuf = PacketByteBufs.create();
-                            respBuf.writeString("§c请求失败: " + e.getMessage());
+                            respBuf.writeString(I18n.tr("server.request_failed", e.getMessage()));
                             ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                         });
                     } finally {
@@ -684,7 +682,7 @@ public class HelloWorldMod implements ModInitializer {
                 String playerName = player.getName().getString();
                 source.sendFeedback(() -> Text.literal("§f<" + playerName + "> " + message), false);
 
-                source.sendFeedback(() -> Text.literal(I18n.get("§7[AI] 正在思考...", "§7[AI] Thinking...")), false);
+                source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.thinking")), false);
 
                 cancelRequested = false;
                 pendingAiTask = CompletableFuture.runAsync(() -> {
@@ -703,7 +701,7 @@ public class HelloWorldMod implements ModInitializer {
                         String fetchUrl = extractFetchUrl(response);
                         if (fetchUrl != null) {
                             server.execute(() -> {
-                                source.sendFeedback(() -> Text.literal(I18n.get("§7[AI] 正在抓取网页: ", "§7[AI] Fetching page: ") + fetchUrl), false);
+                                source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false);
                             });
 
                             String pageContent = webFetchService.fetch(fetchUrl);
@@ -725,7 +723,7 @@ public class HelloWorldMod implements ModInitializer {
                             } else {
                                 String cleanResponse = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
                                 if (cleanResponse.isEmpty()) {
-                                    cleanResponse = "网页抓取失败了，请检查 URL 是否正确。";
+                                    cleanResponse = I18n.tr("server.fetch_failed");
                                 }
                                 String finalClean = cleanResponse;
                                 server.execute(() -> {
@@ -745,7 +743,7 @@ public class HelloWorldMod implements ModInitializer {
                             if (searchQuery != null && CONFIG.isWebSearchEnabled()
                                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
                                 server.execute(() -> {
-                                    source.sendFeedback(() -> Text.literal(I18n.get("§7[AI] 正在联网搜索: ", "§7[AI] Searching: ") + searchQuery), false);
+                                    source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false);
                                 });
 
                                 String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
@@ -767,7 +765,7 @@ public class HelloWorldMod implements ModInitializer {
                                 } else {
                                     String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
                                     if (cleanResponse.isEmpty()) {
-                                        cleanResponse = "搜索失败了，请稍后再试。";
+                                        cleanResponse = I18n.tr("server.search_failed");
                                     }
                                     String finalClean = cleanResponse;
                                     server.execute(() -> {
@@ -795,7 +793,7 @@ public class HelloWorldMod implements ModInitializer {
                         LOGGER.error("调用 AI API 失败", e);
                         LOGGER.error("[AI诊断] 异常链: {}", getExceptionChain(e));
                         server.execute(() -> {
-                            source.sendFeedback(() -> Text.literal(I18n.get("§c[AI] 请求失败: ", "§c[AI] Request failed: ") + e.getMessage()), false);
+                            source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.request_failed", e.getMessage())), false);
                         });
                     } finally {
                         pendingAiTask = null;
@@ -834,11 +832,11 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("show")
                     .executes(ctx -> {
                         ServerCommandSource src = ctx.getSource();
-                        src.sendFeedback(() -> Text.literal("§e[" + I18n.get("配置", "Config") + "] api_base_url = §f" + CONFIG.getApiBaseUrl()), false);
-                        src.sendFeedback(() -> Text.literal("§e[" + I18n.get("配置", "Config") + "] api_key = §f" + maskKey(CONFIG.getApiKey())), false);
-                        src.sendFeedback(() -> Text.literal("§e[" + I18n.get("配置", "Config") + "] model = §f" + CONFIG.getModel()), false);
-                        src.sendFeedback(() -> Text.literal("§e[" + I18n.get("配置", "Config") + "] web_search = §f" + (CONFIG.isWebSearchEnabled() ? I18n.get("开启", "ON") : I18n.get("关闭", "OFF"))), false);
-                        src.sendFeedback(() -> Text.literal("§e[" + I18n.get("配置", "Config") + "] tavily_api_key = §f" + maskKey(CONFIG.getTavilyApiKey())), false);
+                        src.sendFeedback(() -> Text.literal(I18n.tr("server.config.show.api_base_url", CONFIG.getApiBaseUrl())), false);
+                        src.sendFeedback(() -> Text.literal(I18n.tr("server.config.show.api_key", maskKey(CONFIG.getApiKey()))), false);
+                        src.sendFeedback(() -> Text.literal(I18n.tr("server.config.show.model", CONFIG.getModel())), false);
+                        src.sendFeedback(() -> Text.literal(I18n.tr("server.config.show.web_search", CONFIG.isWebSearchEnabled() ? I18n.tr("server.config.on") : I18n.tr("server.config.off"))), false);
+                        src.sendFeedback(() -> Text.literal(I18n.tr("server.config.show.tavily_api_key", maskKey(CONFIG.getTavilyApiKey()))), false);
                         return 1;
                     })
                 )
@@ -848,7 +846,7 @@ public class HelloWorldMod implements ModInitializer {
                         .executes(ctx -> {
                             String value = StringArgumentType.getString(ctx, "value");
                             CONFIG.setApiBaseUrl(value);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[配置] api_base_url 已更新为: §f", "§a[Config] api_base_url updated to: §f") + value), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.config.api_base_url.updated", value)), false);
                             return 1;
                         })
                     )
@@ -859,7 +857,7 @@ public class HelloWorldMod implements ModInitializer {
                         .executes(ctx -> {
                             String value = StringArgumentType.getString(ctx, "value");
                             CONFIG.setApiKey(value);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[配置] api_key 已更新", "§a[Config] api_key updated")), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.config.api_key.updated")), false);
                             return 1;
                         })
                     )
@@ -870,7 +868,7 @@ public class HelloWorldMod implements ModInitializer {
                         .executes(ctx -> {
                             String value = StringArgumentType.getString(ctx, "value");
                             CONFIG.setModel(value);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[配置] model 已更新为: §f", "§a[Config] model updated to: §f") + value), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.config.model.updated", value)), false);
                             return 1;
                         })
                     )
@@ -882,7 +880,7 @@ public class HelloWorldMod implements ModInitializer {
                             String value = StringArgumentType.getString(ctx, "value");
                             boolean enabled = value.equalsIgnoreCase("on") || value.equalsIgnoreCase("true");
                             CONFIG.setWebSearchEnabled(enabled);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[配置] 联网搜索已" + (enabled ? "开启" : "关闭"), "§a[Config] Web search " + (enabled ? "enabled" : "disabled"))), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(enabled ? I18n.tr("server.config.web_search.enabled") : I18n.tr("server.config.web_search.disabled")), false);
                             return 1;
                         })
                     )
@@ -893,7 +891,7 @@ public class HelloWorldMod implements ModInitializer {
                         .executes(ctx -> {
                             String value = StringArgumentType.getString(ctx, "value");
                             CONFIG.setTavilyApiKey(value);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[配置] tavily_api_key 已更新", "§a[Config] tavily_api_key updated")), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.config.tavily_api_key.updated")), false);
                             return 1;
                         })
                     )
@@ -902,7 +900,7 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("reload")
                     .executes(ctx -> {
                         CONFIG.load();
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[配置] 配置已重新加载", "§a[Config] Configuration reloaded")), false);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.config.reloaded")), false);
                         return 1;
                     })
                 )
@@ -912,7 +910,7 @@ public class HelloWorldMod implements ModInitializer {
             dispatcher.register(CommandManager.literal("ainew")
                 .executes(ctx -> {
                     conversationHistory.clear();
-                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[AI] 对话历史已清空，开始新话题", "§a[AI] Chat history cleared, new topic started")), false);
+                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.ai.new_topic")), false);
                     return 1;
                 })
             );
@@ -922,7 +920,7 @@ public class HelloWorldMod implements ModInitializer {
                 .executes(ctx -> {
                     ServerPlayerEntity p = ctx.getSource().getPlayer();
                     if (p == null) {
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§c[坐标] 只有玩家才能使用此命令", "§c[Pos] Only players can use this command")), false);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.pos.players_only")), false);
                         return 0;
                     }
                     double x = Math.round(p.getX() * 100.0) / 100.0;
@@ -951,7 +949,7 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("on")
                     .executes(ctx -> {
                         InGameLogAppender.setEnabled(true);
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[日志] 聊天框日志显示已开启", "§a[Log] Chat log display enabled")), false);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.enabled")), false);
                         return 1;
                     })
                 )
@@ -959,7 +957,7 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("off")
                     .executes(ctx -> {
                         InGameLogAppender.setEnabled(false);
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§c[日志] 聊天框日志显示已关闭", "§c[Log] Chat log display disabled")), false);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.disabled")), false);
                         return 1;
                     })
                 )
@@ -968,28 +966,28 @@ public class HelloWorldMod implements ModInitializer {
                     .then(CommandManager.literal("error")
                         .executes(ctx -> {
                             InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.ERROR);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[日志] 最低显示级别: §cERROR", "§a[Log] Min level: §cERROR")), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.error")), false);
                             return 1;
                         })
                     )
                     .then(CommandManager.literal("warn")
                         .executes(ctx -> {
                             InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.WARN);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[日志] 最低显示级别: §eWARN", "§a[Log] Min level: §eWARN")), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.warn")), false);
                             return 1;
                         })
                     )
                     .then(CommandManager.literal("info")
                         .executes(ctx -> {
                             InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.INFO);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[日志] 最低显示级别: §fINFO", "§a[Log] Min level: §fINFO")), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.info")), false);
                             return 1;
                         })
                     )
                     .then(CommandManager.literal("debug")
                         .executes(ctx -> {
                             InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.DEBUG);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[日志] 最低显示级别: §7DEBUG", "§a[Log] Min level: §7DEBUG")), false);
+                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.debug")), false);
                             return 1;
                         })
                     )
@@ -999,12 +997,12 @@ public class HelloWorldMod implements ModInitializer {
             // /aitest - 故意触发测试日志，验证聊天框日志显示
             dispatcher.register(CommandManager.literal("aitest")
                 .executes(ctx -> {
-                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§e[测试] 正在生成测试日志...", "§e[Test] Generating test logs...")), false);
+                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test.generating")), false);
                     LOGGER.warn("这是一条测试 WARN 日志 - 来自 /aitest 命令");
                     LOGGER.error("这是一条测试 ERROR 日志 - 来自 /aitest 命令");
                     LOGGER.error("模拟异常: NullPointerException at FakeClass.fakeMethod(FakeClass.java:42)");
                     LOGGER.info("这是一条测试 INFO 日志（默认级别下不会显示在聊天框）");
-                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§a[测试] 已生成 2 条 WARN/ERROR + 1 条 INFO 日志，检查聊天框!", "§a[Test] Generated 2 WARN/ERROR + 1 INFO logs, check chat!")), false);
+                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test.done")), false);
                     return 1;
                 })
             );
@@ -1016,9 +1014,9 @@ public class HelloWorldMod implements ModInitializer {
                     CompletableFuture<?> task = pendingAiTask;
                     if (task != null) {
                         task.cancel(true);
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§e[AI] 已终止 AI 回复", "§e[AI] AI response stopped")), false);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.ai.stopped")), false);
                     } else {
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.get("§7[AI] 当前没有正在进行的 AI 请求", "§7[AI] No AI request in progress")), false);
+                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.ai.no_request")), false);
                     }
                     return 1;
                 })
@@ -1032,29 +1030,29 @@ public class HelloWorldMod implements ModInitializer {
         ServerPlayerEntity player = source.getPlayer();
 
         if (player == null) {
-            source.sendFeedback(() -> Text.literal(I18n.get("§c只有玩家可以执行此命令", "§cOnly players can execute this command")), false);
+            source.sendFeedback(() -> Text.literal(I18n.tr("server.build.players_only")), false);
             return 0;
         }
 
         BlueprintData blueprint = blueprintRegistry.find(name);
         if (blueprint == null) {
-            source.sendFeedback(() -> Text.literal(I18n.get("§c未找到蓝图: ", "§cBlueprint not found: ") + name), false);
-            source.sendFeedback(() -> Text.literal(I18n.get("§e使用 /ai blueprints 查看可用蓝图", "§eUse /ai blueprints to see available blueprints")), false);
+            source.sendFeedback(() -> Text.literal(I18n.tr("server.build.not_found", name)), false);
+            source.sendFeedback(() -> Text.literal(I18n.tr("server.build.list_hint")), false);
             return 0;
         }
 
-        source.sendFeedback(() -> Text.literal(I18n.get("§e[建造] 开始建造: ", "§e[Build] Building: ") + blueprint.getName() + " ..."), false);
+        source.sendFeedback(() -> Text.literal(I18n.tr("server.build.start", blueprint.getName())), false);
 
         CompletableFuture.runAsync(() -> {
             try {
                 int count = BlueprintBuilder.build(blueprint, player, player.getServerWorld());
                 player.getServer().execute(() -> {
-                    source.sendFeedback(() -> Text.literal(I18n.get("§a[建造] " + blueprint.getName() + " 建造完成! 共放置 " + count + " 个方块", "§a[Build] " + blueprint.getName() + " complete! Placed " + count + " blocks")), false);
+                    source.sendFeedback(() -> Text.literal(I18n.tr("server.build.done", blueprint.getName(), count)), false);
                 });
             } catch (Exception e) {
                 LOGGER.error("建造蓝图失败", e);
                 player.getServer().execute(() -> {
-                    source.sendFeedback(() -> Text.literal(I18n.get("§c[建造] 建造失败: ", "§c[Build] Build failed: ") + e.getMessage()), false);
+                    source.sendFeedback(() -> Text.literal(I18n.tr("server.build.failed", e.getMessage())), false);
                 });
             }
         });
@@ -1065,9 +1063,9 @@ public class HelloWorldMod implements ModInitializer {
     private int listBlueprints(CommandContext<ServerCommandSource> context) {
         ServerCommandSource source = context.getSource();
         if (blueprintRegistry.size() == 0) {
-            source.sendFeedback(() -> Text.literal(I18n.get("§e没有已加载的蓝图。将 .txt 蓝图文件放入 txts/ 目录", "§eNo blueprints loaded. Place .txt blueprint files in txts/ directory")), false);
+            source.sendFeedback(() -> Text.literal(I18n.tr("server.blueprints.empty")), false);
         } else {
-            source.sendFeedback(() -> Text.literal(I18n.get("§e已加载 " + blueprintRegistry.size() + " 个蓝图:", "§eLoaded " + blueprintRegistry.size() + " blueprint(s):")), false);
+            source.sendFeedback(() -> Text.literal(I18n.tr("server.blueprints.loaded", blueprintRegistry.size())), false);
             for (String name : blueprintRegistry.getNames()) {
                 source.sendFeedback(() -> Text.literal("§a  - " + name), false);
             }
@@ -1078,7 +1076,7 @@ public class HelloWorldMod implements ModInitializer {
     private int reloadBlueprints(CommandContext<ServerCommandSource> context) {
         blueprintRegistry.loadAll();
         ServerCommandSource source = context.getSource();
-        source.sendFeedback(() -> Text.literal(I18n.get("§a[蓝图] 已重新加载 " + blueprintRegistry.size() + " 个蓝图", "§a[Blueprint] Reloaded " + blueprintRegistry.size() + " blueprint(s)")), false);
+        source.sendFeedback(() -> Text.literal(I18n.tr("server.blueprints.reloaded", blueprintRegistry.size())), false);
         return 1;
     }
 
@@ -1116,9 +1114,9 @@ public class HelloWorldMod implements ModInitializer {
             // 在楼梯上方放一个告示牌...算了，直接在聊天里告诉玩家
             String facing = facings[i];
             int idx = i;
-            context.getSource().sendFeedback(() -> Text.literal(I18n.get("§e楼梯 " + (idx + 1) + ": facing=" + facing + " (位置偏东 " + (idx * 2) + ")", "§eStair " + (idx + 1) + ": facing=" + facing + " (east offset " + (idx * 2) + ")")), false);
+            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test_stairs.item", (idx + 1), facing, (idx * 2))), false);
         }
-        context.getSource().sendFeedback(() -> Text.literal(I18n.get("§a已在北方3格处放置4个楼梯，从左到右: north, south, east, west", "§aPlaced 4 stairs 3 blocks north, left to right: north, south, east, west")), false);
+        context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test_stairs.done")), false);
         return 1;
     }
 

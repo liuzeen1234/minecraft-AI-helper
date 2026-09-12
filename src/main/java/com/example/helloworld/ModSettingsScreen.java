@@ -14,7 +14,7 @@ public class ModSettingsScreen extends Screen {
     private final ModConfig config;
 
     public ModSettingsScreen(Screen parent) {
-        super(Text.literal(I18n.get("AI 模组设置", "AI Mod Settings")));
+        super(Text.literal(I18n.tr("settings.title")));
         this.parent = parent;
         this.config = HelloWorldMod.getConfig();
     }
@@ -29,7 +29,7 @@ public class ModSettingsScreen extends Screen {
 
         // AI 聊天设置（二级菜单入口）
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("AI 聊天设置", "AI Chat Settings")),
+                Text.literal(I18n.tr("settings.chat_settings")),
                 button -> this.client.setScreen(new AiChatSettingsScreen(this)))
                 .dimensions(startX, startY, 200, btnH)
                 .build()
@@ -37,7 +37,7 @@ public class ModSettingsScreen extends Screen {
 
         // AI 聊天按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("AI 聊天", "AI Chat")),
+                Text.literal(I18n.tr("settings.chat")),
                 button -> this.client.setScreen(new AiChatScreen(this)))
                 .dimensions(startX, startY + (btnH + gap), 200, btnH)
                 .build()
@@ -45,7 +45,7 @@ public class ModSettingsScreen extends Screen {
 
         // 选区工具按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("选区工具", "Selection Tool")),
+                Text.literal(I18n.tr("settings.selection_tool")),
                 button -> this.client.setScreen(new com.example.helloworld.selection.SelectionScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 2, 200, btnH)
                 .build()
@@ -53,7 +53,7 @@ public class ModSettingsScreen extends Screen {
 
         // NBT 结构浏览器按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("加载结构 (NBT)", "Load Structure (NBT)")),
+                Text.literal(I18n.tr("settings.load_nbt")),
                 button -> this.client.setScreen(new com.example.helloworld.nbt.NbtBrowserScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
                 .build()
@@ -61,7 +61,7 @@ public class ModSettingsScreen extends Screen {
 
         // TXT 结构设计图浏览器按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("加载结构 (TXT)", "Load Structure (TXT)")),
+                Text.literal(I18n.tr("settings.load_txt")),
                 button -> this.client.setScreen(new com.example.helloworld.blueprint.TxtBrowserScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
@@ -69,7 +69,7 @@ public class ModSettingsScreen extends Screen {
 
         // Mod 语言设置按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("Mod 语言设置", "Mod Language")),
+                Text.literal(I18n.tr("screen.language.title")),
                 button -> this.client.setScreen(new LanguageSettingsScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
@@ -77,7 +77,7 @@ public class ModSettingsScreen extends Screen {
 
         // 用户手册按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("用户手册", "User Manual")),
+                Text.literal(I18n.tr("settings.user_manual")),
                 button -> this.client.setScreen(new UserManualScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
                 .build()
@@ -85,7 +85,7 @@ public class ModSettingsScreen extends Screen {
 
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.get("返回", "Back")),
+                Text.literal(I18n.tr("button.back")),
                 button -> this.client.setScreen(this.parent))
                 .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
                 .build()
