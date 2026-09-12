@@ -21,6 +21,11 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
+    // debug_menu 软依赖：仅编译期引用其 API（DebugMenuApi / DebugOptionEntry 等），
+    // 不打包进产物、运行时不强制存在。玩家未安装 debug-menu 时 AI-helper 照常运行，
+    // 相关集成代码由 FabricLoader.isModLoaded("debug-menu") 守卫。
+    compileOnly files("libs/debug-menu-mc1.20.4-1.0.0.jar")
+
     // 测试依赖
     testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
@@ -56,8 +61,12 @@ test {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    // 固定编译 / 测试 / 运行（含 runClient 游戏本体）所用的 JDK 为 17。
+    // Gradle 会按此 toolchain 自动定位本机的 JDK 17；找不到时可由 gradle.properties 中的
+    // org.gradle.java.home 兜底（该项同时也决定 Gradle 守护进程本身用哪个 JDK）。
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
     withSourcesJar()
 }
 
@@ -65,4 +74,109 @@ jar {
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
+}
+
+// ============================================================
+// debug_menu 软依赖：自动构建相邻的 debug_menu 项目并拉取其最新 jar。
+//
+//   - buildDebugMenu       : 调用 ../debug_menu 的 gradlew 构建对应 MC 版本的 jar
+//   - syncDebugMenuRunJar  : 把最新 jar 拷到 run/mods/（开发运行时加载）——runClient 依赖它，
+//                            因此每次 `./gradlew runClient` 都会自动带上最新的 debug_menu。
+//   - updateDebugMenuApi   : 把最新 jar 拷到 libs/（编译期 compileOnly 引用）。仅在 debug_menu
+//                            的 API 签名变化时才需要手动执行；平时无需运行，避免与 compileJava
+//                            的类路径产生任务依赖冲突。
+//
+// 说明：debug_menu 与本项目一致，目标为 Minecraft 1.20.4，用 project.minecraft_version 对齐。
+// 若相邻目录下不存在 debug_menu，则相关任务自动跳过（软依赖，不阻断启动）。
+// ============================================================
+def debugMenuDir = rootProject.file("../debug_menu")
+def debugMenuLibsDir = new File(debugMenuDir, "build/libs")
+def debugMenuJarPattern = "debug-menu-mc${project.minecraft_version}-*.jar"
+
+tasks.register("buildDebugMenu", Exec) {
+    group = "debug-menu"
+    description = "构建相邻的 debug_menu 项目，产出与本项目同 MC 版本的 jar"
+    onlyIf {
+        boolean exists = debugMenuDir.exists()
+        if (!exists) {
+            logger.lifecycle("[debug-menu] 未找到相邻项目 ${debugMenuDir}，跳过构建（软依赖）")
+        }
+        exists
+    }
+    workingDir = debugMenuDir
+    // 复用当前 Gradle 运行所用的 JDK（runClient 用 JDK 21 启动，子构建沿用同一 JDK，
+    // 避免默认 JDK 版本过高导致 debug_menu 的 Gradle 不兼容）。
+    def javaHome = System.getProperty("java.home")
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        commandLine "cmd", "/c", "gradlew.bat", "build", "-Pmc=${project.minecraft_version}", "-x", "test"
+    } else {
+        commandLine "./gradlew", "build", "-Pmc=${project.minecraft_version}", "-x", "test"
+    }
+    environment "JAVA_HOME", javaHome
+}
+
+// 把最新 jar 同步到 run/mods/（开发运行时加载）。输出目录 run/mods/ 不参与编译类路径，
+// 因此不会与 compileJava 产生隐式依赖冲突。
+tasks.register("syncDebugMenuRunJar") {
+    group = "debug-menu"
+    description = "把 debug_menu 最新构建的 jar 同步到 run/mods/"
+    dependsOn "buildDebugMenu"
+    onlyIf { debugMenuDir.exists() }
+
+    doLast {
+        def picked = fileTree(debugMenuLibsDir) {
+            include debugMenuJarPattern
+            exclude "*-sources.jar"
+        }.files
+        if (picked.isEmpty()) {
+            logger.warn("[debug-menu] 未在 ${debugMenuLibsDir} 找到匹配 ${debugMenuJarPattern} 的 jar")
+            return
+        }
+        def runMods = file("run/mods")
+        runMods.mkdirs()
+        // 清理旧的 debug-menu jar，避免多版本共存
+        runMods.listFiles()?.findAll { it.name.startsWith("debug-menu-") && it.name.endsWith(".jar") }?.each {
+            logger.lifecycle("[debug-menu] 移除 run/mods 旧 jar: ${it.name}")
+            it.delete()
+        }
+        copy {
+            from picked
+            into runMods
+        }
+        logger.lifecycle("[debug-menu] 已同步最新 jar 到 run/mods: ${picked*.name.join(', ')}")
+    }
+}
+
+// 仅在 debug_menu 的 API 签名变化时手动执行，用于刷新编译期引用的 libs/ jar。
+tasks.register("updateDebugMenuApi") {
+    group = "debug-menu"
+    description = "把 debug_menu 最新 jar 同步到 libs/（API 变更后手动执行）"
+    dependsOn "buildDebugMenu"
+    onlyIf { debugMenuDir.exists() }
+
+    doLast {
+        def picked = fileTree(debugMenuLibsDir) {
+            include debugMenuJarPattern
+            exclude "*-sources.jar"
+        }.files
+        if (picked.isEmpty()) {
+            logger.warn("[debug-menu] 未在 ${debugMenuLibsDir} 找到匹配 ${debugMenuJarPattern} 的 jar")
+            return
+        }
+        def libs = file("libs")
+        libs.mkdirs()
+        libs.listFiles()?.findAll { it.name.startsWith("debug-menu-") && it.name.endsWith(".jar") }?.each {
+            it.delete()
+        }
+        copy {
+            from picked
+            into libs
+        }
+        logger.lifecycle("[debug-menu] 已更新编译期 jar 到 libs: ${picked*.name.join(', ')}")
+    }
+}
+
+// 启动客户端前自动同步 debug_menu 最新运行时 jar
+tasks.matching { it.name == "runClient" }.configureEach {
+    dependsOn "syncDebugMenuRunJar"
 }

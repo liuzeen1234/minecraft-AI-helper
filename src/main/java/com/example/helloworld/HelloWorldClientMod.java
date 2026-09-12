@@ -37,6 +37,17 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // 软依赖 debug_menu：若已安装，则把语言切换注册进其调试菜单。
+        // 未安装时跳过，AI-helper 照常运行（仍可用自带的 LanguageSettingsScreen 切换）。
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("debug-menu")) {
+            try {
+                DebugMenuIntegration.register();
+            } catch (Throwable t) {
+                // 防御：debug-menu 版本不兼容等意外情况不应影响 AI-helper 启动
+                HelloWorldMod.LOGGER.warn("[debug-menu] 注册语言切换选项失败，已跳过", t);
+            }
+        }
+
         // 注册选区渲染器
         com.example.helloworld.selection.SelectionRenderer.register();
 
