@@ -1135,18 +1135,54 @@ public class HelloWorldMod implements ModInitializer {
         return 1;
     }
 
-    private String callKimiApi(String userMessage, String base64Image) throws Exception {
-        String escapedMessage = userMessage
+    /**
+     * 转义字符串使其可安全放入 JSON 字符串字面量。
+     */
+    private static String escapeJson(String s) {
+        if (s == null) return "";
+        return s
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
+    }
 
-        // 构建当前用户消息
-        String currentUserMessage;
-        if (base64Image != null && !base64Image.isEmpty()) {
-            currentUserMessage = """
+    /**
+     * 构建当前用户消息 JSON 对象，根据生效的 API 格式选择结构。
+     * - OpenAI：图片使用 image_url + data URI（content 为数组）
+     * - Anthropic：图片使用 image + source.base64（content 为数组）
+     * 纯文本时两种格式一致：{"role":"user","content":"..."}
+     */
+    private String buildUserMessage(String escapedMessage, String base64Image) {
+        boolean hasImage = base64Image != null && !base64Image.isEmpty();
+        if (!hasImage) {
+            return """
+                        {
+                            "role": "user",
+                            "content": "%s"
+                        }""".formatted(escapedMessage);
+        }
+        if (CONFIG.isOpenAiFormat()) {
+            return """
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "%s"
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": "data:image/png;base64,%s"
+                                    }
+                                }
+                            ]
+                        }""".formatted(escapedMessage, base64Image);
+        }
+        // Anthropic
+        return """
                         {
                             "role": "user",
                             "content": [
@@ -1164,52 +1200,94 @@ public class HelloWorldMod implements ModInitializer {
                                 }
                             ]
                         }""".formatted(base64Image, escapedMessage);
-        } else {
-            currentUserMessage = """
-                        {
-                            "role": "user",
-                            "content": "%s"
-                        }""".formatted(escapedMessage);
-        }
+    }
 
-        // 构建 messages 数组
+    /**
+     * 构建 messages 数组 JSON。OpenAI 格式会将 system 作为首条消息加入。
+     */
+    private String buildMessagesArray(String currentUserMessage, String escapedSystemPrompt) {
         StringBuilder messagesBuilder = new StringBuilder();
         messagesBuilder.append("[");
 
+        // OpenAI 格式：system 作为 messages 中的第一条
+        if (CONFIG.isOpenAiFormat()) {
+            messagesBuilder.append("""
+                        {
+                            "role": "system",
+                            "content": "%s"
+                        }""".formatted(escapedSystemPrompt));
+            messagesBuilder.append(",");
+        }
+
         if (CONFIG.isContextEnabled() && !conversationHistory.isEmpty()) {
-            // 加入历史消息
             for (int i = 0; i < conversationHistory.size(); i++) {
                 messagesBuilder.append(conversationHistory.get(i));
                 messagesBuilder.append(",");
             }
         }
 
-        // 加入当前消息
         messagesBuilder.append(currentUserMessage);
         messagesBuilder.append("]");
+        return messagesBuilder.toString();
+    }
 
-        // system prompt 用于告诉 AI 可用的游戏指令
-        String systemPrompt = AICommandExecutor.getSystemPrompt()
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
-
-        String requestBody = """
+    /**
+     * 构建请求体，根据生效格式选择 OpenAI / Anthropic 结构。
+     * Anthropic 使用顶层 system 字段；OpenAI 将 system 放入 messages（由 buildMessagesArray 处理）。
+     */
+    private String buildRequestBody(String messagesArray, String escapedSystemPrompt, boolean stream) {
+        if (CONFIG.isOpenAiFormat()) {
+            return """
                 {
                     "model": "%s",
                     "max_tokens": 16384,
+                    "stream": %s,
+                    "messages": %s
+                }
+                """.formatted(CONFIG.getModel(), stream, messagesArray);
+        }
+        // Anthropic
+        return """
+                {
+                    "model": "%s",
+                    "max_tokens": 16384,
+                    "stream": %s,
                     "system": "%s",
                     "messages": %s
                 }
-                """.formatted(CONFIG.getModel(), systemPrompt, messagesBuilder.toString());
+                """.formatted(CONFIG.getModel(), stream, escapedSystemPrompt, messagesArray);
+    }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(CONFIG.getApiBaseUrl()))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", CONFIG.getApiKey())
-                .header("anthropic-version", "2023-06-01")
+    /**
+     * 为请求应用鉴权 headers，根据生效格式选择。
+     */
+    private HttpRequest.Builder applyAuthHeaders(HttpRequest.Builder builder) {
+        builder.header("Content-Type", "application/json");
+        if (CONFIG.isOpenAiFormat()) {
+            builder.header("Authorization", "Bearer " + CONFIG.getApiKey());
+        } else {
+            builder.header("x-api-key", CONFIG.getApiKey());
+            builder.header("anthropic-version", "2023-06-01");
+        }
+        return builder;
+    }
+
+    private String callKimiApi(String userMessage, String base64Image) throws Exception {
+        String escapedMessage = escapeJson(userMessage);
+
+        // 构建当前用户消息
+        String currentUserMessage = buildUserMessage(escapedMessage, base64Image);
+
+        // system prompt 用于告诉 AI 可用的游戏指令
+        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt());
+
+        // 构建 messages 数组（OpenAI 格式会自动加入 system 消息）
+        String messagesArray = buildMessagesArray(currentUserMessage, systemPrompt);
+
+        String requestBody = buildRequestBody(messagesArray, systemPrompt, false);
+
+        HttpRequest request = applyAuthHeaders(HttpRequest.newBuilder()
+                .uri(URI.create(CONFIG.getResolvedEndpoint())))
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
@@ -1253,86 +1331,28 @@ public class HelloWorldMod implements ModInitializer {
      */
     private String callKimiApiStreaming(String userMessage, String base64Image, ServerPlayerEntity player,
                                         net.minecraft.server.MinecraftServer server) throws Exception {
-        String escapedMessage = userMessage
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        String escapedMessage = escapeJson(userMessage);
 
         // 构建当前用户消息
-        String currentUserMessage;
-        if (base64Image != null && !base64Image.isEmpty()) {
-            currentUserMessage = """
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": "image/png",
-                                        "data": "%s"
-                                    }
-                                },
-                                {
-                                    "type": "text",
-                                    "text": "%s"
-                                }
-                            ]
-                        }""".formatted(base64Image, escapedMessage);
-        } else {
-            currentUserMessage = """
-                        {
-                            "role": "user",
-                            "content": "%s"
-                        }""".formatted(escapedMessage);
-        }
+        String currentUserMessage = buildUserMessage(escapedMessage, base64Image);
 
-        // 构建 messages 数组
-        StringBuilder messagesBuilder = new StringBuilder();
-        messagesBuilder.append("[");
+        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt());
 
-        if (CONFIG.isContextEnabled() && !conversationHistory.isEmpty()) {
-            for (int i = 0; i < conversationHistory.size(); i++) {
-                messagesBuilder.append(conversationHistory.get(i));
-                messagesBuilder.append(",");
-            }
-        }
-
-        messagesBuilder.append(currentUserMessage);
-        messagesBuilder.append("]");
-
-        String systemPrompt = AICommandExecutor.getSystemPrompt()
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        // 构建 messages 数组（OpenAI 格式会自动加入 system 消息）
+        String messagesArray = buildMessagesArray(currentUserMessage, systemPrompt);
 
         // 启用 stream
-        String requestBody = """
-                {
-                    "model": "%s",
-                    "max_tokens": 16384,
-                    "stream": true,
-                    "system": "%s",
-                    "messages": %s
-                }
-                """.formatted(CONFIG.getModel(), systemPrompt, messagesBuilder.toString());
+        String requestBody = buildRequestBody(messagesArray, systemPrompt, true);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(CONFIG.getApiBaseUrl()))
-                .header("Content-Type", "application/json")
-                .header("x-api-key", CONFIG.getApiKey())
-                .header("anthropic-version", "2023-06-01")
+        HttpRequest request = applyAuthHeaders(HttpRequest.newBuilder()
+                .uri(URI.create(CONFIG.getResolvedEndpoint())))
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .timeout(Duration.ofSeconds(180))
                 .build();
 
         // 诊断日志：请求信息
-        LOGGER.info("[AI诊断] 发送请求: URL={}, 请求体大小={}字节, HttpClient版本={}", 
-                CONFIG.getApiBaseUrl(), requestBody.length(), httpClient.version());
+        LOGGER.info("[AI诊断] 发送请求: URL={}, 格式={}, 请求体大小={}字节, HttpClient版本={}",
+                CONFIG.getResolvedEndpoint(), CONFIG.getEffectiveApiFormat(), requestBody.length(), httpClient.version());
         LOGGER.info("[AI诊断] Java版本={}, OS={}", 
                 System.getProperty("java.version"), System.getProperty("os.name"));
 
@@ -1532,37 +1552,29 @@ public class HelloWorldMod implements ModInitializer {
     private String extractStreamDelta(String jsonData) {
         // Anthropic 格式
         if (jsonData.contains("\"content_block_delta\"")) {
-            String marker = "\"text\":\"";
-            int start = jsonData.indexOf(marker);
+            int start = findStringValueStart(jsonData, "text", 0);
             if (start == -1) return null;
-            start += marker.length();
             return extractJsonStringValue(jsonData, start);
         }
 
         // OpenAI/Kimi 格式: 查找 "delta" 对象中的 "content" 字段
         int deltaIdx = jsonData.indexOf("\"delta\"");
         if (deltaIdx != -1) {
-            String contentMarker = "\"content\":\"";
-            int contentIdx = jsonData.indexOf(contentMarker, deltaIdx);
-            if (contentIdx != -1) {
-                int start = contentIdx + contentMarker.length();
+            int start = findStringValueStart(jsonData, "content", deltaIdx);
+            if (start != -1) {
                 return extractJsonStringValue(jsonData, start);
             }
             // 也尝试 "text" 字段
-            String textMarker = "\"text\":\"";
-            int textIdx = jsonData.indexOf(textMarker, deltaIdx);
-            if (textIdx != -1) {
-                int start = textIdx + textMarker.length();
+            start = findStringValueStart(jsonData, "text", deltaIdx);
+            if (start != -1) {
                 return extractJsonStringValue(jsonData, start);
             }
         }
 
         // 最后尝试：如果 JSON 中有 "choices" 和 "content"
         if (jsonData.contains("\"choices\"")) {
-            String contentMarker = "\"content\":\"";
-            int contentIdx = jsonData.indexOf(contentMarker);
-            if (contentIdx != -1) {
-                int start = contentIdx + contentMarker.length();
+            int start = findStringValueStart(jsonData, "content", 0);
+            if (start != -1) {
                 return extractJsonStringValue(jsonData, start);
             }
         }
@@ -1570,15 +1582,32 @@ public class HelloWorldMod implements ModInitializer {
         // 兜底：如果包含 "text" 字段且不是 stop/start 事件
         if (!jsonData.contains("\"message_start\"") && !jsonData.contains("\"message_stop\"")
                 && !jsonData.contains("\"content_block_start\"") && !jsonData.contains("\"content_block_stop\"")) {
-            String textMarker = "\"text\":\"";
-            int textIdx = jsonData.indexOf(textMarker);
-            if (textIdx != -1) {
-                int start = textIdx + textMarker.length();
+            int start = findStringValueStart(jsonData, "text", 0);
+            if (start != -1) {
                 return extractJsonStringValue(jsonData, start);
             }
         }
 
         return null;
+    }
+
+    /**
+     * 在 json 中从 fromIndex 起查找形如 "key" : "value" 的字段，返回 value 首字符的下标。
+     * 容忍 key 与冒号、冒号与引号之间的任意空白（兼容 "content":"x" 与 "content": "x"）。
+     * 若字段不存在或其值不是字符串，返回 -1。
+     */
+    private int findStringValueStart(String json, String key, int fromIndex) {
+        String keyToken = "\"" + key + "\"";
+        int idx = json.indexOf(keyToken, Math.max(0, fromIndex));
+        if (idx == -1) return -1;
+        int i = idx + keyToken.length();
+        // 跳过空白
+        while (i < json.length() && Character.isWhitespace(json.charAt(i))) i++;
+        if (i >= json.length() || json.charAt(i) != ':') return -1;
+        i++;
+        while (i < json.length() && Character.isWhitespace(json.charAt(i))) i++;
+        if (i >= json.length() || json.charAt(i) != '"') return -1; // 值不是字符串（可能是 null/对象）
+        return i + 1;
     }
 
     /**
@@ -1623,34 +1652,24 @@ public class HelloWorldMod implements ModInitializer {
     }
 
     private String extractContent(String jsonResponse) {
-        String marker = "\"text\":\"";
-        int start = jsonResponse.indexOf(marker);
+        // OpenAI 格式：{"choices":[{"message":{"content":"..."}}]}
+        if (CONFIG.isOpenAiFormat() || jsonResponse.contains("\"choices\"")) {
+            int msgIdx = jsonResponse.indexOf("\"message\"");
+            if (msgIdx != -1) {
+                int contentStart = findStringValueStart(jsonResponse, "content", msgIdx);
+                if (contentStart != -1) {
+                    return extractJsonStringValue(jsonResponse, contentStart);
+                }
+            }
+        }
+
+        // Anthropic 格式：{"content":[{"type":"text","text":"..."}]}
+        int start = findStringValueStart(jsonResponse, "text", 0);
         if (start == -1) {
             LOGGER.warn("无法解析 API 响应: {}", jsonResponse);
             return "无法解析 AI 响应";
         }
-        start += marker.length();
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = start; i < jsonResponse.length(); i++) {
-            char c = jsonResponse.charAt(i);
-            if (c == '\\' && i + 1 < jsonResponse.length()) {
-                char next = jsonResponse.charAt(i + 1);
-                switch (next) {
-                    case '"' -> { sb.append('"'); i++; }
-                    case '\\' -> { sb.append('\\'); i++; }
-                    case 'n' -> { sb.append('\n'); i++; }
-                    case 'r' -> { sb.append('\r'); i++; }
-                    case 't' -> { sb.append('\t'); i++; }
-                    default -> sb.append(c);
-                }
-            } else if (c == '"') {
-                break;
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
+        return extractJsonStringValue(jsonResponse, start);
     }
 
     private void sendLongMessage(ServerCommandSource source, String message) {

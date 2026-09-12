@@ -22,17 +22,24 @@ public class ModConfig {
     private String tavilyApiKey;
     private boolean streamOutputEnabled;
     private String language;
+    private String apiFormat;
 
     // 默认值
     private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
     private static final String DEFAULT_API_KEY = "your-api-key-here";
     private static final String DEFAULT_MODEL = "kimi-for-coding";
-    private static final boolean DEFAULT_SCREENSHOT_ENABLED = true;
+    private static final boolean DEFAULT_SCREENSHOT_ENABLED = false;
     private static final boolean DEFAULT_CONTEXT_ENABLED = true;
     private static final boolean DEFAULT_WEB_SEARCH_ENABLED = true;
     private static final String DEFAULT_TAVILY_API_KEY = "";
-    private static final boolean DEFAULT_STREAM_OUTPUT_ENABLED = false;
+    private static final boolean DEFAULT_STREAM_OUTPUT_ENABLED = true;
     private static final String DEFAULT_LANGUAGE = "en_us";
+    // API 格式：auto（自动检测）/ openai / anthropic
+    private static final String DEFAULT_API_FORMAT = "auto";
+
+    // API 格式常量
+    public static final String FORMAT_OPENAI = "openai";
+    public static final String FORMAT_ANTHROPIC = "anthropic";
 
     public void load() {
         Path configPath = ModPaths.getConfigFile();
@@ -58,8 +65,9 @@ public class ModConfig {
         tavilyApiKey = props.getProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
         streamOutputEnabled = Boolean.parseBoolean(props.getProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED)));
         language = props.getProperty("language", DEFAULT_LANGUAGE);
+        apiFormat = props.getProperty("api_format", DEFAULT_API_FORMAT);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, language={}", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, language);
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, language, apiFormat, getEffectiveApiFormat());
     }
 
     private void createDefault(Path configPath) {
@@ -75,6 +83,7 @@ public class ModConfig {
             props.setProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
             props.setProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED));
             props.setProperty("language", DEFAULT_LANGUAGE);
+            props.setProperty("api_format", DEFAULT_API_FORMAT);
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "HelloWorld Mod - AI API Configuration");
             }
@@ -140,6 +149,59 @@ public class ModConfig {
         save();
     }
 
+    /** 用户配置的原始 API 格式（auto / openai / anthropic）。 */
+    public String getApiFormat() { return apiFormat; }
+
+    public void setApiFormat(String apiFormat) {
+        this.apiFormat = apiFormat;
+        save();
+    }
+
+    /**
+     * 返回实际生效的 API 格式（openai 或 anthropic）。
+     * 当配置为 auto 时，根据 api_base_url 和 api_key 自动检测：
+     * - URL 含 /chat/completions 或以 /v1 结尾，或 key 以 sk- 开头 → OpenAI
+     * - URL 含 anthropic 或 /messages → Anthropic
+     * - 默认回退到 OpenAI（当前最通用的格式）
+     */
+    public String getEffectiveApiFormat() {
+        if (FORMAT_OPENAI.equalsIgnoreCase(apiFormat)) return FORMAT_OPENAI;
+        if (FORMAT_ANTHROPIC.equalsIgnoreCase(apiFormat)) return FORMAT_ANTHROPIC;
+
+        // auto 检测
+        String url = apiBaseUrl == null ? "" : apiBaseUrl.toLowerCase();
+        if (url.contains("anthropic") || url.contains("/messages")) {
+            return FORMAT_ANTHROPIC;
+        }
+        if (url.contains("/chat/completions") || url.contains("/v1")) {
+            return FORMAT_OPENAI;
+        }
+        // 兜底：默认按 OpenAI 兼容格式处理
+        return FORMAT_OPENAI;
+    }
+
+    /** 是否使用 OpenAI 兼容格式。 */
+    public boolean isOpenAiFormat() {
+        return FORMAT_OPENAI.equals(getEffectiveApiFormat());
+    }
+
+    /**
+     * 返回用于发送请求的完整端点 URL。
+     * OpenAI 格式下，如果用户仅配置到 /v1（或未含 completions 路径），自动补全 /chat/completions。
+     */
+    public String getResolvedEndpoint() {
+        String url = apiBaseUrl == null ? "" : apiBaseUrl.trim();
+        if (isOpenAiFormat()) {
+            String lower = url.toLowerCase();
+            if (!lower.contains("/chat/completions")) {
+                // 去掉结尾斜杠后拼接
+                String base = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+                return base + "/chat/completions";
+            }
+        }
+        return url;
+    }
+
     private void save() {
         Path configPath = ModPaths.getConfigFile();
         Properties props = new Properties();
@@ -152,6 +214,7 @@ public class ModConfig {
         props.setProperty("tavily_api_key", tavilyApiKey);
         props.setProperty("stream_output_enabled", String.valueOf(streamOutputEnabled));
         props.setProperty("language", language);
+        props.setProperty("api_format", apiFormat);
         try (OutputStream out = Files.newOutputStream(configPath)) {
             props.store(out, "HelloWorld Mod - AI API Configuration");
         } catch (IOException e) {

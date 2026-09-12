@@ -53,6 +53,29 @@ public class ApiKeyValidator {
     }
 
     /**
+     * 判断验证请求应使用哪种格式。
+     * 优先使用配置中的 api_format（若为 openai/anthropic）；为 auto 时按 URL/key 自动检测。
+     */
+    private static boolean isOpenAiFormat(String apiBaseUrl, String apiKey) {
+        try {
+            ModConfig config = HelloWorldMod.getConfig();
+            if (config != null) {
+                String fmt = config.getApiFormat();
+                if (ModConfig.FORMAT_OPENAI.equalsIgnoreCase(fmt)) return true;
+                if (ModConfig.FORMAT_ANTHROPIC.equalsIgnoreCase(fmt)) return false;
+            }
+        } catch (Exception ignored) {
+            // 配置不可用时回退到自动检测
+        }
+
+        String url = apiBaseUrl == null ? "" : apiBaseUrl.toLowerCase();
+        if (url.contains("anthropic") || url.contains("/messages")) return false;
+        if (url.contains("/chat/completions") || url.contains("/v1")) return true;
+        // 兜底：默认按 OpenAI 兼容格式处理
+        return true;
+    }
+
+    /**
      * 异步验证 API Key（发送一个最小请求）。
      * 完成后通过 callback 回调结果。
      */
@@ -65,21 +88,50 @@ public class ApiKeyValidator {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // 发送一个最小的请求来验证 API Key
-                String requestBody = """
-                        {
-                            "model": "%s",
-                            "max_tokens": 1,
-                            "system": "Reply with OK",
-                            "messages": [{"role": "user", "content": "hi"}]
-                        }
-                        """.formatted(model);
+                boolean openai = isOpenAiFormat(apiBaseUrl, apiKey);
 
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(apiBaseUrl))
-                        .header("Content-Type", "application/json")
-                        .header("x-api-key", apiKey)
-                        .header("anthropic-version", "2023-06-01")
+                // 发送一个最小的请求来验证 API Key
+                String requestBody;
+                String endpoint = apiBaseUrl;
+                if (openai) {
+                    // OpenAI 兼容格式：system 作为消息，鉴权用 Authorization: Bearer
+                    requestBody = """
+                            {
+                                "model": "%s",
+                                "max_tokens": 1,
+                                "messages": [
+                                    {"role": "system", "content": "Reply with OK"},
+                                    {"role": "user", "content": "hi"}
+                                ]
+                            }
+                            """.formatted(model);
+                    String lower = apiBaseUrl == null ? "" : apiBaseUrl.toLowerCase();
+                    if (!lower.contains("/chat/completions")) {
+                        String base = apiBaseUrl != null && apiBaseUrl.endsWith("/")
+                                ? apiBaseUrl.substring(0, apiBaseUrl.length() - 1) : apiBaseUrl;
+                        endpoint = base + "/chat/completions";
+                    }
+                } else {
+                    requestBody = """
+                            {
+                                "model": "%s",
+                                "max_tokens": 1,
+                                "system": "Reply with OK",
+                                "messages": [{"role": "user", "content": "hi"}]
+                            }
+                            """.formatted(model);
+                }
+
+                HttpRequest.Builder builder = HttpRequest.newBuilder()
+                        .uri(URI.create(endpoint))
+                        .header("Content-Type", "application/json");
+                if (openai) {
+                    builder.header("Authorization", "Bearer " + apiKey);
+                } else {
+                    builder.header("x-api-key", apiKey);
+                    builder.header("anthropic-version", "2023-06-01");
+                }
+                HttpRequest request = builder
                         .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                         .timeout(Duration.ofSeconds(15))
                         .build();
