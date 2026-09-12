@@ -59,7 +59,7 @@ Quick Setup (choose one):
 
 | Key | Function | Context |
 |-----|----------|---------|
-| K | Open mod settings menu | In-game |
+| K (default, rebindable) | Open mod settings menu | In-game |
 | Enter | Send message | AI Chat screen |
 | Escape | Close current screen | All mod screens |
 | Page Up/Down | Scroll chat history | AI Chat screen |
@@ -68,6 +68,8 @@ Quick Setup (choose one):
 | Backspace | Go up one directory | NBT/TXT browser |
 | Delete | Delete selected file | NBT/TXT browser |
 | Enter | Place structure/enter folder | NBT/TXT browser |
+
+Tip: The key that opens mod settings (default K) can be rebound in the vanilla Options -> Controls -> Key Binds screen, under the "AI Builder" category.
 
 ---
 

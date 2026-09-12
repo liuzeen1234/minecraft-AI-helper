@@ -138,27 +138,19 @@ DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 #   * $DEFAULT_JVM_OPTS, $JAVA_OPTS, and $GRADLE_OPTS can contain fragments of
 #     shell script including quotes and/or backslashes, so put them in
 #     temporary files and eval them.
-set -- \
-        "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
-        org.gradle.wrapper.GradleWrapperMain \
-        "$@"
-
-# Stop when "xeli" is not available.
-if ! "$cygwin" && ! "$msys" && ! "$darwin" && ! "$nonstop" ; then
-    case $( set -- "$JAVACMD" --version 2>&1 ) in
-        *Warning*) : ;;
-    esac
-fi
 
 # Escape application args
 save () {
-    for i do printf %s\\n "$i" | sed "s/'/eli'\\\\''eli'/g;1s/^/'/;\$s/\$/' \\\\/" ; done
+    for i do printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/" ; done
     echo " "
 }
 APP_ARGS=$(save "$@")
 
 # Collect all arguments for the java command, following the shell quoting and substitution rules
-eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
+eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS \
+    "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" \
+    -classpath "\"$CLASSPATH\"" \
+    org.gradle.wrapper.GradleWrapperMain \
+    "$APP_ARGS"
 
 exec "$JAVACMD" "$@"
