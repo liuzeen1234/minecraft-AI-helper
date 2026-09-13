@@ -4,6 +4,9 @@
 
     "screen.language.title": "Mod Language",
     "screen.language.hint": "Resets to the game language on restart",
+
+    "debugmenu.log.toggle": "Chat Log Display",
+    "debugmenu.log.level": "Log Min Level",
     "button.back": "Back",
 
     "cmd.blueprint.failed": "§cBlueprint placement failed: %s",

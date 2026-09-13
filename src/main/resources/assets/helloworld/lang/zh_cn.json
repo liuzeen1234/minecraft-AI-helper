@@ -4,6 +4,9 @@
 
     "screen.language.title": "Mod 语言设置",
     "screen.language.hint": "重启游戏后将重置为当前游戏语言",
+
+    "debugmenu.log.toggle": "聊天框日志显示",
+    "debugmenu.log.level": "日志最低级别",
     "button.back": "返回",
 
     "cmd.blueprint.failed": "§c蓝图放置失败: %s",
