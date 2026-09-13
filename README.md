@@ -82,6 +82,31 @@
 
 ---
 
+## 调试指令
+
+以下是上面常用命令中未列出的其余命令，主要用于调试、配置和进阶管理。
+
+| 命令 | 说明 |
+|------|------|
+| `/ai reload_blueprints` | 重新从磁盘加载蓝图文件 |
+| `/ai test_stairs` | 测试放置楼梯方块（调试用） |
+| `/aiconfig api_base_url <值>` | 设置 AI API 地址 |
+| `/aiconfig api_key <值>` | 设置 AI API 密钥 |
+| `/aiconfig model <值>` | 设置 AI 模型名称 |
+| `/aiconfig web_search <on/off>` | 开启/关闭联网搜索 |
+| `/aiconfig tavily_api_key <值>` | 设置 Tavily 联网搜索 API 密钥 |
+| `/ailog` | 切换日志转发到聊天框的开关 |
+| `/ailog on` | 开启日志转发到聊天框 |
+| `/ailog off` | 关闭日志转发到聊天框 |
+| `/ailog level <error/warn/info/debug>` | 设置转发到聊天框的最低日志级别 |
+| `/aitest` | 触发测试日志，验证聊天框日志显示是否正常 |
+| `/ainbt list` | 列出所有 `.nbt` 结构文件 |
+| `/ainbt info <文件名>` | 显示指定 NBT 结构的详细信息 |
+| `/ainbt all` | 显示所有 NBT 结构的汇总信息 |
+| `/ainbt place <文件名>` | 在当前位置放置指定 NBT 结构 |
+
+---
+
 ## 快捷键
 
 | 按键 | 功能 |
