@@ -268,8 +268,6 @@
     "server.log.level.warn": "§a[Log] Min level: §eWARN",
     "server.log.level.info": "§a[Log] Min level: §fINFO",
     "server.log.level.debug": "§a[Log] Min level: §7DEBUG",
-    "server.test.generating": "§e[Test] Generating test logs...",
-    "server.test.done": "§a[Test] Generated 2 WARN/ERROR + 1 INFO logs, check chat!",
     "server.ai.stopped": "§e[AI] AI response stopped",
     "server.ai.no_request": "§7[AI] No AI request in progress",
     "server.build.players_only": "§cOnly players can execute this command",

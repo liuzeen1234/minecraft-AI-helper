@@ -934,18 +934,8 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
 
-            // /aitest - 故意触发测试日志，验证聊天框日志显示（日志转发功能已迁移到 debug-menu）
-            dispatcher.register(CommandManager.literal("aitest")
-                .executes(ctx -> {
-                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test.generating")), false);
-                    LOGGER.warn("这是一条测试 WARN 日志 - 来自 /aitest 命令");
-                    LOGGER.error("这是一条测试 ERROR 日志 - 来自 /aitest 命令");
-                    LOGGER.error("模拟异常: NullPointerException at FakeClass.fakeMethod(FakeClass.java:42)");
-                    LOGGER.info("这是一条测试 INFO 日志（默认级别下不会显示在聊天框）");
-                    ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test.done")), false);
-                    return 1;
-                })
-            );
+            // 注意：原 /aitest 命令（生成测试日志）已迁移到 debug-menu 调试菜单里的
+            // “生成测试日志”按钮（见 DebugMenuIntegration#generateTestLogs）。
 
             // /aistop - 终止当前 AI 思考/生成
             dispatcher.register(CommandManager.literal("aistop")

@@ -95,7 +95,7 @@
 | `/aiconfig model <值>` | 设置 AI 模型名称 |
 | `/aiconfig web_search <on/off>` | 开启/关闭联网搜索 |
 | `/aiconfig tavily_api_key <值>` | 设置 Tavily 联网搜索 API 密钥 |
-| `/aitest` | 触发测试日志，验证聊天框日志显示是否正常（日志转发功能已迁移到 debug-menu） |
+| debug-menu 菜单「生成测试日志」 | 触发测试日志，验证聊天框日志显示是否正常（原 `/aitest` 命令已迁移到 debug-menu 调试菜单，默认 M 键） |
 | `/ainbt list` | 列出所有 `.nbt` 结构文件 |
 | `/ainbt info <文件名>` | 显示指定 NBT 结构的详细信息 |
 | `/ainbt all` | 显示所有 NBT 结构的汇总信息 |

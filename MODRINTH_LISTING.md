@@ -93,7 +93,7 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 | `/aiconfig web_search <on/off>` | Toggle web search |
 | `/aiconfig <key> <value>` | Modify a configuration value |
 | `/aipos` | Show current coordinates |
-| `/aitest` | Generate test log entry (log forwarding moved to the debug-menu mod) |
+| debug-menu "Generate Test Logs" | Generate test log entry (moved from `/aitest` into the debug-menu menu, default key M) |
 | `/ainbt` | Open NBT browser |
 
 ## Configuration

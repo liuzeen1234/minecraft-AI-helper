@@ -21,6 +21,10 @@ import java.util.List;
  * <p><b>日志转发：</b>“聊天框日志显示”开关与“日志最低级别”选项已迁移到 debug_menu
  * 模组自身（见 debug_menu 的 {@code DebugMenuClient} 与 {@code com.debugmenu.log.InGameLogAppender}），
  * 不再由 AI-helper 注册。
+ *
+ * <p><b>测试日志：</b>原 {@code /aitest} 命令的“生成测试日志”功能已整体内置到 debug_menu
+ * 模组自身（见 debug_menu 的 {@code DebugMenuClient} 里的“生成测试日志”按钮），不再由
+ * AI-helper 注册。
  */
 public final class DebugMenuIntegration {
 

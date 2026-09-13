@@ -103,7 +103,8 @@ Tip: The key that opens mod settings (default K) can be rebound in the vanilla O
 | Command | Description |
 |---------|-------------|
 | /aipos | Show current player coordinates and dimension |
-| /aitest | Generate test logs to verify log system (log forwarding moved to the debug-menu mod) |
+
+> The test-log feature moved from the /aitest command into the "Generate Test Logs" button in the debug-menu debug menu (default key M) — click it once to emit a batch of test logs.
 
 ### NBT Structure Commands
 
@@ -413,7 +414,7 @@ Format Details:
 - Check API key: /aiconfig show
 - Verify API URL is accessible
 - Enable "chat log display" in the debug-menu (default key M) for detailed logs
-- Use /aitest to verify the log system works
+- Click "Generate Test Logs" in the debug-menu to verify the log system works
 
 ### Q: How to stop AI response
 - In chat screen: Click "Stop Thinking" button

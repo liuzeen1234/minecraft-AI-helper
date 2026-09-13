@@ -99,6 +99,9 @@ class DebugMenuIntegrationTest {
     }
 
     // 说明：日志级别 ↔ 显示名的映射逻辑已随“日志转发到聊天框”功能迁移到 debug-menu 模组
-    //（见 debug_menu 的 DebugMenuClient / com.debugmenu.log.InGameLogAppender），
-    // 对应的测试也随之移除，不再由 AI-helper 维护。
+    //（见 debug_menu 的 DebugMenuClient / com.debugmenu.log.InGameLogAppender），对应测试
+    // 也随之移除，不再由 AI-helper 维护。
+    //
+    // 说明：“生成测试日志”按钮（原 /aitest）已整体内置到 debug_menu 模组（见其 DebugMenuClient），
+    // 不再由 AI-helper 注册，对应门控逻辑与测试也随之移除。
 }

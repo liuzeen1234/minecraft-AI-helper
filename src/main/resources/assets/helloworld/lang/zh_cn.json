@@ -259,8 +259,6 @@
     "server.config.reloaded": "§a[配置] 配置已重新加载",
     "server.ai.new_topic": "§a[AI] 对话历史已清空，开始新话题",
     "server.pos.players_only": "§c[坐标] 只有玩家才能使用此命令",
-    "server.test.generating": "§e[测试] 正在生成测试日志...",
-    "server.test.done": "§a[测试] 已生成 2 条 WARN/ERROR + 1 条 INFO 日志，检查聊天框!",
     "server.ai.stopped": "§e[AI] 已终止 AI 回复",
     "server.ai.no_request": "§7[AI] 当前没有正在进行的 AI 请求",
     "server.build.players_only": "§c只有玩家可以执行此命令",
