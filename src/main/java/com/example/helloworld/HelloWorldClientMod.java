@@ -51,9 +51,6 @@ public class HelloWorldClientMod implements ClientModInitializer {
         // 注册选区渲染器
         com.example.helloworld.selection.SelectionRenderer.register();
 
-        // 安装日志转发到聊天框的 Appender
-        InGameLogAppender.install();
-
         // 注册按键绑定 (默认 K 键)
         openSettingsKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.helloworld.settings",
@@ -156,9 +153,6 @@ public class HelloWorldClientMod implements ClientModInitializer {
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new ModSettingsScreen(client.currentScreen));
             }
-
-            // 将捕获的日志消息发送到聊天框
-            InGameLogAppender.flushToChat();
 
             // 处理 AI 聊天界面的延迟截图
             AiChatScreen.tickScreenshot();

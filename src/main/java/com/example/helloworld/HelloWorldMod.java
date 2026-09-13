@@ -934,67 +934,7 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
 
-            // /ailog - 控制日志转发到聊天框
-            dispatcher.register(CommandManager.literal("ailog")
-                // /ailog - 切换开关
-                .executes(ctx -> {
-                    InGameLogAppender.toggleEnabled();
-                    boolean on = InGameLogAppender.isEnabled();
-                    ctx.getSource().sendFeedback(() -> Text.literal(
-                        "§e[日志] 聊天框日志显示已" + (on ? "§a开启" : "§c关闭")
-                    ), false);
-                    return 1;
-                })
-                // /ailog on
-                .then(CommandManager.literal("on")
-                    .executes(ctx -> {
-                        InGameLogAppender.setEnabled(true);
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.enabled")), false);
-                        return 1;
-                    })
-                )
-                // /ailog off
-                .then(CommandManager.literal("off")
-                    .executes(ctx -> {
-                        InGameLogAppender.setEnabled(false);
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.disabled")), false);
-                        return 1;
-                    })
-                )
-                // /ailog level <error|warn|info|debug>
-                .then(CommandManager.literal("level")
-                    .then(CommandManager.literal("error")
-                        .executes(ctx -> {
-                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.ERROR);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.error")), false);
-                            return 1;
-                        })
-                    )
-                    .then(CommandManager.literal("warn")
-                        .executes(ctx -> {
-                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.WARN);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.warn")), false);
-                            return 1;
-                        })
-                    )
-                    .then(CommandManager.literal("info")
-                        .executes(ctx -> {
-                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.INFO);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.info")), false);
-                            return 1;
-                        })
-                    )
-                    .then(CommandManager.literal("debug")
-                        .executes(ctx -> {
-                            InGameLogAppender.setMinLevel(org.apache.logging.log4j.Level.DEBUG);
-                            ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.log.level.debug")), false);
-                            return 1;
-                        })
-                    )
-                )
-            );
-
-            // /aitest - 故意触发测试日志，验证聊天框日志显示
+            // /aitest - 故意触发测试日志，验证聊天框日志显示（日志转发功能已迁移到 debug-menu）
             dispatcher.register(CommandManager.literal("aitest")
                 .executes(ctx -> {
                     ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test.generating")), false);

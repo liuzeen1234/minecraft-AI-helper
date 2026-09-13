@@ -5,8 +5,6 @@
     "screen.language.title": "Mod 语言设置",
     "screen.language.hint": "重启游戏后将重置为当前游戏语言",
 
-    "debugmenu.log.toggle": "聊天框日志显示",
-    "debugmenu.log.level": "日志最低级别",
     "button.back": "返回",
 
     "cmd.blueprint.failed": "§c蓝图放置失败: %s",
@@ -142,7 +140,6 @@
     "manual.load.error": "加载手册出错: %s",
     "client.ai.reply": "§a[AI 回复]",
     "client.ai.reply.hint": "§7(完整内容请打开 AI 聊天界面查看)",
-    "log.tag": "日志",
 
     "txtbrowser.title": "TXT 结构设计图浏览器",
     "txtbrowser.search": "搜索...",
@@ -262,12 +259,6 @@
     "server.config.reloaded": "§a[配置] 配置已重新加载",
     "server.ai.new_topic": "§a[AI] 对话历史已清空，开始新话题",
     "server.pos.players_only": "§c[坐标] 只有玩家才能使用此命令",
-    "server.log.enabled": "§a[日志] 聊天框日志显示已开启",
-    "server.log.disabled": "§c[日志] 聊天框日志显示已关闭",
-    "server.log.level.error": "§a[日志] 最低显示级别: §cERROR",
-    "server.log.level.warn": "§a[日志] 最低显示级别: §eWARN",
-    "server.log.level.info": "§a[日志] 最低显示级别: §fINFO",
-    "server.log.level.debug": "§a[日志] 最低显示级别: §7DEBUG",
     "server.test.generating": "§e[测试] 正在生成测试日志...",
     "server.test.done": "§a[测试] 已生成 2 条 WARN/ERROR + 1 条 INFO 日志，检查聊天框!",
     "server.ai.stopped": "§e[AI] 已终止 AI 回复",

@@ -102,9 +102,7 @@
 | 命令 | 说明 |
 |------|------|
 | /aipos | 显示当前玩家坐标和所在维度 |
-| /ailog [on/off] | 开启/关闭日志转发到聊天框 |
-| /ailog level <error/warn/info/debug> | 设置日志最低显示级别 |
-| /aitest | 生成测试日志，验证日志系统 |
+| /aitest | 生成测试日志，验证日志系统（日志转发功能已迁移到 debug-menu 菜单） |
 
 ### NBT 结构命令
 
@@ -413,7 +411,7 @@ A  A
 ### Q: AI 没有回复 / 报错
 - 检查 API 密钥是否正确配置：/aiconfig show
 - 确认 API 地址可访问
-- 使用 /ailog on 查看详细日志
+- 在 debug-menu 菜单（默认 M 键）里开启“聊天框日志显示”查看详细日志
 - 使用 /aitest 验证日志系统是否正常
 
 ### Q: 如何终止 AI 回复

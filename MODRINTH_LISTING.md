@@ -77,7 +77,6 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 - **In-game Settings UI** — Press `K` to open; toggle screenshot, conversation memory, and web search
 - **`/aiconfig`** — Configure API URL, key, and model via command
 - **`/ainew`** — Clear conversation history and start fresh
-- **`/ailog`** — Forward mod logs to chat for debugging
 
 ## Commands
 
@@ -94,9 +93,7 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 | `/aiconfig web_search <on/off>` | Toggle web search |
 | `/aiconfig <key> <value>` | Modify a configuration value |
 | `/aipos` | Show current coordinates |
-| `/ailog [on/off]` | Toggle log display |
-| `/ailog level <level>` | Set log display level |
-| `/aitest` | Generate test log entry |
+| `/aitest` | Generate test log entry (log forwarding moved to the debug-menu mod) |
 | `/ainbt` | Open NBT browser |
 
 ## Configuration
