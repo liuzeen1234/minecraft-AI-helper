@@ -13,15 +13,19 @@ import java.nio.file.Path;
  *
  * 结构：
  *   .minecraft/ai-helper/
- *   ├── config/    配置文件
- *   ├── txts/      蓝图文本文件
- *   ├── nbts/      NBT 结构文件
- *   ├── screenshots/ AI 截图临时文件
- *   └── ...        其他模组数据
+ *   ├── config/          配置文件
+ *   ├── structures/      结构文件根目录
+ *   │   ├── txts/        .txt 蓝图文件
+ *   │   └── nbts/        .nbt 结构文件
+ *   ├── screenshots/     AI 截图临时文件
+ *   └── ...              其他模组数据
  */
 public class ModPaths {
 
     private static final String MOD_DIR_NAME = "ai-helper";
+
+    /** 结构文件根目录名，下含 txts/ 与 nbts/ 子目录。 */
+    private static final String STRUCTURES_DIR_NAME = "structures";
 
     /**
      * 获取模组根目录：gameDir/ai-helper/
@@ -31,17 +35,25 @@ public class ModPaths {
     }
 
     /**
-     * 获取 txts 目录：gameDir/ai-helper/txts/
+     * 获取结构文件根目录：gameDir/ai-helper/structures/
+     * 下含 txts/ 与 nbts/ 子目录。
      */
-    public static Path getTxtsDir() {
-        return getModDir().resolve("txts");
+    public static Path getStructuresDir() {
+        return getModDir().resolve(STRUCTURES_DIR_NAME);
     }
 
     /**
-     * 获取 nbts 目录：gameDir/ai-helper/nbts/
+     * 获取 txt 蓝图目录：gameDir/ai-helper/structures/txts/
+     */
+    public static Path getTxtsDir() {
+        return getStructuresDir().resolve("txts");
+    }
+
+    /**
+     * 获取 nbt 结构目录：gameDir/ai-helper/structures/nbts/
      */
     public static Path getNbtsDir() {
-        return getModDir().resolve("nbts");
+        return getStructuresDir().resolve("nbts");
     }
 
     /**
