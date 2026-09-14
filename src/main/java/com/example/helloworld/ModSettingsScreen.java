@@ -21,11 +21,11 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        // 8 个按钮，每个高 20px，间距 4px，总高 = 8*20 + 7*4 = 188px，垂直居中
+        // 7 个按钮，每个高 20px，间距 4px，总高 = 7*20 + 6*4 = 164px，垂直居中
         int startX = this.width / 2 - 100;
         int btnH = 20;
         int gap = 4;
-        int startY = this.height / 2 - 94;
+        int startY = this.height / 2 - 82;
 
         // AI 聊天设置（二级菜单入口）
         this.addDrawableChild(ButtonWidget.builder(
@@ -51,19 +51,11 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
-        // NBT 结构浏览器按钮
+        // 加载结构按钮（打开统一结构浏览器，根目录为 structures/）
         this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.tr("settings.load_nbt")),
-                button -> this.client.setScreen(new com.example.helloworld.nbt.NbtBrowserScreen(this)))
+                Text.literal(I18n.tr("settings.load_structures")),
+                button -> this.client.setScreen(new com.example.helloworld.structure.StructureBrowserScreen(this)))
                 .dimensions(startX, startY + (btnH + gap) * 3, 200, btnH)
-                .build()
-        );
-
-        // TXT 结构设计图浏览器按钮
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.tr("settings.load_txt")),
-                button -> this.client.setScreen(new com.example.helloworld.blueprint.TxtBrowserScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
         );
 
@@ -71,7 +63,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("screen.language.title")),
                 button -> this.client.setScreen(new LanguageSettingsScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
         );
 
@@ -79,7 +71,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("settings.user_manual")),
                 button -> this.client.setScreen(new UserManualScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
         );
 
@@ -87,7 +79,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("button.back")),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 7, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
                 .build()
         );
     }
