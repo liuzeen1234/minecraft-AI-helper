@@ -59,7 +59,6 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 - **TXT Blueprint System** — Supports two blueprint formats:
   - V1: Character grid with legend mapping (human-readable)
   - V2 (MCBLUEPRINT v2): Explicit coordinates with full block state properties (precise reproduction)
-- **`/ai build <name>`** — Build a loaded blueprint via command
 - **`/ai blueprints`** — List all available blueprints
 
 ### Selection Tools
@@ -83,7 +82,6 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 | Command | Description |
 |---------|-------------|
 | `/ai <message>` | Chat with AI |
-| `/ai build <name>` | Build a specified blueprint |
 | `/ai blueprints` | List all blueprints |
 | `/ai reload_blueprints` | Reload blueprint files |
 | `/ainew` | Clear conversation history |

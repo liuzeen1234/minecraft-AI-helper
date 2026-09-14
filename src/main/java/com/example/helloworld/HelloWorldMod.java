@@ -807,11 +807,6 @@ public class HelloWorldMod implements ModInitializer {
             NbtCommands.register(dispatcher);
 
             dispatcher.register(CommandManager.literal("ai")
-                .then(CommandManager.literal("build")
-                    .then(CommandManager.argument("name", StringArgumentType.greedyString())
-                        .executes(this::executeBuild)
-                    )
-                )
                 .then(CommandManager.literal("blueprints")
                     .executes(this::listBlueprints)
                 )
@@ -952,42 +947,6 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
         });
-    }
-
-    private int executeBuild(CommandContext<ServerCommandSource> context) {
-        String name = StringArgumentType.getString(context, "name");
-        ServerCommandSource source = context.getSource();
-        ServerPlayerEntity player = source.getPlayer();
-
-        if (player == null) {
-            source.sendFeedback(() -> Text.literal(I18n.tr("server.build.players_only")), false);
-            return 0;
-        }
-
-        BlueprintData blueprint = blueprintRegistry.find(name);
-        if (blueprint == null) {
-            source.sendFeedback(() -> Text.literal(I18n.tr("server.build.not_found", name)), false);
-            source.sendFeedback(() -> Text.literal(I18n.tr("server.build.list_hint")), false);
-            return 0;
-        }
-
-        source.sendFeedback(() -> Text.literal(I18n.tr("server.build.start", blueprint.getName())), false);
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                int count = BlueprintBuilder.build(blueprint, player, player.getServerWorld());
-                player.getServer().execute(() -> {
-                    source.sendFeedback(() -> Text.literal(I18n.tr("server.build.done", blueprint.getName(), count)), false);
-                });
-            } catch (Exception e) {
-                LOGGER.error("建造蓝图失败", e);
-                player.getServer().execute(() -> {
-                    source.sendFeedback(() -> Text.literal(I18n.tr("server.build.failed", e.getMessage())), false);
-                });
-            }
-        });
-
-        return 1;
     }
 
     private int listBlueprints(CommandContext<ServerCommandSource> context) {

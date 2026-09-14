@@ -80,7 +80,6 @@ Tip: The key that opens mod settings (default K) can be rebound in the vanilla O
 | Command | Description |
 |---------|-------------|
 | /ai <message> | Chat with AI, AI can auto-execute build operations |
-| /ai build <name> | Build a blueprint at your feet |
 | /ai blueprints | List all loaded blueprints |
 | /ai reload_blueprints | Reload blueprint files from disk |
 | /ainew | Clear conversation history |
