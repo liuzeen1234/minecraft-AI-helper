@@ -1,0 +1,80 @@
+MC RAG知识库数据源清单（可直接复制粘贴到苹果备忘录）
+用途：搭建我的世界RAG文档，用于AI理解MC原版特性、建筑、红石电路
+目标MC版本：Java版 1.20.1
+一、MC基础信息文档（方块/实体/游戏机制/NBT）
+
+1. 中文Minecraft Wiki：zh.minecraft.wiki
+作用：MC权威中文百科，方块、物品、实体、游戏规则、NBT、版本特性；支持API批量导出页面，作为知识库核心基础素材。
+
+2. 英文Minecraft Wiki：en.minecraft.wiki
+作用：英文原版维基，红石、生电更新更早，细节更丰富，可双语补充入库。
+
+3. McFun我的世界百科：https://www.mcshuo.com/encyclopedia
+作用：结构化表格整理方块、红石规则，信息规整，方便抽取结构化内容。
+
+4. AstroWorld MC技术文档站：https://astroworldmc.com
+作用：专注红石底层机制、刻时序、活塞准连通等技术细节。
+
+二、建筑文档（简单建筑 + 带内外饰精美建筑）
+
+1. BuildGuides：https://buildguides.net
+作用：建筑教程附带分层搭建说明、房间功能、内饰布置、方块清单，自带完整室内设计，适合生成建筑文档。
+
+2. MinePilot：https://www.myminepilot.com/
+作用：生存小屋、城堡、港口建筑，文字描述详细，标注每层房间功能（仓库、附魔室、卧室等）。
+
+3. SchemCraft：https://schemcraft.com
+作用：大量带完整内饰的中世纪建筑、大型府邸；项目描述包含内部房间用途。
+
+4. PlanetMinecraft：https://www.planetminecraft.com
+作用：全球最大MC建筑社区，筛选Fully Furnished标签找到全套内饰建筑，作者描述包含建筑结构介绍。
+
+5. Shulkr：https://www.shulkr.com
+作用：在线3D预览litematic/schem蓝图，城堡、大型城镇建筑。
+
+6. 9Minecraft：https://www.9minecraft.net
+作用：海量建筑存档，附带文字介绍。
+
+三、红石文档（基础单元 + 复杂生电机器）
+
+基础红石单元
+
+1. AstroWorldMC红石专题：https://redstone.astroworldmc.com/components
+作用：拆分各类红石元件，记录输入输出、延迟、方块状态、常见坑，文字适合RAG入库。
+
+复杂红石/生电机器
+
+1. RedenMC红石伊甸园：https://redenmc.com/zh_cn
+作用：国内生电机器库，每台机器附带原理、时序、适配版本、产量、缺陷说明。
+
+2. RMC红石团队文档：shturl.cc/8Diu6CLpDiZj
+作用：大型活塞门、时序电路、组合逻辑机器深度拆解文档。
+
+3. Technical Minecraft Wiki（海外生电wiki）
+作用：大型生电阵列、零刻、BUD、版本专属bug特性参考。
+
+4. GitHub搜索关键词：minecraft redstone document
+作用：大量玩家开源Markdown格式红石机器文档。
+
+四、重要备注（务必保留）
+
+1. 版本约束：知识库统一标注 Java版1.20.1，不要混入其他版本的红石/游戏特性。
+
+2. 版权提醒：网页抓取内容仅限本地RAG使用，不要大批量把他人教程公开上传GitHub。
+
+3. 文件结构参考（知识库文件夹）
+mc_knowledge_base/
+├─ basic_info/            # 基础信息文档
+│    ├─ 方块特性/
+│    ├─ 实体生物/
+│    └─ 游戏机制（刻更新、充能规则）/
+├─ buildings/             # 建筑文档
+│    ├─ simple_builds/   # 简单建筑：小木屋、哨塔、小型商铺
+│    └─ detailed_builds/ # 精美带内饰：城堡、庄园、城镇府邸
+├─ redstone_basic/        # 红石单元：中继器、比较器、活塞、红石火把
+└─ redstone_advanced/     # 复杂红石：分类机、刷铁机、大型活塞门、世吞
+使用方法
+
+1. 全选这段文字，复制
+
+2. 打开苹果「备忘录」，新建备忘录，粘贴进去即可
