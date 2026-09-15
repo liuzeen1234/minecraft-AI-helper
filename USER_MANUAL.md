@@ -1,430 +1,258 @@
 # AI Builder 用户手册
 
-> 版本 1.2.0 | Minecraft 1.20.4 | Fabric Mod
-
----
-
-## 目录
-
-1. [安装与环境要求](#安装与环境要求)
-2. [首次配置](#首次配置)
-3. [快捷键一览](#快捷键一览)
-4. [命令一览](#命令一览)
-5. [功能详解](#功能详解)
-   - [AI 聊天](#ai-聊天)
-   - [AI 建造](#ai-建造)
-   - [NBT 结构管理](#nbt-结构管理)
-   - [TXT 蓝图管理](#txt-蓝图管理)
-   - [选区工具](#选区工具)
-   - [联网搜索与网页抓取](#联网搜索与网页抓取)
-   - [截图分析](#截图分析)
-6. [配置项说明](#配置项说明)
-7. [蓝图格式规范](#蓝图格式规范)
-8. [文件目录结构](#文件目录结构)
-9. [常见问题与注意事项](#常见问题与注意事项)
-
----
+> 版本 1.4.0 | Minecraft 1.20.4 | Fabric Mod
 
 ## 安装与环境要求
 
 | 项目 | 要求 |
-|------|------|
+|---|---|
 | Minecraft 版本 | 1.20.4 |
 | Mod 加载器 | Fabric Loader ≥ 0.15.0 |
 | Java 版本 | ≥ 17 |
 | 前置 Mod | Fabric API（必须） |
 
-**安装步骤：**
-
-1. 安装 [Fabric Loader](https://fabricmc.net/)（≥ 0.15.0）
-2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `ai-builder-1.2.0.jar` 放入 `.minecraft/mods/` 目录
-4. 启动游戏
-
----
+1. 安装 Fabric Loader 和 Fabric API。
+2. 将 `ai-builder-1.4.0.jar` 放入 `.minecraft/mods/`。
+3. 启动游戏，按 `K` 打开 AI Builder 设置。
 
 ## 首次配置
 
-首次启动后，Mod 会在 `ai-helper/config/ai-builder.properties` 自动生成默认配置文件。**你必须配置 AI API 密钥才能使用 AI 功能。**
+首次启动时，Mod 会创建 `ai-helper/config/ai-builder.properties`。使用 AI 前必须设置 API 密钥。
 
-**快速配置方法（二选一）：**
+```text
+/aiconfig api_base_url 你的 API 地址
+/aiconfig api_key 你的 API 密钥
+/aiconfig model 你的模型名称
+```
 
-- **方法一：游戏内命令**
-  ```
-  /aiconfig api_key 你的API密钥
-  /aiconfig api_base_url 你的API地址
-  /aiconfig model 你的模型名称
-  ```
+也可以按 `K` → **AI 聊天设置**进行可视化配置。Mod 支持 OpenAI 兼容接口和 Anthropic Messages 接口；默认 `api_format=auto` 会根据地址自动选择格式，必要时可直接编辑配置文件指定 `openai` 或 `anthropic`，然后执行 `/aiconfig reload`。
 
-- **方法二：按 `K` 键** → 进入"AI 聊天设置"页面进行可视化配置
+## 快捷键
 
-> 本 Mod 支持任何 OpenAI 兼容的 API 接口（如 OpenAI、Kimi、DeepSeek 等）。
+| 按键 | 功能 |
+|---|---|
+| `K`（默认，可重绑） | 打开 Mod 设置主菜单 |
+| `Enter` | 在 AI 聊天界面发送消息；在结构浏览器放置结构或进入文件夹 |
+| `Escape` | 关闭当前 Mod 界面 |
+| `Page Up` / `Page Down`、鼠标滚轮 | 滚动聊天或文件列表 |
+| `↑` / `↓`、`Backspace`、`Delete` | 在统一结构浏览器导航、返回上级或删除选中文件 |
 
----
+`K` 可在原版「选项 → 控制 → 按键绑定」的 **AI Builder** 分类中修改。其余按键是界面内固定操作。
 
-## 快捷键一览
+## 命令
 
-| 按键 | 功能 | 生效场景 |
-|------|------|----------|
-| `K`（默认，可自定义） | 打开 Mod 设置主菜单 | 游戏中 |
-| `Enter` | 发送消息 | AI 聊天界面 |
-| `Escape` | 关闭当前界面 | 所有 Mod 界面 |
-| `Page Up / Page Down` | 滚动聊天记录 | AI 聊天界面 |
-| `鼠标滚轮` | 滚动列表/聊天 | 所有可滚动界面 |
-| `↑ / ↓ 方向键` | 导航文件列表 | NBT/TXT 浏览器 |
-| `Backspace` | 返回上级目录 | NBT/TXT 浏览器 |
-| `Delete` | 删除选中文件 | NBT/TXT 浏览器 |
-| `Enter` | 放置结构/进入文件夹 | NBT/TXT 浏览器 |
-
-> **自定义按键**：打开 Mod 设置的快捷键（默认 `K`）可在游戏原版「选项 → 控制 → 按键绑定」中修改，分类名为「AI Builder」。表中其他按键为界面内固定交互键，暂不支持自定义。
-
----
-
-## 命令一览
+### AI 与工具
 
 | 命令 | 说明 |
-|------|------|
-| `/ai <消息>` | 与 AI 对话，AI 可自动执行建造等操作 |
-| `/ai blueprints` | 列出所有已加载的蓝图 |
-| `/ai reload_blueprints` | 重新从磁盘加载蓝图文件 |
-| `/ainew` | 清空对话历史，开始新对话 |
-| `/aiconfig show` | 显示当前配置 |
-| `/aiconfig <键> <值>` | 修改配置项 |
-| `/aipos` | 显示当前玩家坐标 |
-| `/ainbt` | 打开 NBT 结构浏览器 |
+|---|---|
+| `/ai <消息>` | 与 AI 对话；AI 可按回复中的受支持指令执行建造操作 |
+| `/ai blueprints` | 列出已加载的 TXT 蓝图 |
+| `/ai reload_blueprints` | 重新加载 TXT 蓝图 |
+| `/ai test_stairs` | 放置用于调试朝向的楼梯样例 |
+| `/ainew` | 清空对话历史，开始新话题 |
+| `/aistop` | 终止当前 AI 请求 |
+| `/aipos` | 显示当前坐标和维度 |
 
-> 日志转发到聊天框的功能已迁移到 debug-menu 模组：在 debug-menu 的调试菜单（默认 M 键）中的“聊天框日志显示”开关与“日志最低级别”选项里控制。生成测试日志功能也已从 `/aitest` 命令迁移到该菜单里的“生成测试日志”按钮。
+### 配置
 
----
+| 命令 | 说明 |
+|---|---|
+| `/aiconfig show` | 显示 API、模型、联网搜索与 Tavily 配置 |
+| `/aiconfig api_base_url <值>` | 设置 API 地址 |
+| `/aiconfig api_key <值>` | 设置 API 密钥 |
+| `/aiconfig model <值>` | 设置模型名称 |
+| `/aiconfig web_search <on/off>` | 开启或关闭联网搜索 |
+| `/aiconfig tavily_api_key <值>` | 设置 Tavily API 密钥 |
+| `/aiconfig reload` | 重新加载手动编辑后的配置文件 |
+
+`/aiconfig` 不是通用的“任意键值”命令；`screenshot_enabled`、`context_enabled`、`stream_output_enabled` 和 `language` 请在设置界面调整，`api_format` 请直接编辑配置文件后重载。
+
+### 结构命令
+
+| 命令 | 说明 |
+|---|---|
+| `/ainbt list` | 列出 NBT 与 Litematica 结构文件 |
+| `/ainbt info <文件名>` | 显示 NBT 或 Litematica 结构详情 |
+| `/ainbt all` | 显示全部结构摘要 |
+| `/ainbt place <文件名>` | 在玩家脚下放置 NBT 或 Litematica 结构 |
+
+`/ainbt` 没有无参数 GUI。图形化结构管理请使用 `K` → **加载结构**。
+
+> 聊天框日志显示和“生成测试日志”由可选的 debug-menu 模组提供，不属于 AI Builder 命令。
 
 ## 功能详解
 
-### AI 聊天
+### AI 聊天与建造
 
-**使用方式：**
-- 命令行：`/ai 帮我建一栋木屋`
-- 聊天界面：按 `K` → 点击"AI 聊天"
+按 `K` → **AI 聊天**，或使用 `/ai <消息>`。聊天界面支持最多 20 条消息（10 轮）上下文、最多 1024 字符输入、TXT 蓝图引用、清除历史、取消请求及增量流式显示。截图功能默认关闭；开启后会在发送时截取缩放后的游戏画面。
 
-**AI 聊天界面功能：**
-- 多轮对话记忆（最多保留 20 条消息 / 10 轮对话）
-- 实时流式输出（可在设置中开启）
-- 引用 TXT 蓝图文件作为上下文（点击"引用"按钮选择文件）
-- 可随时点击"终止思考"取消正在进行的 AI 请求
-- 支持截图发送（AI 可分析游戏画面）
+AI 可放置、填充或清除方块，给予物品，生成实体，设置时间/天气，传送和生成/放置蓝图。单次填充或清除最多 10,000 方块、给予最多 64 件物品、生成最多 20 个实体。`execute_command` 以权限等级 2 运行，但服务器管理、封禁、踢人、存档停止等危险根命令会被拒绝；不要将其描述为可执行任意原版命令。
 
-**注意事项：**
-- 对话历史会在游戏运行期间保持，使用 `/ainew` 或聊天界面的清除按钮可重置
-- 输入框最大长度 1024 字符
-- 流式输出模式下，AI 回复会逐步显示，减少等待感
+蓝图坐标为相对坐标：X 向东、Y 向上、Z 向南，原点在玩家脚下。V1 与 MCBLUEPRINT v2 TXT 格式均可加载。
 
----
+### 统一结构浏览器
 
-### AI 建造
+按 `K` → **加载结构**可浏览、搜索、删除和放置以下文件，支持子文件夹：
 
-AI 可以通过自然语言指令执行以下操作：
+- `ai-helper/structures/nbts/`：标准 `.nbt` 结构；
+- `ai-helper/structures/litematic/`：`.litematic` 结构；
+- `ai-helper/structures/txts/`：V1/V2 `.txt` 蓝图。
 
-| 操作 | 示例 |
-|------|------|
-| 放置方块 | "在我前方放一个石砖" |
-| 批量填充 | "用橡木板填充一个 5x3x5 的区域" |
-| 清除区域 | "清除我前方 10 格内的所有方块" |
-| 给予物品 | "给我 64 个钻石" |
-| 设置时间 | "把时间设为白天" |
-| 设置天气 | "让天气放晴" |
-| 传送 | "把我传送到 100 64 200" |
-| 生成实体 | "在我面前生成一只猪" |
-| 建造蓝图 | "帮我建一栋小木屋"（AI 会生成蓝图并自动放置） |
-
-**坐标系统：**
-- AI 使用**相对坐标**：forward（前方）、right（右方）、up（上方），基于玩家朝向
-- 也支持**绝对坐标**：直接指定 x/y/z 世界坐标
-- 蓝图坐标：X=东、Y=上、Z=南，原点为玩家脚下
-
-**限制：**
-- 单次填充最多 10,000 个方块
-- 单次生成最多 20 个实体
-- 给予物品每组最多 64 个
-
----
-
-### NBT 结构管理
-
-**打开方式：**
-- 命令：`/ainbt`
-- 按 `K` → 点击"加载结构 (NBT)"
-
-**功能：**
-- 浏览 `nbts/` 目录下的所有 `.nbt` 文件（支持子文件夹）
-- 搜索/过滤文件名
-- 查看文件详情（大小、方块数量、方块种类、数据版本）
-- 双击文件名或点击"放置"按钮在玩家脚下放置结构
-- 删除文件（需二次确认）
-- 打开系统文件管理器查看文件
-
-**放置规则：**
-- 结构以玩家脚下位置为原点放置
-- 自动跳过空气和结构空位方块
-- 完整保留方块实体数据（箱子内容物、告示牌文字等）
-- 告示牌自动兼容 1.20+ 格式
-
-**注意事项：**
-- 放置大型结构可能需要一定时间
-- 确保放置区域有足够空间
-- NBT 文件必须是 Minecraft 标准结构格式
-
----
-
-### TXT 蓝图管理
-
-**打开方式：**
-- 按 `K` → 点击"加载结构 (TXT)"
-
-**功能：**
-- 浏览 `txts/` 目录下的所有 `.txt` 蓝图文件
-- 搜索/过滤文件名
-- 双击或点击"放置"按钮在玩家脚下建造
-- AI 生成的蓝图会自动保存到此目录
-
-**放置规则：**
-- 以玩家脚下为原点
-- V2 格式：X 方向=东，Y 方向=上，Z 方向=南
-- V1 格式：行方向=Z+（南），列方向=X+（东）
-- 附着方块（按钮、火把等）会自动推断朝向
-- 床会自动生成头部方块
-
----
+NBT/Litematica 放置会跳过 `air` 与 `structure_void`，并保留方块状态、方块实体数据和结构实体；旧告示牌数据会转换为 1.20+ 格式。AI 生成的 TXT 蓝图保存到 `ai-helper/structures/txts/ai-generated/`。
 
 ### 选区工具
 
-**打开方式：**
-- 按 `K` → 点击"选区工具"
+按 `K` → **选区工具**。设置两个对角坐标（或使用当前位置）并确认后，游戏会显示高亮框；关闭界面时草稿会保留。分析/导出界面可统计方块并在服务端导出：
 
-**使用流程：**
+- **TXT / MCBLUEPRINT v2**：始终包含容器物品和非空告示牌正反面文字；
+- **NBT**：保留方块实体数据；
+- **Litematica**：保留方块实体数据，可选择是否包含实体。
 
-1. **设置选区坐标**
-   - 手动输入两个对角坐标（X Y Z）
-   - 或点击"坐标1=当前位置"/"坐标2=当前位置"快速设置
+### 联网搜索、网页抓取与截图
 
-2. **确认选区**
-   - 点击"确认选区"按钮
-   - 确认后，游戏中会显示蓝色半透明高亮框标记选区范围
+联网搜索需要 `web_search_enabled=true` 且已配置 `tavily_api_key`。AI 判断需要搜索时最多取得 5 条 Tavily 结果；搜索超时为 120 秒。AI 也可根据回复标签抓取指定网页，抓取超时为 30 秒且网页文本会截断为最多 8,000 字符。
 
-3. **分析/导出**
-   - 点击"分析/导出选区"进入导出界面
-   - 可查看选区内方块统计（种类、数量）
-   - 导出为 V2 蓝图文本
-   - 导出为 `.nbt` 文件（保留方块实体数据）
-   - 导出为 `.litematic` 文件（兼容 Litematica，保留方块实体和可选实体数据）
+开启 `screenshot_enabled` 后，聊天界面发送消息会在关闭界面后延迟 2 tick 截图，图片最大宽度为 512 px，临时保存于 `ai-helper/screenshots/ai_chat_temp.png`；`/ai` 截图路径为 `ai_temp.png`。
 
-**导出格式：**
-- **NBT 导出**：生成标准 Minecraft 结构文件，保留箱子内容物、告示牌文字等
-- **Litematica 导出**：生成标准 `.litematic` 文件，保存至 `structures/litematic/`，可直接由 Litematica 加载
-- **蓝图导出**：生成 MCBLUEPRINT v2 格式文本，包含所有方块状态属性
+## 配置项
 
-**注意事项：**
-- 选区坐标在关闭界面时会自动保存为草稿
-- 清除选区会同时移除高亮渲染
-- NBT、Litematica 和 TXT 导出在服务端执行，可完整读取方块实体数据
+配置文件：`ai-helper/config/ai-builder.properties`
 
----
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `api_base_url` | `https://api.kimi.com/coding/v1/messages` | API 端点 |
+| `api_key` | `your-api-key-here` | API 密钥，必须设置 |
+| `model` | `kimi-for-coding` | 模型名称 |
+| `screenshot_enabled` | `false` | 是否在 AI 聊天中发送截图 |
+| `context_enabled` | `true` | 是否启用多轮对话上下文 |
+| `web_search_enabled` | `true` | 是否允许 Tavily 联网搜索 |
+| `tavily_api_key` | 空 | Tavily API 密钥 |
+| `stream_output_enabled` | `true` | 是否增量显示 AI 回复 |
+| `language` | `en_us` | 界面语言：`zh_cn` 或 `en_us` |
+| `api_format` | `auto` | `auto`、`openai` 或 `anthropic` |
 
-### 联网搜索与网页抓取
+按 `K` → **AI 聊天设置**可修改四个布尔开关；API 设置界面可修改 API 地址、密钥、模型和 Tavily 密钥。手动编辑任何配置后使用 `/aiconfig reload` 生效。语言可在 `K` → **Mod 语言设置**中切换，但下次客户端启动会重新跟随当前 Minecraft 游戏语言。
 
-**前提条件：**
-- 在配置中设置 `tavily_api_key`（Tavily API 密钥）
-- 开启 `web_search_enabled`
+## 蓝图格式
 
-**使用方式：**
-- 直接对 AI 说"搜索一下如何建造哥特式教堂"
-- AI 会自动判断是否需要联网搜索
-- 搜索结果会作为上下文提供给 AI，AI 据此生成回答或建造指令
+推荐使用 V2：
 
-**网页抓取：**
-- AI 可以抓取指定 URL 的网页内容
-- 例如："帮我看看这个网页的内容 https://..."
+以下示例基于运行目录中的 `run/ai-helper/structures/txts/example2.txt`；将蓝图名称设为 `example`，其余内容保持不变：
 
-**注意事项：**
-- 搜索返回前 5 条结果
-- 搜索超时时间为 120 秒
-- 需要有效的 Tavily API 密钥
-
----
-
-### 截图分析
-
-**前提条件：**
-- 在设置中开启"截图功能"（`screenshot_enabled`）
-
-**使用方式：**
-- 在 AI 聊天界面发送消息时，Mod 会自动截取当前游戏画面
-- AI 可以分析画面内容并据此回答问题
-
-**注意事项：**
-- 截图会自动缩放至最大宽度 512px
-- 截图有 2 tick 延迟以确保画面干净（关闭聊天界面后截取）
-- 截图临时保存在 `ai-helper/screenshots/ai_temp.png`
-- 可在设置中随时关闭此功能
-
----
-
-## 配置项说明
-
-配置文件位置：`ai-helper/config/ai-builder.properties`
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `api_base_url` | 字符串 | `https://api.kimi.com/coding/v1/messages` | AI API 端点地址（OpenAI 兼容） |
-| `api_key` | 字符串 | `your-api-key-here` | API 认证密钥（**必须手动设置**） |
-| `model` | 字符串 | `kimi-for-coding` | AI 模型名称 |
-| `screenshot_enabled` | 布尔 | `true` | 是否启用截图功能 |
-| `context_enabled` | 布尔 | `true` | 是否启用多轮对话记忆 |
-| `web_search_enabled` | 布尔 | `true` | 是否启用联网搜索 |
-| `tavily_api_key` | 字符串 | （空） | Tavily 搜索 API 密钥 |
-| `stream_output_enabled` | 布尔 | `false` | 是否启用流式输出 |
-| `language` | 字符串 | `zh_cn` | Mod 界面语言（`zh_cn` 或 `en_us`） |
-
-**修改方式：**
-- 游戏内命令：`/aiconfig <键> <值>`
-- 按 `K` → AI 聊天设置（可视化开关）
-- 直接编辑配置文件（需重启游戏生效）
-
----
-
-## 蓝图格式规范
-
-### V2 格式（推荐）
-
-```
+```text
 # MCBLUEPRINT v2
-# name: 我的建筑
-# size: 5x3x5
+# name: example
+# size: 5x6x5
+# origin: 0,0,0
+# 坐标原点在结构西北角最低层，x向东，y向上，z向南
+# 格式：x,y,z  block_id  [key=value ...]
 
 ## BLOCKS
-0,0,0   oak_planks
-1,0,0   oak_stairs   facing=north   half=bottom
-2,0,0   oak_door   facing=south   half=lower   hinge=left   open=false
-0,1,0   glass_pane
-3,0,2   oak_log   axis=y
+
+# --- 第 1 层 (y=0) ---
+2,0,2   oak_log   axis=y
+3,0,2   short_grass
+0,0,3   short_grass
+2,0,4   short_grass
+4,0,4   short_grass
+
+# --- 第 2 层 (y=1) ---
+2,1,2   oak_log   axis=y
+
+# --- 第 3 层 (y=2) ---
+0,2,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+1,2,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,2,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,2,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,2,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,2,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,2,1   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,2,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,2,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,2,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,2,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,2,2   oak_log   axis=y
+3,2,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+4,2,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+0,2,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,2,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,2,3   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,2,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,2,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,2,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,2,4   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,2,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+4,2,4   oak_leaves   distance=4   persistent=false   waterlogged=false
+
+# --- 第 4 层 (y=3) ---
+1,3,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,3,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,3,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,3,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,3,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,3,1   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,3,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,3,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,3,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,3,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,3,2   oak_log   axis=y
+3,3,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+4,3,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+0,3,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,3,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,3,3   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,3,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,3,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,3,4   oak_leaves   distance=4   persistent=false   waterlogged=false
+1,3,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,3,4   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,3,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+
+# --- 第 5 层 (y=4) ---
+2,4,1   oak_leaves   distance=1   persistent=false   waterlogged=false
+1,4,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,4,2   oak_log   axis=y
+3,4,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,4,3   oak_leaves   distance=1   persistent=false   waterlogged=false
+
+# --- 第 6 层 (y=5) ---
+2,5,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,5,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,5,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,5,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,5,3   oak_leaves   distance=2   persistent=false   waterlogged=false
 ```
 
-**格式说明：**
-- 首行必须为 `# MCBLUEPRINT v2`
-- `# name:` 指定蓝图名称
-- `# size:` 指定尺寸（可选，仅供参考）
-- 方块行格式：`x,y,z   方块ID   [属性=值 ...]`
-- 坐标为相对坐标（原点为 0,0,0）
-- 支持所有原版方块状态属性
-- `#` 开头的行为注释
+V2 的方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# size:` 与 `# origin:` 为可选元数据，`#` 开头的行是注释。旧版 V1 字符网格蓝图仍兼容：行向南、列向东，空格表示空气。
 
-### V1 格式（旧版兼容）
+## 文件目录
 
-```
-{{layered blueprint|name=小木屋
-|A=Oak Planks
-|B=Oak Stairs-rot90
-|C=Oak Door
-|----第1层|
-AAAA
-ABBA
-AAAA
-|----第2层|
-A  A
-    
-A  A
-}}
-```
-
-**格式说明：**
-- 以 `{{layered blueprint|name=名称` 开头
-- `|字符=方块名称` 定义图例
-- 支持旋转：`-rot0`、`-rot90`、`-rot180`、`-rot270`
-- 支持属性：`+bottom`、`+top`、`+head`、`+foot`
-- `|----第N层|` 分隔不同高度层
-- 空格表示空气
-
----
-
-## 文件目录结构
-
-```
+```text
 .minecraft/
-├── ai-helper/                   ← Mod 数据根目录
-│   ├── config/
-│   │   └── ai-builder.properties    ← 配置文件
-│   ├── nbts/                    ← NBT 结构文件目录
-│   │   ├── my_house.nbt
-│   │   ├── ancient_city/
-│   │   │   ├── city_center/
-│   │   │   └── structures/
-│   │   └── bastion/
-│   │       └── bridge/
-│   ├── txts/                    ← TXT 蓝图文件目录
-│   │   ├── small_house.txt
-│   │   └── ai_generated/
-│   └── screenshots/             ← AI 截图临时文件
+├── ai-helper/
+│   ├── config/ai-builder.properties
+│   ├── structures/
+│   │   ├── nbts/
+│   │   ├── litematic/
+│   │   └── txts/
+│   │       └── ai-generated/
+│   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/
-    └── ai-builder-1.2.0.jar
+└── mods/ai-builder-1.4.0.jar
 ```
 
-- `ai-helper/`：Mod 的数据根目录，与 `mods/`、`config/` 同级
-- `ai-helper/config/`：配置文件目录
-- `ai-helper/nbts/`：存放 `.nbt` 结构文件，支持子文件夹分类
-- `ai-helper/txts/`：存放 `.txt` 蓝图文件，AI 生成的蓝图也会自动保存在此
-- `ai-helper/screenshots/`：AI 截图临时文件
-- 所有目录均支持任意深度的子文件夹
-
----
+所有结构目录均支持任意深度的子文件夹。
 
 ## 常见问题与注意事项
 
-### Q: AI 没有回复 / 报错
-- 检查 API 密钥是否正确配置：`/aiconfig show`
-- 确认 API 地址可访问
-- 在 debug-menu 菜单（默认 M 键）里开启“聊天框日志显示”查看详细日志
+**AI 没有回复：** 使用 `/aiconfig show` 检查密钥和 API 地址；确认网络可用。可选 debug-menu 能提供聊天日志辅助排查。
 
-### Q: 联网搜索不工作
-- 确认已设置 `tavily_api_key`
-- 确认 `web_search_enabled` 为 `true`
-- 检查网络连接
+**如何切换语言或流式输出：** 分别使用 `K` → **Mod 语言设置**和 `K` → **AI 聊天设置**；没有对应的 `/aiconfig language` 或 `/aiconfig stream_output_enabled` 命令。
 
-### Q: 蓝图放置位置不对
-- 蓝图以**玩家脚下位置**为原点
-- V2 格式：X=东、Y=上、Z=南
-- V1 格式：行=南、列=东
-- 建议在空旷平地上放置
+**手动修改配置后：** 执行 `/aiconfig reload`，无需重启。
 
-### Q: NBT 结构放置后方块缺失
-- 确认 NBT 文件版本与当前 Minecraft 版本兼容
-- 部分旧版方块 ID 可能已更改
-- 结构空位（structure_void）会被自动跳过
-
-### Q: AI 输出被截断
-- AI 模型有 token 上限，大型蓝图可能被截断
-- Mod 会自动尝试解析已有部分并放置
-- 可以让 AI "继续生成剩余部分"
-
-### Q: 如何切换语言
-- 按 `K` → "Mod 语言设置"
-- 或修改配置：`/aiconfig language en_us`（英文）/ `/aiconfig language zh_cn`（中文）
-
-### Q: 流式输出和普通输出的区别
-- 流式输出：AI 回复逐字显示，减少等待感，适合长回复
-- 普通输出：等待 AI 完整回复后一次性显示
-- 通过设置开关：`/aiconfig stream_output_enabled true`
-
-### 安全注意事项
-- API 密钥存储在本地配置文件中，请勿分享配置文件
-- AI 执行的操作（放置方块、填充等）**不可撤销**，建议在重要建筑附近操作前备份存档
-- 联网搜索和网页抓取会向外部服务器发送请求，请注意隐私
-
-### 性能建议
-- 避免一次性填充超大区域（>10,000 方块）
-- 大型 NBT 结构放置可能造成短暂卡顿
-- 流式输出模式在网络延迟较高时体验更好
-
----
+**安全与性能：** API 密钥保存在本地配置文件；AI 操作不可撤销，应先备份重要存档。联网搜索和网页抓取会向外部服务发送请求。大型结构放置可能短暂卡顿。
 
 ## 许可证
 

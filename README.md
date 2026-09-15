@@ -11,9 +11,9 @@
 
 ## 功能特性
 
-- **AI 聊天与命令执行** — `/ai <消息>` 与 AI 对话，AI 可通过自然语言放置/填充/清除方块、给予物品、生成实体、设置时间天气、传送玩家，甚至执行任意原版命令。支持多轮对话记忆与截图分析。
+- **AI 聊天与命令执行** — `/ai <消息>` 可驱动放置/填充/清除方块、给予物品、生成实体、设置时间天气和传送。`execute_command` 以权限等级 2 运行，但服务器管理、封禁、踢人和停止/保存等危险根命令会被拒绝。支持多轮对话记忆与可选截图分析。
 - **AI 建造** — 用一句话让 AI 生成并放置建筑蓝图，支持相对坐标（前/右/上）与绝对坐标。
-- **NBT / Litematica 结构管理** — 图形化浏览、搜索、放置 `.nbt` 与 `.litematic` 结构文件，完整保留箱子内容物、告示牌文字等方块实体数据。
+- **统一结构浏览器** — 图形化浏览、搜索、放置或删除 `.nbt`、`.litematic` 与 `.txt` 文件，完整保留 NBT/Litematica 的方块实体数据。
 - **TXT 蓝图系统** — 支持 V1（字符网格 + 图例）与 V2（MCBLUEPRINT v2，精确坐标 + 完整方块状态）两种蓝图格式。
 - **选区工具** — 两点式图形化选区，实时高亮渲染，可统计方块、导出为 `.nbt`、`.litematic` 或 V2 蓝图文本（含容器内容物与告示牌文字）。
 - **联网搜索** — 通过 Tavily API 让 AI 搜索最新信息、抓取网页内容，并据此生成建造指令。
@@ -36,14 +36,14 @@
 
 1. 安装 [Fabric Loader](https://fabricmc.net/)（≥ 0.15.0）
 2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `ai-builder-1.3.1.jar` 放入 `.minecraft/mods/` 目录
+3. 将 `ai-builder-1.4.0.jar` 放入 `.minecraft/mods/` 目录
 4. 启动游戏，按 `K` 打开设置或使用 `/aiconfig` 配置你的 API 密钥
 
 ---
 
 ## 快速开始
 
-首次启动后，Mod 会在 `ai-helper/config/ai-builder.properties` 生成默认配置文件。**你必须配置自己的 AI API 密钥才能使用 AI 功能。** 本 Mod 支持任何 OpenAI 兼容接口（如 OpenAI、Kimi、DeepSeek 等）。
+首次启动后，Mod 会在 `ai-helper/config/ai-builder.properties` 生成默认配置文件。**你必须配置自己的 AI API 密钥才能使用 AI 功能。** 本 Mod 支持 OpenAI 兼容接口和 Anthropic Messages 接口；默认 `api_format=auto` 会根据 API 地址选择格式，必要时可手动编辑配置后执行 `/aiconfig reload`。
 
 配置方法二选一：
 
@@ -74,7 +74,7 @@
 | `/aistop` | 终止正在进行的 AI 回复 |
 | `/aiconfig show` | 显示当前配置 |
 | `/aiconfig reload` | 热加载配置文件 |
-| `/ainbt` | 打开 NBT 结构浏览器 |
+| `/ainbt list` / `info` / `all` / `place` | 管理和放置 NBT / Litematica 结构；图形化浏览器通过 `K` → 加载结构打开 |
 | `/aipos` | 显示当前玩家坐标 |
 
 > 完整命令、配置项、蓝图格式规范和常见问题请查阅 **[用户手册 (USER_MANUAL.md)](USER_MANUAL.md)**。
@@ -95,10 +95,10 @@
 | `/aiconfig web_search <on/off>` | 开启/关闭联网搜索 |
 | `/aiconfig tavily_api_key <值>` | 设置 Tavily 联网搜索 API 密钥 |
 | debug-menu 菜单「生成测试日志」 | 触发测试日志，验证聊天框日志显示是否正常（原 `/aitest` 命令已迁移到 debug-menu 调试菜单，默认 M 键） |
-| `/ainbt list` | 列出所有 `.nbt` 结构文件 |
-| `/ainbt info <文件名>` | 显示指定 NBT 结构的详细信息 |
-| `/ainbt all` | 显示所有 NBT 结构的汇总信息 |
-| `/ainbt place <文件名>` | 在当前位置放置指定 NBT 结构 |
+| `/ainbt list` | 列出 `.nbt` 与 `.litematic` 结构文件 |
+| `/ainbt info <文件名>` | 显示指定 NBT 或 Litematica 结构的详细信息 |
+| `/ainbt all` | 显示所有 NBT / Litematica 结构的汇总信息 |
+| `/ainbt place <文件名>` | 在当前位置放置指定 NBT 或 Litematica 结构 |
 
 ---
 

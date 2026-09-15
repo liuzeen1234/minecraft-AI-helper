@@ -1,471 +1,245 @@
 # AI Builder User Manual
 
-> Version 1.3.0 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.4.0 | Minecraft 1.20.4 | Fabric Mod
 
----
+## Installation
 
-## Table of Contents
-
-1. Installation & Requirements
-2. Initial Setup
-3. Keybindings
-4. Commands
-5. Features
-6. Configuration
-7. Blueprint Format
-8. File Structure
-9. FAQ & Notes
-
----
-
-## Installation & Requirements
-
-| Item | Requirement |
-|------|-------------|
-| Minecraft Version | 1.20.4 |
-| Mod Loader | Fabric Loader >= 0.15.0 |
-| Java Version | >= 17 |
-| Dependencies | Fabric API (required) |
-
-Installation Steps:
-
-1. Install Fabric Loader (>= 0.15.0)
-2. Install Fabric API
-3. Place ai-builder-1.3.0.jar into .minecraft/mods/
-4. Launch the game
-
----
+Requires Minecraft 1.20.4, Fabric Loader 0.15.0 or later, Java 17 or later, and Fabric API. Install those dependencies, place `ai-builder-1.4.0.jar` in `.minecraft/mods/`, then start the game and press `K`.
 
 ## Initial Setup
 
-On first launch, the mod generates a default config file at
-ai-helper/config/ai-builder.properties.
-You MUST configure your AI API key before using AI features.
+The first launch creates `ai-helper/config/ai-builder.properties`. Set your API key before using AI:
 
-Quick Setup (choose one):
+```text
+/aiconfig api_base_url YOUR_API_URL
+/aiconfig api_key YOUR_API_KEY
+/aiconfig model YOUR_MODEL_NAME
+```
 
-- Method 1: In-game commands
-  /aiconfig api_key YOUR_API_KEY
-  /aiconfig api_base_url YOUR_API_URL
-  /aiconfig model YOUR_MODEL_NAME
-
-- Method 2: Press K -> open "AI Chat Settings"
-
-> This mod supports any OpenAI-compatible API (OpenAI, Kimi, DeepSeek, etc.)
-
----
+You can also press `K` → **AI Chat Settings**. OpenAI-compatible APIs and Anthropic Messages APIs are supported. `api_format=auto` selects a format from the endpoint; edit the config to explicitly use `openai` or `anthropic`, then run `/aiconfig reload` when necessary.
 
 ## Keybindings
 
-| Key | Function | Context |
-|-----|----------|---------|
-| K (default, rebindable) | Open mod settings menu | In-game |
-| Enter | Send message | AI Chat screen |
-| Escape | Close current screen | All mod screens |
-| Page Up/Down | Scroll chat history | AI Chat screen |
-| Mouse Wheel | Scroll list/chat | All scrollable screens |
-| Up/Down Arrows | Navigate file list | NBT/TXT browser |
-| Backspace | Go up one directory | NBT/TXT browser |
-| Delete | Delete selected file | NBT/TXT browser |
-| Enter | Place structure/enter folder | NBT/TXT browser |
+| Key | Function |
+|---|---|
+| `K` (default, rebindable) | Open the AI Builder settings menu |
+| `Enter` | Send a chat message; place a structure or enter a folder in the structure browser |
+| `Escape` | Close the current mod screen |
+| `Page Up` / `Page Down`, mouse wheel | Scroll chat or file lists |
+| Up/Down, `Backspace`, `Delete` | Navigate, go up, or delete a selected file in the unified structure browser |
 
-Tip: The key that opens mod settings (default K) can be rebound in the vanilla Options -> Controls -> Key Binds screen, under the "AI Builder" category.
-
----
+Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other keys are fixed screen controls.
 
 ## Commands
 
-### AI Core Commands
+### AI and utility commands
 
 | Command | Description |
-|---------|-------------|
-| /ai <message> | Chat with AI, AI can auto-execute build operations |
-| /ai blueprints | List all loaded blueprints |
-| /ai reload_blueprints | Reload blueprint files from disk |
-| /ainew | Clear conversation history |
-| /aistop | Stop the current AI response |
+|---|---|
+| `/ai <message>` | Chat with AI; it can perform supported building actions |
+| `/ai blueprints` | List loaded TXT blueprints |
+| `/ai reload_blueprints` | Reload TXT blueprints from disk |
+| `/ai test_stairs` | Place a stair-orientation debug sample |
+| `/ainew` | Clear conversation history |
+| `/aistop` | Cancel the active AI request |
+| `/aipos` | Show the current coordinates and dimension |
 
-### Configuration Commands
-
-| Command | Description |
-|---------|-------------|
-| /aiconfig show | Show current configuration |
-| /aiconfig api_base_url <value> | Set API endpoint URL |
-| /aiconfig api_key <value> | Set API key |
-| /aiconfig model <value> | Set AI model name |
-| /aiconfig web_search <on/off> | Enable/disable web search |
-| /aiconfig tavily_api_key <value> | Set Tavily search API key |
-| /aiconfig reload | Reload configuration from file |
-
-### Utility Commands
+### Configuration commands
 
 | Command | Description |
-|---------|-------------|
-| /aipos | Show current player coordinates and dimension |
+|---|---|
+| `/aiconfig show` | Show API, model, web-search, and Tavily settings |
+| `/aiconfig api_base_url <value>` | Set the API endpoint |
+| `/aiconfig api_key <value>` | Set the API key |
+| `/aiconfig model <value>` | Set the model |
+| `/aiconfig web_search <on/off>` | Enable or disable web search |
+| `/aiconfig tavily_api_key <value>` | Set the Tavily API key |
+| `/aiconfig reload` | Reload a manually edited configuration file |
 
-> The test-log feature moved from the /aitest command into the "Generate Test Logs" button in the debug-menu debug menu (default key M) — click it once to emit a batch of test logs.
+`/aiconfig` is not a generic key/value command. Change screenshot, context, streaming, and language in the settings screens; edit `api_format` directly in the configuration file and reload it.
 
-### NBT Structure Commands
+### Structure commands
 
 | Command | Description |
-|---------|-------------|
-| /ainbt | Open NBT structure browser (GUI) |
-| /ainbt list | List all .nbt files in nbts/ directory |
-| /ainbt info <filename> | View detailed info for an NBT file |
-| /ainbt all | View summary of all NBT files |
-| /ainbt place <filename> | Place NBT structure at player feet |
+|---|---|
+| `/ainbt list` | List NBT and Litematica structures |
+| `/ainbt info <filename>` | Show NBT or Litematica structure details |
+| `/ainbt all` | Show a summary of all structures |
+| `/ainbt place <filename>` | Place an NBT or Litematica structure at player feet |
 
----
+`/ainbt` has no no-argument GUI. Open the graphical browser through `K` → **Load Structures**.
+
+> Chat-log forwarding and “Generate Test Logs” are supplied by the optional debug-menu mod, not by AI Builder commands.
 
 ## Features
 
-### AI Chat
+### AI Chat and Building
 
-Usage:
-- Command: /ai build me a wooden house
-- Chat screen: Press K -> click "AI Chat"
+Open **AI Chat** with `K`, or use `/ai <message>`. The chat UI supports up to 20 messages (10 turns) of history, 1024-character input, TXT blueprint references, request cancellation, and incremental streaming output. Screenshot capture is disabled by default.
 
-AI Chat Screen Features:
-- Multi-turn conversation memory (up to 20 messages / 10 turns)
-- Real-time streaming output (toggle in settings)
-- Reference TXT blueprint files as context (click "Ref" button)
-- Cancel ongoing AI requests ("Stop Thinking" button)
-- Screenshot support (AI can analyze your game screen)
-- Stop command: Use /aistop to cancel AI generation from command line
+AI can place, fill, or clear blocks; give items; summon entities; set time/weather; teleport; and create/place blueprints. A fill or clear operation is limited to 10,000 blocks, `give` to 64 items, and entity spawning to 20 entities. `execute_command` runs with permission level 2, but unsafe server-administration, moderation, and stop/save root commands are rejected; AI cannot run arbitrary vanilla commands.
 
-Notes:
-- Chat history persists during game session; use /ainew or clear button to reset
-- Input field max length: 1024 characters
-- Streaming mode shows AI response incrementally
+Blueprint coordinates are relative: X east, Y up, Z south, with the origin at player feet. V1 and MCBLUEPRINT v2 TXT blueprints are supported.
 
----
+### Unified Structure Browser
 
-### AI Building
+Open **Load Structures** from the `K` menu to browse, search, delete, and place files in subfolders of:
 
-AI can execute the following via natural language:
+- `ai-helper/structures/nbts/` for `.nbt` files;
+- `ai-helper/structures/litematic/` for `.litematic` files;
+- `ai-helper/structures/txts/` for V1/V2 `.txt` blueprints.
 
-| Action | Example |
-|--------|---------|
-| Place block | "Place a stone brick in front of me" |
-| Fill blocks | "Fill a 5x3x5 area with oak planks" |
-| Clear area | "Clear all blocks 10 blocks ahead" |
-| Give item | "Give me 64 diamonds" |
-| Set time | "Set time to day" |
-| Set weather | "Make it sunny" |
-| Teleport | "Teleport me to 100 64 200" |
-| Spawn entity | "Spawn a pig in front of me" |
-| Execute command | AI can run vanilla Minecraft commands |
-| Build blueprint | "Build me a small cabin" (AI generates and places) |
-
-Coordinate System:
-- Relative: forward/right/up based on player facing direction
-- Absolute: direct x/y/z world coordinates
-- Blueprint: X=east, Y=up, Z=south, origin at player feet
-
-Limits:
-- Max 10,000 blocks per fill command
-- Max 20 entities per summon command
-- Max 64 items per give command
-
----
-
-### NBT Structure Management
-
-Open via:
-- Command: /ainbt
-- Press K -> "Load Structure (NBT)"
-
-Features:
-- Browse all .nbt files in nbts/ directory (supports subfolders)
-- Search/filter by filename
-- View file details (size, block count, block types, data version)
-- Double-click or click "Place" to place at player feet
-- Delete files (requires confirmation)
-- Open system file manager
-
-Command-line usage:
-- /ainbt list - List all files
-- /ainbt info <filename> - View details
-- /ainbt place <filename> - Place structure
-- Filenames support spaces instead of path separators (e.g. "ancient_city barracks")
-
-Placement Rules:
-- Structure placed at player feet position as origin
-- Automatically skips air and structure_void blocks
-- Preserves block entity data (chest contents, sign text, etc.)
-- Signs auto-converted to 1.20+ format
-
-Notes:
-- Large structures may take a moment to place
-- Ensure sufficient space at placement location
-- NBT files must be standard Minecraft structure format
-
----
-
-### TXT Blueprint Management
-
-Open via:
-- Press K -> "Load Structure (TXT)"
-
-Features:
-- Browse all .txt blueprint files in txts/ directory
-- Search/filter by filename
-- Double-click or click "Place" to build at player feet
-- AI-generated blueprints are auto-saved to txts/ai-generated/
-
-Placement Rules:
-- Origin at player feet
-- V2 format: X=east, Y=up, Z=south
-- V1 format: row=south, column=east
-- Attachable blocks (buttons, torches) auto-orient to neighbors
-- Beds auto-generate head block
-
----
+NBT/Litematica placement skips `air` and `structure_void` and preserves block states, block-entity data, and structure entities. Legacy sign data is converted to the 1.20+ format. AI-generated TXT blueprints are saved in `ai-helper/structures/txts/ai-generated/`.
 
 ### Selection Tool
 
-Open via:
-- Press K -> "Selection Tool"
+Open **Selection Tool** from the `K` menu. Set two corner coordinates (or use the current position), confirm to render a highlight, then analyze/export the selection. Draft coordinates persist when the screen closes.
 
-Workflow:
+- **TXT / MCBLUEPRINT v2:** always exports container inventories and non-empty front/back sign text.
+- **NBT:** preserves block-entity data.
+- **Litematica:** preserves block-entity data and can include entities.
 
-1. Set Selection Coordinates
-   - Manually enter two corner coordinates (X Y Z)
-   - Or click "Pos1=Current" / "Pos2=Current" for quick setup
+### Web Search, Fetch, and Screenshots
 
-2. Confirm Selection
-   - Click "Confirm" button
-   - A blue translucent highlight box appears in-game
+Web search requires `web_search_enabled=true` and a `tavily_api_key`. When AI requests a search, the mod asks Tavily for up to five results with a 120-second timeout. AI may also request a webpage fetch; it has a 30-second timeout and the resulting plain text is limited to 8,000 characters.
 
-3. Analyze/Export
-   - Click "Analyze/Export" to enter export screen
-   - View block statistics (types, quantities)
-   - Export as V2 blueprint text
-   - Export as .nbt file (preserves block entity data)
-   - Export as .txt file (preserves container contents)
-   - Export as .litematic file (Litematica-compatible, preserves block entities and optional entities)
-
-Export Formats:
-- NBT Export: Standard Minecraft structure file with block entities
-- TXT Export: MCBLUEPRINT v2 format with container contents
-- Litematica Export: Standard .litematic file saved in structures/litematic/, ready to load in Litematica
-- Blueprint Export: MCBLUEPRINT v2 format with all block state properties
-
-Notes:
-- Selection coordinates auto-save as draft when closing
-- Clearing selection removes highlight rendering
-- NBT, TXT, and Litematica exports run on the server for complete block entity access
-
----
-
-### Web Search & Fetch
-
-Prerequisites:
-- Set tavily_api_key in config
-- Enable web_search_enabled
-
-Usage:
-- Tell AI "search how to build a gothic cathedral"
-- AI automatically decides when to search
-- Search results provide context for AI responses
-
-Web Fetch:
-- AI can fetch content from specified URLs
-- Example: "Check this webpage for me https://..."
-
-Notes:
-- Returns top 5 search results
-- Search timeout: 120 seconds
-- Requires valid Tavily API key
-
----
-
-### Screenshot Analysis
-
-Prerequisites:
-- Enable "screenshot_enabled" in settings
-
-Usage:
-- When sending messages in AI Chat, the mod auto-captures game screen
-- AI can analyze screen content and respond accordingly
-
-Notes:
-- Screenshots auto-scaled to max 512px width
-- 2-tick delay for clean capture (after chat screen closes)
-- Saved temporarily at ai-helper/screenshots/ai_temp.png
-- Can be disabled in settings at any time
-
----
+When `screenshot_enabled` is enabled, the chat UI closes for two ticks before capturing a screen image up to 512 px wide. It is saved temporarily as `ai-helper/screenshots/ai_chat_temp.png`; the `/ai` screenshot path is `ai_temp.png`.
 
 ## Configuration
 
-Config file location: ai-helper/config/ai-builder.properties
+Configuration file: `ai-helper/config/ai-builder.properties`
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| api_base_url | String | https://api.kimi.com/coding/v1/messages | AI API endpoint (OpenAI-compatible) |
-| api_key | String | your-api-key-here | API key (MUST be set manually) |
-| model | String | kimi-for-coding | AI model name |
-| screenshot_enabled | Boolean | true | Enable screenshot feature |
-| context_enabled | Boolean | true | Enable multi-turn conversation |
-| web_search_enabled | Boolean | true | Enable web search |
-| tavily_api_key | String | (empty) | Tavily search API key |
-| stream_output_enabled | Boolean | false | Enable streaming output |
-| language | String | en_us | UI language (zh_cn or en_us) |
+| Key | Default | Description |
+|---|---|---|
+| `api_base_url` | `https://api.kimi.com/coding/v1/messages` | API endpoint |
+| `api_key` | `your-api-key-here` | API key; must be configured |
+| `model` | `kimi-for-coding` | Model name |
+| `screenshot_enabled` | `false` | Send a game screenshot from AI Chat |
+| `context_enabled` | `true` | Enable multi-turn context |
+| `web_search_enabled` | `true` | Allow Tavily web search |
+| `tavily_api_key` | empty | Tavily API key |
+| `stream_output_enabled` | `true` | Incrementally show AI responses |
+| `language` | `en_us` | `zh_cn` or `en_us` |
+| `api_format` | `auto` | `auto`, `openai`, or `anthropic` |
 
-Modification Methods:
-- In-game command: /aiconfig <key> <value>
-- Press K -> AI Chat Settings (visual toggles)
-- Edit config file directly, then use /aiconfig reload (no restart needed)
-
----
+**AI Chat Settings** controls the four Boolean settings. The API settings screen edits the endpoint, key, model, and Tavily key. Run `/aiconfig reload` after manual edits. Change language through `K` → **Mod Language**; the next client startup resets it to the current Minecraft language.
 
 ## Blueprint Format
 
-### V2 Format (Recommended)
-
-```
+```text
 # MCBLUEPRINT v2
-# name: my_building
-# size: 5x3x5
+# name: example
+# size: 5x6x5
 # origin: 0,0,0
-# Origin at structure NW corner lowest layer, x=east, y=up, z=south
+# Origin: structure northwest corner on the lowest layer; x=east, y=up, z=south
+# Format: x,y,z  block_id  [key=value ...]
 
 ## BLOCKS
-0,0,0   oak_planks
-1,0,0   oak_stairs   facing=north   half=bottom
-2,0,0   oak_door   facing=south   half=lower   hinge=left   open=false
-0,1,0   glass_pane
-3,0,2   oak_log   axis=y
+
+# --- Layer 1 (y=0) ---
+2,0,2   oak_log   axis=y
+3,0,2   short_grass
+0,0,3   short_grass
+2,0,4   short_grass
+4,0,4   short_grass
+
+# --- Layer 2 (y=1) ---
+2,1,2   oak_log   axis=y
+
+# --- Layer 3 (y=2) ---
+0,2,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+1,2,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,2,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,2,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,2,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,2,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,2,1   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,2,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,2,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,2,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,2,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,2,2   oak_log   axis=y
+3,2,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+4,2,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+0,2,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,2,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,2,3   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,2,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,2,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,2,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,2,4   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,2,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+4,2,4   oak_leaves   distance=4   persistent=false   waterlogged=false
+
+# --- Layer 4 (y=3) ---
+1,3,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,3,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,3,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,3,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,3,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,3,1   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,3,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,3,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,3,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,3,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,3,2   oak_log   axis=y
+3,3,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+4,3,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+0,3,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+1,3,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,3,3   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,3,3   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,3,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+0,3,4   oak_leaves   distance=4   persistent=false   waterlogged=false
+1,3,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+2,3,4   oak_leaves   distance=2   persistent=false   waterlogged=false
+3,3,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+
+# --- Layer 5 (y=4) ---
+2,4,1   oak_leaves   distance=1   persistent=false   waterlogged=false
+1,4,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,4,2   oak_log   axis=y
+3,4,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+2,4,3   oak_leaves   distance=1   persistent=false   waterlogged=false
+
+# --- Layer 6 (y=5) ---
+2,5,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,5,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,5,2   oak_leaves   distance=1   persistent=false   waterlogged=false
+3,5,2   oak_leaves   distance=2   persistent=false   waterlogged=false
+2,5,3   oak_leaves   distance=2   persistent=false   waterlogged=false
 ```
 
-Format Details:
-- First line must be "# MCBLUEPRINT v2"
-- "# name:" specifies blueprint name
-- "# size:" specifies dimensions (optional, informational)
-- "# origin:" specifies origin point (optional)
-- Block line format: x,y,z   block_id   [key=value ...]
-- Coordinates are relative (origin at 0,0,0)
-- Supports all vanilla block state properties
-- Lines starting with # are comments
-
-### V1 Format (Legacy)
-
-```
-{{layered blueprint|name=small_house
-|A=Oak Planks
-|B=Oak Stairs-rot90
-|C=Oak Door
-|----Layer 1|
-AAAA
-ABBA
-AAAA
-|----Layer 2|
-A  A
-
-A  A
-}}
-```
-
-Format Details:
-- Starts with {{layered blueprint|name=...
-- |char=block_name defines legend
-- Supports rotation: -rot0, -rot90, -rot180, -rot270
-- Supports properties: +bottom, +top, +head, +foot
-- |----Layer N| separates height layers
-- Spaces represent air
-
----
+A V2 block line is `x,y,z   block_id   [key=value ...]`. `# name:`, `# size:`, and `# origin:` are optional metadata; lines beginning with `#` are comments. Legacy V1 character-grid blueprints remain compatible: rows go south, columns go east, and spaces mean air.
 
 ## File Structure
 
-```
+```text
 .minecraft/
-|- ai-helper/                    <- Mod data root directory
-|  |- config/
-|  |  |- ai-builder.properties   <- Config file
-|  |- nbts/                      <- NBT structure files
-|  |  |- my_house.nbt
-|  |  |- ancient_city/
-|  |  |  |- city_center/
-|  |  |  |- structures/
-|  |  |- bastion/
-|  |- txts/                      <- TXT blueprint files
-|  |  |- small_house.txt
-|  |  |- ai-generated/           <- AI auto-generated blueprints
-|  |- screenshots/               <- AI screenshot temp files
-|     |- ai_temp.png
-|     |- ai_chat_temp.png
-|- mods/
-   |- ai-builder-1.3.0.jar
+├── ai-helper/
+│   ├── config/ai-builder.properties
+│   ├── structures/
+│   │   ├── nbts/
+│   │   ├── litematic/
+│   │   └── txts/
+│   │       └── ai-generated/
+│   └── screenshots/
+│       ├── ai_temp.png
+│       └── ai_chat_temp.png
+└── mods/ai-builder-1.4.0.jar
 ```
 
-- ai-helper/: Mod data root, alongside mods/ and config/
-- ai-helper/config/: Configuration files
-- ai-helper/nbts/: NBT structure files (supports subfolders)
-- ai-helper/txts/: TXT blueprint files (AI-generated saved in ai-generated/ subfolder)
-- ai-helper/screenshots/: AI screenshot temp files
-- All directories support arbitrary subfolder depth
+All structure directories support arbitrarily nested folders.
 
----
+## FAQ and Notes
 
-## FAQ & Notes
+**AI does not respond:** Run `/aiconfig show` to check the key and endpoint, then verify network access. The optional debug-menu can provide chat logs for diagnosis.
 
-### Q: AI not responding / errors
-- Check API key: /aiconfig show
-- Verify API URL is accessible
-- Enable "chat log display" in the debug-menu (default key M) for detailed logs
-- Click "Generate Test Logs" in the debug-menu to verify the log system works
+**Changing language or streaming:** Use `K` → **Mod Language** and `K` → **AI Chat Settings**, respectively. There are no `/aiconfig language` or `/aiconfig stream_output_enabled` commands.
 
-### Q: How to stop AI response
-- In chat screen: Click "Stop Thinking" button
-- From command line: Type /aistop
+**Manual configuration changes:** Run `/aiconfig reload`; a restart is unnecessary.
 
-### Q: Web search not working
-- Verify tavily_api_key is set
-- Verify web_search_enabled is true (use /aiconfig web_search on to enable)
-- Check network connection
-
-### Q: Blueprint placed in wrong position
-- Blueprints use player feet as origin
-- V2: X=east, Y=up, Z=south
-- V1: row=south, column=east
-- Place on flat open ground
-
-### Q: NBT structure has missing blocks
-- Verify NBT file version matches Minecraft version
-- Some old block IDs may have changed
-- structure_void blocks are auto-skipped
-
-### Q: AI output truncated
-- AI models have token limits; large blueprints may be cut off
-- Mod auto-parses available portion and places it
-- Ask AI to "continue generating the rest"
-
-### Q: How to switch language
-- Press K -> "Mod Language"
-- Or: /aiconfig language en_us (English) / /aiconfig language zh_cn (Chinese)
-
-### Q: Streaming vs normal output
-- Streaming: AI response appears word by word, less waiting
-- Normal: Waits for complete response then displays all at once
-- Toggle: /aiconfig stream_output_enabled true
-
-### Q: Do I need to restart after config changes?
-- Changes via /aiconfig command take effect immediately
-- After manually editing the config file, use /aiconfig reload (no restart needed)
-
-### Security Notes
-- API keys stored in local config file; do not share
-- AI operations (place, fill) are IRREVERSIBLE; backup saves before major builds
-- Web search/fetch sends requests to external servers; be mindful of privacy
-
-### Performance Tips
-- Avoid filling very large areas (>10,000 blocks) at once
-- Large NBT structures may cause brief lag
-- Streaming mode works better with high network latency
-
----
+**Safety and performance:** API keys are stored locally. AI operations are irreversible, so back up important worlds. Search and fetching send requests to external services. Large structure placement can cause brief lag.
 
 ## License
 

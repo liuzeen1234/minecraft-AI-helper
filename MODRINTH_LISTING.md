@@ -10,7 +10,7 @@
 |-------|-------|
 | **Name** | AI Builder |
 | **Slug (URL)** | `ai-builder` |
-| **Summary** | In-game AI assistant with natural language chat, AI-powered building, NBT/blueprint structure management, selection export, and web search. |
+| **Summary** | In-game AI assistant with natural-language chat, AI-powered building, structure browsing, selection export, and web search. |
 | **Categories** | Utility, Management |
 | **License** | MIT |
 | **Client/Server Side** | Both (Client + Server) |
@@ -21,7 +21,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.3.1 |
+| **Version** | 1.4.0 |
 | **Minecraft Version** | 1.20.4 |
 | **Mod Loader** | Fabric |
 | **Fabric Loader Version** | >= 0.15.0 |
@@ -37,7 +37,7 @@ Paste the following directly into the Modrinth Description editor:
 ```markdown
 # AI Builder
 
-A feature-rich Fabric mod that integrates AI conversational capabilities into Minecraft. Chat with AI using natural language, have it build structures for you, manage NBT files, export selections, and let AI search the web for information — all from within the game.
+A feature-rich Fabric mod that integrates AI conversational capabilities into Minecraft. Chat with AI using natural language, have it build structures, manage NBT/Litematica/TXT files, export selections, and let AI search the web for information — all from within the game.
 
 ## Features
 
@@ -47,7 +47,7 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
   - Place, fill, or clear blocks
   - Give items, spawn entities
   - Set time/weather, teleport players
-  - Execute arbitrary Minecraft commands
+  - Execute supported Minecraft commands at permission level 2 (unsafe administration, moderation, and stop/save root commands are rejected)
 - **Multi-turn conversation memory** — AI remembers context across messages
 - **Screenshot support** — AI can analyze your game screen and respond accordingly
 - **`/aistop`** — Terminate AI response via command (no need to open chat UI)
@@ -55,7 +55,8 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 - **API Key validation** — Automatically verifies API key on world entry and settings save
 
 ### Structure Management
-- **NBT Structure Browser** — A graphical interface for browsing, searching, and placing `.nbt` structure files with folder navigation and file management
+- **Unified Structure Browser** — Press `K` → Load Structures to browse, search, delete, and place `.nbt`, `.litematic`, and `.txt` files with folder navigation
+- **NBT/Litematica Placement** — Preserves block states, block-entity data, and structure entities while skipping `air` and `structure_void`
 - **TXT Blueprint System** — Supports two blueprint formats:
   - V1: Character grid with legend mapping (human-readable)
   - V2 (MCBLUEPRINT v2): Explicit coordinates with full block state properties (precise reproduction)
@@ -89,34 +90,39 @@ A feature-rich Fabric mod that integrates AI conversational capabilities into Mi
 | `/aiconfig show` | View current configuration |
 | `/aiconfig reload` | Hot-reload configuration |
 | `/aiconfig web_search <on/off>` | Toggle web search |
-| `/aiconfig <key> <value>` | Modify a configuration value |
+| `/aiconfig api_base_url/api_key/model <value>` | Update the supported API settings |
+| `/aiconfig web_search <on/off>` | Toggle web search |
+| `/aiconfig tavily_api_key <value>` | Update the Tavily API key |
 | `/aipos` | Show current coordinates |
 | debug-menu "Generate Test Logs" | Generate test log entry (moved from `/aitest` into the debug-menu menu, default key M) |
-| `/ainbt` | Open NBT browser |
+| `/ainbt list/info/all/place` | Manage NBT and Litematica structures; the GUI is opened through `K` → Load Structures |
 
 ## Configuration
 
-A configuration file is generated at `config/ai-builder.properties` on first launch:
+A configuration file is generated at `ai-helper/config/ai-builder.properties` on first launch:
 
 | Key | Description | Default |
 |-----|-------------|---------|
 | `api_base_url` | AI API endpoint | (OpenAI-compatible endpoint) |
 | `api_key` | API key | Must be set manually |
 | `model` | AI model name | (configurable) |
-| `screenshot_enabled` | Screenshot feature | true |
+| `screenshot_enabled` | Screenshot feature | false |
 | `context_enabled` | Multi-turn conversation | true |
 | `web_search_enabled` | Web search | true |
 | `tavily_api_key` | Tavily search API key | (empty) |
+| `stream_output_enabled` | Incremental streaming output | true |
 | `language` | Interface language (zh_cn / en_us) | en_us |
+| `api_format` | auto, openai, or anthropic API format | auto |
 
-> You must configure your own AI API key before use. Any OpenAI-compatible API is supported.
+> You must configure your own AI API key before use. OpenAI-compatible and Anthropic Messages APIs are supported; `api_format=auto` selects the format from the endpoint.
 
 ## File Structure
 
-- `nbts/` — Store `.nbt` structure files (supports subfolders)
-- `txts/` — Store `.txt` blueprint files
-- `txts/ai-generated/` — AI-generated blueprint files (auto-saved here)
-- `config/ai-builder.properties` — Mod configuration file
+- `ai-helper/structures/nbts/` — Store `.nbt` structure files (supports subfolders)
+- `ai-helper/structures/litematic/` — Store `.litematic` structure files
+- `ai-helper/structures/txts/` — Store `.txt` blueprint files
+- `ai-helper/structures/txts/ai-generated/` — AI-generated blueprint files (auto-saved here)
+- `ai-helper/config/ai-builder.properties` — Mod configuration file
 
 ## Keybinds
 
@@ -137,7 +143,7 @@ A configuration file is generated at `config/ai-builder.properties` on first lau
 ## Pre-Upload Checklist
 
 - [ ] Run `./gradlew build` to generate the JAR
-- [ ] Find `ai-builder-1.3.1.jar` in `build/libs/` (do NOT upload the `-sources.jar`)
+- [ ] Find `ai-builder-1.4.0.jar` in `build/libs/` (do NOT upload the `-sources.jar`)
 - [ ] Prepare a 512x512 mod icon (PNG)
 - [ ] Prepare 2-4 in-game screenshots showing:
   - AI chat interface
