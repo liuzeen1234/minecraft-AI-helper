@@ -51,3 +51,17 @@
 
 - 来源：Mojang 官方 1.20.1 客户端 jar（SHA1 `0c3ec587af28e5a785c0b4a7b8a30f9a8f78f838`），即游戏原版数据
 - 许可：Minecraft 版权归 Mojang Studios；游戏数据遵循 Minecraft EULA，仅限个人/研究用途，禁止商用与再分发
+
+---
+
+## 社区建筑结构（补充素材）
+
+本目录下另有**两个子目录**，包含社区玩家创作的中大型建筑结构，用于补充原版小结构之外的建筑模式参考：
+
+| 子目录 | 格式 | 数量 | 内容 | 说明 |
+|---|---|---|---|---|
+| `litematic/` | .litematic（Litematica 投影） | 3 | 城堡 / 大教堂 / 黑暗要塞 | 来源 GitHub（lodestone 仓库 demo），详见该目录 README |
+| `schem/` | .schem（WorldEdit/Sponge） | 3 | 中世纪屋 / 城堡庄园 / 酒馆客栈 | 来源 schemcraft.com，CC BY / CC BY-NC，详见该目录 README |
+
+- 两类文件与上表的 .nbt 一样是 gzip NBT，但字段结构不同（.litematic 用 `BlockStatePalette`+`BlockStates`，.schem 用 `Palette`+`BlockData`），各子目录 README 已写明解析要点与版本兼容性。
+- 仅限本地 RAG 学习/研究使用，不批量公开上传。

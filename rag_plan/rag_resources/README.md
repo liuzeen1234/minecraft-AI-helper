@@ -49,6 +49,8 @@
 | 文件 | 来源 | 说明 |
 |---|---|---|
 | 14 个 .nbt + README.md | Mojang 官方 1.20.1 客户端 jar | 原版结构方块格式（村庄/末地城/雪屋/前哨站/远古城市/堡垒/海底废墟/林地府邸/废弃传送门/化石/考古遗迹/沉船），DataVersion=3465，与 1.20.1 完全匹配，可直接用于训练或游戏内结构方块加载 |
+| litematic/（3 个 .litematic + README.md） | GitHub `mattzh72/lodestone` demo（原始来自 abfielder 等） | Litematica 投影格式的大型建筑：城堡（42 万方块）/ 大教堂 / 黑暗要塞，含完整方块状态 palette |
+| schem/（3 个 .schem + README.md） | schemcraft.com（作者 BuildSchem） | WorldEdit/Sponge 格式的中世纪建筑：生存屋 / 城堡庄园 / 酒馆客栈，CC BY / CC BY-NC 许可 |
 
 ## 抓取说明
 
