@@ -50,6 +50,10 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier EXPORT_NBT_PACKET = new Identifier(MOD_ID, "export_nbt");
     // 服务端 -> 客户端：导出完成通知
     public static final Identifier EXPORT_NBT_RESULT_PACKET = new Identifier(MOD_ID, "export_nbt_result");
+    // 客户端 -> 服务端：请求导出选区为 Litematica（含 BlockEntity 数据）
+    public static final Identifier EXPORT_LITEMATIC_PACKET = new Identifier(MOD_ID, "export_litematic");
+    // 服务端 -> 客户端：Litematica 导出完成通知
+    public static final Identifier EXPORT_LITEMATIC_RESULT_PACKET = new Identifier(MOD_ID, "export_litematic_result");
     // 客户端 -> 服务端：请求导出选区为 TXT（含容器内容物）
     public static final Identifier EXPORT_TXT_PACKET = new Identifier(MOD_ID, "export_txt");
     // 服务端 -> 客户端：TXT 导出完成通知
@@ -258,6 +262,34 @@ public class HelloWorldMod implements ModInitializer {
                     PacketByteBuf resultBuf = PacketByteBufs.create();
                     resultBuf.writeString(I18n.tr("server.export.nbt.failed", e.getMessage()));
                     ServerPlayNetworking.send(player, EXPORT_NBT_RESULT_PACKET, resultBuf);
+                }
+            });
+        });
+
+        // 注册接收客户端导出 Litematica 请求的处理器
+        ServerPlayNetworking.registerGlobalReceiver(EXPORT_LITEMATIC_PACKET, (server, player, handler, buf, responseSender) -> {
+            int x1 = buf.readInt(), y1 = buf.readInt(), z1 = buf.readInt();
+            int x2 = buf.readInt(), y2 = buf.readInt(), z2 = buf.readInt();
+            String fileName = buf.readString();
+            String subPath = buf.isReadable() ? buf.readString() : "";
+            boolean includeEntities = buf.isReadable() ? buf.readBoolean() : true;
+            server.execute(() -> {
+                try {
+                    net.minecraft.server.world.ServerWorld world = player.getServerWorld();
+                    net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
+                    net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportLitematic(
+                            world, pos1, pos2, fileName, subPath, includeEntities);
+                    String displayPath = subPath.isEmpty() ? fileName + ".litematic"
+                            : subPath + "/" + fileName + ".litematic";
+                    PacketByteBuf resultBuf = PacketByteBufs.create();
+                    resultBuf.writeString(I18n.tr("server.export.litematic.done", displayPath));
+                    ServerPlayNetworking.send(player, EXPORT_LITEMATIC_RESULT_PACKET, resultBuf);
+                } catch (Exception e) {
+                    LOGGER.error("服务端导出 Litematica 失败", e);
+                    PacketByteBuf resultBuf = PacketByteBufs.create();
+                    resultBuf.writeString(I18n.tr("server.export.litematic.failed", e.getMessage()));
+                    ServerPlayNetworking.send(player, EXPORT_LITEMATIC_RESULT_PACKET, resultBuf);
                 }
             });
         });

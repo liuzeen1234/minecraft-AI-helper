@@ -105,6 +105,54 @@ public class ServerSelectionExporter {
                 fileName, sizeX, sizeY, sizeZ);
     }
 
+    /**
+     * Exports the selected world area as a Litematica .litematic file.
+     * The output uses one region at the schematic origin and preserves block entities
+     * and, when requested, entities captured by the vanilla StructureTemplate.
+     */
+    public static void exportLitematic(ServerWorld world, BlockPos pos1, BlockPos pos2, String name,
+                                       String subPath, boolean includeEntities) throws IOException {
+        BlockPos min = new BlockPos(
+                Math.min(pos1.getX(), pos2.getX()),
+                Math.min(pos1.getY(), pos2.getY()),
+                Math.min(pos1.getZ(), pos2.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(pos1.getX(), pos2.getX()),
+                Math.max(pos1.getY(), pos2.getY()),
+                Math.max(pos1.getZ(), pos2.getZ()));
+
+        int sizeX = max.getX() - min.getX() + 1;
+        int sizeY = max.getY() - min.getY() + 1;
+        int sizeZ = max.getZ() - min.getZ() + 1;
+        StructureTemplate template = new StructureTemplate();
+        template.saveFromWorld(world, min, new Vec3i(sizeX, sizeY, sizeZ), includeEntities, Blocks.STRUCTURE_VOID);
+
+        String sanitizedName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        NbtCompound vanillaStructure = template.writeNbt(new NbtCompound());
+        com.example.helloworld.nbt.NbtStructureParser.StructureData structure =
+                com.example.helloworld.nbt.NbtStructureParser.parseNbt(vanillaStructure, sanitizedName + ".litematic");
+        NbtCompound litematic = LitematicNbtWriter.create(structure, sanitizedName, "AI Builder");
+
+        Path dir = com.example.helloworld.ModPaths.getLitematicDir();
+        if (!Files.isDirectory(dir)) {
+            Files.createDirectories(dir);
+        }
+        if (subPath != null && !subPath.isEmpty()) {
+            dir = dir.resolve(subPath);
+            if (!Files.isDirectory(dir)) {
+                Files.createDirectories(dir);
+            }
+        }
+
+        String fileName = sanitizedName + ".litematic";
+        try (FileOutputStream output = new FileOutputStream(dir.resolve(fileName).toFile())) {
+            NbtIo.writeCompressed(litematic, output);
+        }
+
+        LOGGER.info("服务端导出 Litematica 完成: {} ({}x{}x{}, 含实体: {})",
+                fileName, sizeX, sizeY, sizeZ, includeEntities);
+    }
+
     @SuppressWarnings("unchecked")
     private static <T extends Comparable<T>> String getPropertyValueString(BlockState state, Property<T> prop) {
         return prop.name(state.get(prop));

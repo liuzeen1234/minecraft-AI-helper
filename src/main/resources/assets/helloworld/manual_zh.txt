@@ -242,16 +242,18 @@ AI 可以通过自然语言指令执行以下操作：
    - 导出为 V2 蓝图文本
    - 导出为 .nbt 文件（保留方块实体数据）
    - 导出为 .txt 文件（保留容器内容物）
+   - 导出为 .litematic 文件（兼容 Litematica，保留方块实体和可选实体数据）
 
 导出格式：
 - NBT 导出：生成标准 Minecraft 结构文件，保留箱子内容物、告示牌文字等
 - TXT 导出：生成 MCBLUEPRINT v2 格式文本，包含容器内容物信息
+- Litematica 导出：生成标准 .litematic 文件，保存至 structures/litematic/，可直接由 Litematica 加载
 - 蓝图导出：生成 MCBLUEPRINT v2 格式文本，包含所有方块状态属性
 
 注意事项：
 - 选区坐标在关闭界面时会自动保存为草稿
 - 清除选区会同时移除高亮渲染
-- NBT 和 TXT 导出在服务端执行，可完整读取方块实体数据
+- NBT、TXT 和 Litematica 导出在服务端执行，可完整读取方块实体数据
 
 ---
 

@@ -243,16 +243,18 @@ Workflow:
    - Export as V2 blueprint text
    - Export as .nbt file (preserves block entity data)
    - Export as .txt file (preserves container contents)
+   - Export as .litematic file (Litematica-compatible, preserves block entities and optional entities)
 
 Export Formats:
 - NBT Export: Standard Minecraft structure file with block entities
 - TXT Export: MCBLUEPRINT v2 format with container contents
+- Litematica Export: Standard .litematic file saved in structures/litematic/, ready to load in Litematica
 - Blueprint Export: MCBLUEPRINT v2 format with all block state properties
 
 Notes:
 - Selection coordinates auto-save as draft when closing
 - Clearing selection removes highlight rendering
-- NBT and TXT export runs on server for complete block entity access
+- NBT, TXT, and Litematica exports run on the server for complete block entity access
 
 ---
 

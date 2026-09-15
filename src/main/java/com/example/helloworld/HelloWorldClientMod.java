@@ -78,6 +78,16 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
+        // 注册接收服务端 Litematica 导出结果通知
+        ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.EXPORT_LITEMATIC_RESULT_PACKET, (client, handler, buf, responseSender) -> {
+            String resultMsg = buf.readString();
+            client.execute(() -> {
+                if (client.player != null) {
+                    client.player.sendMessage(net.minecraft.text.Text.literal(resultMsg), false);
+                }
+            });
+        });
+
         // 注册接收服务端 TXT 导出结果通知
         ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.EXPORT_TXT_RESULT_PACKET, (client, handler, buf, responseSender) -> {
             String resultMsg = buf.readString();

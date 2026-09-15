@@ -7,7 +7,7 @@ import net.minecraft.text.Text;
 
 /**
  * P2 - 导出选区选择页面：点击"导出选区"后跳转到此页面，
- * 提供"导出.txt"和"导出.nbt"两个选项。
+ * 提供"导出.txt"、"导出.nbt"和"导出.litematic"三个选项。
  */
 public class SelectionExportPopupScreen extends Screen {
 
@@ -17,7 +17,7 @@ public class SelectionExportPopupScreen extends Screen {
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
-    private static final int POPUP_HEIGHT = 110;
+    private static final int POPUP_HEIGHT = 136;
 
     public SelectionExportPopupScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
         super(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.title")));
@@ -48,8 +48,14 @@ public class SelectionExportPopupScreen extends Screen {
             this.client.setScreen(new ExportNbtScreen(this, result, includeEntities));
         }).dimensions(btnLeft, nbtBtnY, btnW, 20).build());
 
+        // "导出.litematic" 按钮 → 跳转到 Litematica 导出界面
+        int litematicBtnY = nbtBtnY + 26;
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.litematic")), button -> {
+            this.client.setScreen(new ExportLitematicScreen(this, result, includeEntities));
+        }).dimensions(btnLeft, litematicBtnY, btnW, 20).build());
+
         // 返回按钮
-        int cancelY = nbtBtnY + 26;
+        int cancelY = litematicBtnY + 26;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("button.back")), button -> close())
                 .dimensions(cx - 40, cancelY, 80, 20).build());
     }
