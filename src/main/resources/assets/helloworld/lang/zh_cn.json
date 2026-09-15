@@ -110,6 +110,7 @@
     "structurebrowser.detail.folder.hint": "§7双击或按 Enter 进入文件夹",
     "structurebrowser.detail.filenotfound": "§c文件不存在",
     "structurebrowser.detail.type.nbt": "§e类型: §bNBT 结构",
+    "structurebrowser.detail.type.litematic": "§e类型: §dLitematica 结构",
     "structurebrowser.detail.type.txt": "§e类型: §aTXT 设计图",
     "structurebrowser.detail.filepath": "§e文件路径:",
     "structurebrowser.detail.filesize": "§e文件大小: §f%s bytes",

@@ -94,8 +94,21 @@ public class NbtStructureParser {
     }
 
     /**
-     * 从文件解析 NBT 结构
+     * 根据文件扩展名自动选择解析器：
+     *   - .litematic → {@link LitematicParser}（Litematica 格式）
+     *   - 其他（.nbt 等） → 原版结构 NBT 解析
+     *
+     * <p>返回统一的 {@link StructureData}，因此下游放置逻辑无需关心格式。
      */
+    public static StructureData parseAny(File file) throws Exception {
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".litematic")) {
+            return LitematicParser.parse(file);
+        }
+        return parse(file);
+    }
+
+    /** 从文件解析 NBT 结构（原版结构方块 .nbt 格式）。 */
     public static StructureData parse(File file) throws Exception {
         NbtCompound root;
         try (FileInputStream fis = new FileInputStream(file)) {
@@ -234,18 +247,21 @@ public class NbtStructureParser {
 
         try (Stream<Path> walk = Files.walk(directory)) {
             List<Path> nbtFiles = walk
-                    .filter(p -> p.toString().endsWith(".nbt"))
+                    .filter(p -> {
+                        String n = p.toString().toLowerCase();
+                        return n.endsWith(".nbt") || n.endsWith(".litematic");
+                    })
                     .filter(Files::isRegularFile)
                     .toList();
 
             for (Path p : nbtFiles) {
                 try {
-                    StructureData data = parse(p.toFile());
+                    StructureData data = parseAny(p.toFile());
                     // 用相对路径作为文件名，方便识别子文件夹来源
                     data.fileName = directory.relativize(p).toString().replace('\\', '/');
                     results.add(data);
                 } catch (Exception e) {
-                    LOGGER.error("解析 NBT 文件失败: {}", p.getFileName(), e);
+                    LOGGER.error("解析结构文件失败: {}", p.getFileName(), e);
                 }
             }
         } catch (IOException e) {

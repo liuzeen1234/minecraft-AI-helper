@@ -47,7 +47,10 @@ public class StructureBrowserScreen extends Screen {
         }
 
         boolean isNbt() { return !isFolder && name.toLowerCase().endsWith(".nbt"); }
+        boolean isLitematic() { return !isFolder && name.toLowerCase().endsWith(".litematic"); }
         boolean isTxt() { return !isFolder && name.toLowerCase().endsWith(".txt"); }
+        /** 通过 NBT 结构管线放置的文件（原版 .nbt 与 Litematica .litematic）。 */
+        boolean isStructureNbt() { return isNbt() || isLitematic(); }
     }
 
     // 当前浏览的子目录（相对于 STRUCTURES_DIR，空字符串表示根目录）
@@ -174,7 +177,7 @@ public class StructureBrowserScreen extends Screen {
                 folders.add(new ListEntry(label, relativePath, true));
             } else {
                 String lower = child.getName().toLowerCase();
-                if (lower.endsWith(".nbt") || lower.endsWith(".txt")) {
+                if (lower.endsWith(".nbt") || lower.endsWith(".litematic") || lower.endsWith(".txt")) {
                     files.add(new ListEntry(child.getName(), relativePath, false));
                 }
             }
@@ -193,7 +196,7 @@ public class StructureBrowserScreen extends Screen {
             return walk.filter(Files::isRegularFile)
                        .filter(p -> {
                            String n = p.toString().toLowerCase();
-                           return n.endsWith(".nbt") || n.endsWith(".txt");
+                           return n.endsWith(".nbt") || n.endsWith(".litematic") || n.endsWith(".txt");
                        })
                        .count();
         } catch (IOException e) {
@@ -238,7 +241,7 @@ public class StructureBrowserScreen extends Screen {
                 long count = walk.filter(Files::isRegularFile)
                                  .filter(p -> {
                                      String n = p.toString().toLowerCase();
-                                     return n.endsWith(".nbt") || n.endsWith(".txt");
+                                     return n.endsWith(".nbt") || n.endsWith(".litematic") || n.endsWith(".txt");
                                  })
                                  .count();
                 detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.contains", count));
@@ -256,7 +259,7 @@ public class StructureBrowserScreen extends Screen {
             return;
         }
 
-        if (entry.isNbt()) {
+        if (entry.isStructureNbt()) {
             updateNbtDetail(entry, file);
         } else {
             updateTxtDetail(entry, file);
@@ -265,8 +268,10 @@ public class StructureBrowserScreen extends Screen {
 
     private void updateNbtDetail(ListEntry entry, File file) {
         try {
-            NbtStructureParser.StructureData data = NbtStructureParser.parse(file);
-            detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.type.nbt"));
+            NbtStructureParser.StructureData data = NbtStructureParser.parseAny(file);
+            detailLines.add(entry.isLitematic()
+                    ? com.example.helloworld.I18n.tr("structurebrowser.detail.type.litematic")
+                    : com.example.helloworld.I18n.tr("structurebrowser.detail.type.nbt"));
             detailLines.add("§f  " + entry.fullPath);
             detailLines.add("");
             detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.size", data.sizeX, data.sizeY, data.sizeZ));
@@ -480,7 +485,14 @@ public class StructureBrowserScreen extends Screen {
             return;
         }
 
-        if (entry.isNbt()) {
+        if (entry.isLitematic()) {
+            // Litematica 结构走专属放置管线（服务端以 litematic/ 为根解析）
+            String relative = stripPrefix(entry.fullPath, "litematic/");
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeString(relative);
+            ClientPlayNetworking.send(HelloWorldMod.PLACE_LITEMATIC_PACKET, buf);
+            this.client.setScreen(null);
+        } else if (entry.isNbt()) {
             String relative = stripPrefix(entry.fullPath, "nbts/");
             PacketByteBuf buf = PacketByteBufs.create();
             buf.writeString(relative);

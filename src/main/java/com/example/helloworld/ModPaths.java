@@ -16,7 +16,8 @@ import java.nio.file.Path;
  *   ├── config/          配置文件
  *   ├── structures/      结构文件根目录
  *   │   ├── txts/        .txt 蓝图文件
- *   │   └── nbts/        .nbt 结构文件
+ *   │   ├── nbts/        .nbt 结构文件
+ *   │   └── litematic/   .litematic 结构文件（Litematica 格式）
  *   ├── screenshots/     AI 截图临时文件
  *   └── ...              其他模组数据
  */
@@ -36,7 +37,7 @@ public class ModPaths {
 
     /**
      * 获取结构文件根目录：gameDir/ai-helper/structures/
-     * 下含 txts/ 与 nbts/ 子目录。
+     * 下含 txts/、nbts/ 与 litematic/ 子目录。
      */
     public static Path getStructuresDir() {
         return getModDir().resolve(STRUCTURES_DIR_NAME);
@@ -54,6 +55,13 @@ public class ModPaths {
      */
     public static Path getNbtsDir() {
         return getStructuresDir().resolve("nbts");
+    }
+
+    /**
+     * 获取 litematic 结构目录：gameDir/ai-helper/structures/litematic/
+     */
+    public static Path getLitematicDir() {
+        return getStructuresDir().resolve("litematic");
     }
 
     /**

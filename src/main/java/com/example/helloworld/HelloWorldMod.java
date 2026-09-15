@@ -42,6 +42,8 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier SCREENSHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "screenshot_response");
     // 客户端 -> 服务端：请求放置 NBT 结构
     public static final Identifier PLACE_NBT_PACKET = new Identifier(MOD_ID, "place_nbt");
+    // 客户端 -> 服务端：请求放置 Litematica 结构
+    public static final Identifier PLACE_LITEMATIC_PACKET = new Identifier(MOD_ID, "place_litematic");
     // 客户端 -> 服务端：请求放置 TXT 结构设计图
     public static final Identifier PLACE_TXT_PACKET = new Identifier(MOD_ID, "place_txt");
     // 客户端 -> 服务端：请求导出选区为 NBT（含 BlockEntity 数据）
@@ -163,7 +165,7 @@ public class HelloWorldMod implements ModInitializer {
                         return;
                     }
                     com.example.helloworld.nbt.NbtStructureParser.StructureData data =
-                            com.example.helloworld.nbt.NbtStructureParser.parse(file);
+                            com.example.helloworld.nbt.NbtStructureParser.parseAny(file);
                     net.minecraft.util.math.BlockPos origin = player.getBlockPos();
                     int count = com.example.helloworld.nbt.NbtStructurePlacer.place(
                             data, player.getServerWorld(), origin);
@@ -172,6 +174,31 @@ public class HelloWorldMod implements ModInitializer {
                     ), false);
                 } catch (Exception e) {
                     LOGGER.error("放置 NBT 结构失败", e);
+                    player.sendMessage(Text.literal(I18n.tr("server.nbt.place_failed", e.getMessage())), false);
+                }
+            });
+        });
+
+        // 注册接收客户端 Litematica 结构放置请求的处理器
+        ServerPlayNetworking.registerGlobalReceiver(PLACE_LITEMATIC_PACKET, (server, player, handler, buf, responseSender) -> {
+            String filename = buf.readString();
+            server.execute(() -> {
+                try {
+                    java.io.File file = com.example.helloworld.nbt.NbtCommands.resolveLitematicFile(filename);
+                    if (file == null || !file.exists()) {
+                        player.sendMessage(Text.literal(I18n.tr("server.nbt.file_notfound", filename)), false);
+                        return;
+                    }
+                    com.example.helloworld.nbt.NbtStructureParser.StructureData data =
+                            com.example.helloworld.nbt.LitematicParser.parse(file);
+                    net.minecraft.util.math.BlockPos origin = player.getBlockPos();
+                    int count = com.example.helloworld.nbt.NbtStructurePlacer.place(
+                            data, player.getServerWorld(), origin);
+                    player.sendMessage(Text.literal(I18n.tr("server.nbt.placed",
+                            file.getName(), count, origin.getX(), origin.getY(), origin.getZ())
+                    ), false);
+                } catch (Exception e) {
+                    LOGGER.error("放置 Litematica 结构失败", e);
                     player.sendMessage(Text.literal(I18n.tr("server.nbt.place_failed", e.getMessage())), false);
                 }
             });

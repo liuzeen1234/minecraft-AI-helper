@@ -112,6 +112,7 @@
     "structurebrowser.detail.folder.hint": "§7Double-click or press Enter to open",
     "structurebrowser.detail.filenotfound": "§cFile not found",
     "structurebrowser.detail.type.nbt": "§eType: §bNBT structure",
+    "structurebrowser.detail.type.litematic": "§eType: §dLitematica structure",
     "structurebrowser.detail.type.txt": "§eType: §aTXT blueprint",
     "structurebrowser.detail.filepath": "§eFile path:",
     "structurebrowser.detail.filesize": "§eFile size: §f%s bytes",
