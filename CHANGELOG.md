@@ -2,11 +2,29 @@
 
 ## v1.4.0
 
+### 新增功能
+
+- **OpenAI 兼容 API 支持** — 新增 `api_format=auto|openai|anthropic`；`auto` 会根据配置自动识别接口格式。OpenAI 模式会自动补全 `/chat/completions` 端点，并适配对应的鉴权、请求、图片与流式响应格式。
+- **Litematica 文件支持** — 结构浏览器和 `/ainbt` 命令新增 `.litematic` 文件的浏览、信息查看与放置支持；文件存放于 `ai-helper/structures/litematic/`。
+- **Litematica 选区导出** — 选区导出界面新增“导出 `.litematic`”选项，可将当前选区保存为 Litematica 格式。
+- **统一结构浏览器** — `K` → “加载结构”整合为单一浏览器，可浏览目录、搜索、预览、删除并放置 `.nbt`、`.txt` 与 `.litematic` 文件。
+- **界面本地化与语言切换** — 界面字符串迁移至中英文语言资源，并依据语言配置显示；安装可选 `debug-menu` 时可通过其菜单切换 AI Builder 语言。
+- **模组图标** — 为模组补充显示图标。
+
+### 重要变更
+
+- **结构目录统一** — 所有结构文件统一放入 `ai-helper/structures/`，并使用 `nbts/`、`txts/`、`litematic/` 子目录管理对应格式。
+- **默认配置调整** — 新生成的配置默认使用 `screenshot_enabled=false`、`stream_output_enabled=true`、`language=en_us` 与 `api_format=auto`。
+- **快捷键可改绑** — 默认 `K` 键可在 Minecraft 原生“按键设置”中重新绑定。
+- **移除 `/ai build <name>`** — 移除命令行直接执行蓝图建造的入口；蓝图建造改由 AI 对话触发。
+- **日志转发迁移至 debug-menu** — 移除 `/ailog` 命令；日志转发开关及最低级别设置改由可选的 `debug-menu` 模组提供。
+- **测试日志迁移至 debug-menu** — 移除 `/aitest` 命令；测试日志生成入口改由可选的 `debug-menu` 调试菜单提供。
+
 ### 文档与发布资料同步
 
 - **用户手册全面校准实现** — 更新根目录中文手册及游戏内中英文手册，修正实际命令、结构入口、文件路径、配置默认值和 API 格式说明。
-- **统一结构管理说明** — 明确 `K` → “加载结构”是单一浏览器，支持 `ai-helper/structures/{nbts,litematic,txts}/`；`/ainbt` 仅提供 `list`、`info`、`all` 与 `place` 命令，无无参数 GUI。
-- **配置说明修正** — 明确默认 `screenshot_enabled=false`、`stream_output_enabled=true`、`language=en_us`、`api_format=auto`；列出真实可用的 `/aiconfig` 子命令与热重载方式。
+- **配置与热重载说明校准** — 列出实际可用的 `/aiconfig` 子命令，并补充配置修改后的热重载方式。
+- **`/ainbt` 用法说明校准** — 明确该命令仅提供 `list`、`info`、`all` 与 `place` 子命令，无无参数 GUI。
 - **安全边界澄清** — AI 的命令执行不再描述为“任意原版命令”：危险的服务器管理、封禁、踢人和停止/保存命令会被拒绝。
 - **RAG 资料状态澄清** — 将 `rag_plan/` 标注为未实施的设计和离线候选素材，避免误解为当前 Mod 已自动加载或检索知识库。
 - **发布资料更新** — 版本号统一更新为 1.4.0，并同步 README 与 Modrinth 发布清单。
@@ -23,8 +41,6 @@
 ### 改进
 
 - **容器内容物导出默认启用** — 移除导出 TXT 界面中的容器内容物选择按钮，导出时始终包含箱子、漏斗等容器内物品信息，简化操作流程
-- **日志转发到聊天框迁移至 debug-menu** — 移除 `/ailog` 命令，日志转发功能（含开关与最低级别选择）改由 debug-menu 模组的调试菜单提供
-- **生成测试日志迁移至 debug-menu** — 移除 `/aitest` 命令，改为 debug-menu 调试菜单（默认 M 键）里的“生成测试日志”按钮，点一下即触发一组 WARN/ERROR/INFO 测试日志
 
 ---
 
