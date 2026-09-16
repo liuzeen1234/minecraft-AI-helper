@@ -223,7 +223,7 @@ NBT/Litematica 放置会跳过 `air` 与 `structure_void`，并保留方块状�
 2,5,3   oak_leaves   distance=2   persistent=false   waterlogged=false
 ```
 
-V2 的方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# size:` 与 `# origin:` 为可选元数据，`#` 开头的行是注释。旧版 V1 字符网格蓝图仍兼容：行向南、列向东，空格表示空气。
+V2 的方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# size:` 与 `# origin:` 为可选元数据，`#` 开头的行是注释。
 
 ## 文件目录
 

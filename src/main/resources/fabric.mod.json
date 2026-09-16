@@ -3,6 +3,7 @@
     "id": "helloworld",
     "version": "${version}",
     "name": "AI Builder",
+    "icon": "assets/helloworld/icon.png",
     "description": "In-game AI assistant mod featuring natural language chat, AI-powered building, NBT/blueprint structure management, selection export, and web search.",
     "authors": ["liuzeen1234"],
     "contact": {
