@@ -57,6 +57,18 @@ public class ServerSelectionExporter {
      * @param includeEntities 是否保存实体（盔甲架、物品展示框、矿车等）
      */
     public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath, boolean includeEntities) throws IOException {
+        exportNbt(world, pos1, pos2, name, subPath, includeEntities, Collections.emptySet());
+    }
+
+    /**
+     * 使用原版 StructureTemplate 在服务端导出选区为 NBT 文件，可指定子目录、是否包含实体，
+     * 并按方块种类过滤掉被忽略的方块。
+     *
+     * @param ignoredBlocks 被忽略（不记录）的方块种类 id 集合（不含 minecraft: 前缀），
+     *                      这些种类的方块会从导出结构中剔除（视为空位）。
+     */
+    public static void exportNbt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath,
+                                 boolean includeEntities, Set<String> ignoredBlocks) throws IOException {
         BlockPos min = new BlockPos(
                 Math.min(pos1.getX(), pos2.getX()),
                 Math.min(pos1.getY(), pos2.getY()),
@@ -80,6 +92,9 @@ public class ServerSelectionExporter {
         // 序列化为 NBT（与结构方块保存格式一致）
         NbtCompound nbt = template.writeNbt(new NbtCompound());
 
+        // 按方块种类过滤掉被忽略的方块
+        int removed = filterStructureNbt(nbt, ignoredBlocks);
+
         // 写入文件
         Path dir = com.example.helloworld.ModPaths.getNbtsDir();
         if (!Files.isDirectory(dir)) {
@@ -101,8 +116,8 @@ public class ServerSelectionExporter {
             NbtIo.writeCompressed(nbt, fos);
         }
 
-        LOGGER.info("服务端导出 NBT 完成 (StructureTemplate): {} ({}x{}x{})",
-                fileName, sizeX, sizeY, sizeZ);
+        LOGGER.info("服务端导出 NBT 完成 (StructureTemplate): {} ({}x{}x{}, 忽略方块种类: {}, 剔除方块: {})",
+                fileName, sizeX, sizeY, sizeZ, ignoredBlocks.size(), removed);
     }
 
     /**
@@ -112,6 +127,16 @@ public class ServerSelectionExporter {
      */
     public static void exportLitematic(ServerWorld world, BlockPos pos1, BlockPos pos2, String name,
                                        String subPath, boolean includeEntities) throws IOException {
+        exportLitematic(world, pos1, pos2, name, subPath, includeEntities, Collections.emptySet());
+    }
+
+    /**
+     * 导出选区为 Litematica .litematic 文件，并按方块种类过滤掉被忽略的方块。
+     *
+     * @param ignoredBlocks 被忽略（不记录）的方块种类 id 集合（不含 minecraft: 前缀）。
+     */
+    public static void exportLitematic(ServerWorld world, BlockPos pos1, BlockPos pos2, String name,
+                                       String subPath, boolean includeEntities, Set<String> ignoredBlocks) throws IOException {
         BlockPos min = new BlockPos(
                 Math.min(pos1.getX(), pos2.getX()),
                 Math.min(pos1.getY(), pos2.getY()),
@@ -129,6 +154,8 @@ public class ServerSelectionExporter {
 
         String sanitizedName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_");
         NbtCompound vanillaStructure = template.writeNbt(new NbtCompound());
+        // 按方块种类过滤掉被忽略的方块（在解析为 Litematica 格式前处理）
+        filterStructureNbt(vanillaStructure, ignoredBlocks);
         com.example.helloworld.nbt.NbtStructureParser.StructureData structure =
                 com.example.helloworld.nbt.NbtStructureParser.parseNbt(vanillaStructure, sanitizedName + ".litematic");
         NbtCompound litematic = LitematicNbtWriter.create(structure, sanitizedName, "AI Builder");
@@ -158,6 +185,57 @@ public class ServerSelectionExporter {
         return prop.name(state.get(prop));
     }
 
+    /**
+     * 在原版 StructureTemplate 序列化出的 NBT 上，按方块种类剔除被忽略的方块。
+     *
+     * <p>原版结构 NBT 格式：{@code palette} 是方块状态列表（每项含 {@code Name}，
+     * 如 {@code minecraft:cobblestone}）；{@code blocks} 是方块列表（每项含 {@code state}
+     * 指向 palette 下标）。本方法找出被忽略种类对应的 palette 下标，删除所有引用这些下标的
+     * {@code blocks} 条目（等同于把这些位置留空）。palette 保留不变（无用条目无害），
+     * 无需重建下标。
+     *
+     * @param nbt           StructureTemplate.writeNbt 得到的结构 NBT（原地修改）
+     * @param ignoredBlocks 被忽略的方块种类 id 集合（不含 minecraft: 前缀）
+     * @return 实际被剔除的方块数量
+     */
+    static int filterStructureNbt(NbtCompound nbt, Set<String> ignoredBlocks) {
+        if (ignoredBlocks == null || ignoredBlocks.isEmpty() || nbt == null) {
+            return 0;
+        }
+        // 收集被忽略种类对应的 palette 下标
+        Set<Integer> ignoredStates = new HashSet<>();
+        NbtList palette = nbt.getList("palette", NbtElement.COMPOUND_TYPE);
+        for (int i = 0; i < palette.size(); i++) {
+            NbtCompound entry = palette.getCompound(i);
+            String fullName = entry.getString("Name"); // 形如 minecraft:cobblestone
+            String path = stripNamespace(fullName);
+            if (ignoredBlocks.contains(path)) {
+                ignoredStates.add(i);
+            }
+        }
+        if (ignoredStates.isEmpty()) {
+            return 0;
+        }
+        // 删除引用被忽略下标的 blocks 条目
+        NbtList blocks = nbt.getList("blocks", NbtElement.COMPOUND_TYPE);
+        int removed = 0;
+        for (int i = blocks.size() - 1; i >= 0; i--) {
+            NbtCompound block = blocks.getCompound(i);
+            if (ignoredStates.contains(block.getInt("state"))) {
+                blocks.remove(i);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    /** 去掉方块 id 的命名空间前缀（minecraft:cobblestone -> cobblestone）。 */
+    private static String stripNamespace(String fullName) {
+        if (fullName == null) return "";
+        int idx = fullName.indexOf(':');
+        return idx >= 0 ? fullName.substring(idx + 1) : fullName;
+    }
+
 
 
     // =========================================================================
@@ -168,6 +246,17 @@ public class ServerSelectionExporter {
      * 在服务端扫描选区并导出为 TXT 文件（MCBLUEPRINT v2 格式，含容器内容物）。
      */
     public static void exportTxt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath) throws IOException {
+        exportTxt(world, pos1, pos2, name, subPath, Collections.emptySet());
+    }
+
+    /**
+     * 在服务端扫描选区并导出为 TXT 文件，按方块种类过滤掉被忽略的方块。
+     *
+     * @param ignoredBlocks 被忽略（不记录）的方块种类 id 集合（不含 minecraft: 前缀）。
+     */
+    public static void exportTxt(ServerWorld world, BlockPos pos1, BlockPos pos2, String name, String subPath,
+                                 Set<String> ignoredBlocks) throws IOException {
+        Set<String> ignored = ignoredBlocks == null ? Collections.emptySet() : ignoredBlocks;
         BlockPos min = new BlockPos(
                 Math.min(pos1.getX(), pos2.getX()),
                 Math.min(pos1.getY(), pos2.getY()),
@@ -209,6 +298,10 @@ public class ServerSelectionExporter {
 
                     if (state.isAir()) continue;
 
+                    String blockId = Registries.BLOCK.getId(state.getBlock()).getPath();
+                    // 跳过被忽略的方块种类
+                    if (ignored.contains(blockId)) continue;
+
                     // 写层头（延迟到有非空气方块时才写）
                     if (!layerHeaderWritten) {
                         sb.append("# --- 第 ").append(relY + 1).append(" 层 (y=").append(relY).append(") ---\n");
@@ -217,7 +310,6 @@ public class ServerSelectionExporter {
 
                     int relX = x - min.getX();
                     int relZ = z - min.getZ();
-                    String blockId = Registries.BLOCK.getId(state.getBlock()).getPath();
 
                     sb.append(relX).append(",").append(relY).append(",").append(relZ);
                     sb.append("   ").append(blockId);

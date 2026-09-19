@@ -6,8 +6,10 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 选区分析与导出界面：显示选区内方块统计信息，支持导出为蓝图文件。
@@ -23,6 +25,16 @@ public class SelectionExportScreen extends Screen {
 
     // 导出时是否包含实体（默认开）
     private boolean includeEntities = true;
+
+    // 被忽略（不记录）的方块种类 id 集合，导出时会被过滤掉
+    private final Set<String> ignoredBlocks = new HashSet<>();
+
+    // 列表渲染布局参数（render 与 mouseClicked 共享，保证命中检测与绘制一致）
+    private static final int LIST_TOTAL_W = 220;
+    private static final int ROW_HEIGHT = 11;
+    private static final int TOGGLE_W = 9;   // +/- 符号点击区域宽度
+    // 列表首行的 y（render 中计算：infoY(26) + 42 + 12）
+    private static final int LIST_FIRST_ROW_Y = 26 + 42 + 12;
 
     public SelectionExportScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
         super(Text.literal(com.example.helloworld.I18n.tr("selection.export.title")));
@@ -41,7 +53,7 @@ public class SelectionExportScreen extends Screen {
         // 导出选区按钮（点击后弹出导出菜单）
         int exportBtnY = this.height - 80;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.export_button")), button -> {
-            this.client.setScreen(new SelectionExportPopupScreen(this, result, includeEntities));
+            this.client.setScreen(new SelectionExportPopupScreen(this, result, includeEntities, new HashSet<>(ignoredBlocks)));
         }).dimensions(leftX, exportBtnY, totalW, 20).build());
 
         // 包含实体开关
@@ -80,6 +92,12 @@ public class SelectionExportScreen extends Screen {
         context.drawTextWithShadow(this.textRenderer,
                 com.example.helloworld.I18n.tr("selection.export.types", result.blockCounts().size()),
                 leftX, infoY + 24, 0xAAAAAA);
+        // 忽略提示：显示已忽略的种类数
+        if (!ignoredBlocks.isEmpty()) {
+            context.drawTextWithShadow(this.textRenderer,
+                    com.example.helloworld.I18n.tr("selection.export.ignored_count", ignoredBlocks.size()),
+                    leftX + 120, infoY + 24, 0xFF7777);
+        }
 
         // 方块列表
         int listY = infoY + 42;
@@ -87,19 +105,61 @@ public class SelectionExportScreen extends Screen {
         context.drawTextWithShadow(this.textRenderer, com.example.helloworld.I18n.tr("selection.export.block_stats"), leftX, listY, 0xFFFF55);
         listY += 12;
 
-        int maxVisible = Math.max(1, (listMaxY - listY) / 11);
+        // +/- 切换符号所在的 x（行右侧）
+        int toggleX = leftX + totalW - TOGGLE_W;
+
+        int maxVisible = Math.max(1, (listMaxY - listY) / ROW_HEIGHT);
         int end = Math.min(scrollOffset + maxVisible, blockList.size());
         for (int i = scrollOffset; i < end; i++) {
-            if (listY + 11 > listMaxY) break;
+            if (listY + ROW_HEIGHT > listMaxY) break;
             Map.Entry<String, Integer> entry = blockList.get(i);
-            String line = String.format("%-30s x%d", entry.getKey(), entry.getValue());
-            // 截断过长的行
-            if (line.length() > 40) line = line.substring(0, 40);
-            context.drawTextWithShadow(this.textRenderer, line, leftX, listY, 0xDDDDDD);
-            listY += 11;
+            String blockId = entry.getKey();
+            boolean ignored = ignoredBlocks.contains(blockId);
+
+            String line = String.format("%-30s x%d", blockId, entry.getValue());
+            // 截断过长的行，给右侧符号留出空间
+            if (line.length() > 34) line = line.substring(0, 34);
+            // 被忽略的方块用灰色暗显，正常记录的用亮色
+            int textColor = ignored ? 0x888888 : 0xDDDDDD;
+            context.drawTextWithShadow(this.textRenderer, line, leftX, listY, textColor);
+
+            // 右侧切换符号：会被记录 -> 红色减号（按下后不记录）；已忽略 -> 绿色加号
+            String symbol = ignored ? "+" : "-";
+            int symbolColor = ignored ? 0x55FF55 : 0xFF5555;
+            context.drawTextWithShadow(this.textRenderer, symbol, toggleX, listY, symbolColor);
+
+            listY += ROW_HEIGHT;
         }
 
         super.render(context, mouseX, mouseY, delta);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && blockList != null) {
+            int cx = this.width / 2;
+            int leftX = cx - LIST_TOTAL_W / 2;
+            int toggleX = leftX + LIST_TOTAL_W - TOGGLE_W;
+            int listMaxY = this.height - 88;
+
+            // 命中检测：判断点击落在哪一可见行的右侧符号区域
+            if (mouseX >= toggleX && mouseX <= toggleX + TOGGLE_W) {
+                int maxVisible = Math.max(1, (listMaxY - LIST_FIRST_ROW_Y) / ROW_HEIGHT);
+                int end = Math.min(scrollOffset + maxVisible, blockList.size());
+                for (int i = scrollOffset; i < end; i++) {
+                    int rowY = LIST_FIRST_ROW_Y + (i - scrollOffset) * ROW_HEIGHT;
+                    if (rowY + ROW_HEIGHT > listMaxY) break;
+                    if (mouseY >= rowY && mouseY < rowY + ROW_HEIGHT) {
+                        String blockId = blockList.get(i).getKey();
+                        if (!ignoredBlocks.remove(blockId)) {
+                            ignoredBlocks.add(blockId);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override

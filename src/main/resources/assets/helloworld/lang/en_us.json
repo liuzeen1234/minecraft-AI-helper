@@ -89,6 +89,7 @@
     "selection.export.counts": "Total: %s  Air: %s  Solid: %s",
     "selection.export.types": "Block types: %s",
     "selection.export.block_stats": "--- Block Stats ---",
+    "selection.export.ignored_count": "%s ignored",
     "selection.export.popup.title": "Export Selection",
     "selection.export.popup.txt": "§aExport .txt",
     "selection.export.popup.nbt": "§bExport .nbt",

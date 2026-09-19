@@ -25,6 +25,7 @@ public class ExportNbtScreen extends Screen {
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
     private final boolean includeEntities; // 从选区分析页面传入
+    private final java.util.Set<String> ignoredBlocks; // 被忽略（不记录）的方块种类
 
     private static final Path NBTS_DIR = com.example.helloworld.ModPaths.getNbtsDir();
 
@@ -33,10 +34,16 @@ public class ExportNbtScreen extends Screen {
     private static final int POPUP_HEIGHT = 130;
 
     public ExportNbtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
+        this(parent, result, includeEntities, java.util.Collections.emptySet());
+    }
+
+    public ExportNbtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities,
+                           java.util.Set<String> ignoredBlocks) {
         super(Text.literal(com.example.helloworld.I18n.tr("export.nbt.title")));
         this.parent = parent;
         this.result = result;
         this.includeEntities = includeEntities;
+        this.ignoredBlocks = ignoredBlocks == null ? java.util.Collections.emptySet() : ignoredBlocks;
     }
 
     @Override
@@ -111,6 +118,10 @@ public class ExportNbtScreen extends Screen {
         buf.writeString(name);
         buf.writeString(pathText);
         buf.writeBoolean(includeEntities);
+        buf.writeInt(ignoredBlocks.size());
+        for (String id : ignoredBlocks) {
+            buf.writeString(id);
+        }
         ClientPlayNetworking.send(HelloWorldMod.EXPORT_NBT_PACKET, buf);
 
         String displayPath = pathText.isEmpty()

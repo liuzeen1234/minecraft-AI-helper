@@ -28,6 +28,7 @@ public class ExportTxtScreen extends Screen {
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
     private boolean includeContainerItems = true; // 始终包含容器内容物
+    private final java.util.Set<String> ignoredBlocks; // 被忽略（不记录）的方块种类
 
     private static final Path TXTS_DIR = com.example.helloworld.ModPaths.getTxtsDir();
 
@@ -36,9 +37,14 @@ public class ExportTxtScreen extends Screen {
     private static final int POPUP_HEIGHT = 160;
 
     public ExportTxtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result) {
+        this(parent, result, java.util.Collections.emptySet());
+    }
+
+    public ExportTxtScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, java.util.Set<String> ignoredBlocks) {
         super(Text.literal(com.example.helloworld.I18n.tr("export.txt.title")));
         this.parent = parent;
         this.result = result;
+        this.ignoredBlocks = ignoredBlocks == null ? java.util.Collections.emptySet() : ignoredBlocks;
     }
 
     @Override
@@ -116,6 +122,10 @@ public class ExportTxtScreen extends Screen {
             buf.writeInt(result.max().getZ());
             buf.writeString(name);
             buf.writeString(pathText);
+            buf.writeInt(ignoredBlocks.size());
+            for (String id : ignoredBlocks) {
+                buf.writeString(id);
+            }
             ClientPlayNetworking.send(HelloWorldMod.EXPORT_TXT_PACKET, buf);
 
             if (this.client != null && this.client.player != null) {

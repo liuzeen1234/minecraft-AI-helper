@@ -87,6 +87,7 @@
     "selection.export.counts": "方块总数: %s  空气: %s  实体: %s",
     "selection.export.types": "方块种类: %s",
     "selection.export.block_stats": "--- 方块统计 ---",
+    "selection.export.ignored_count": "已忽略 %s 种",
     "selection.export.popup.title": "导出选区",
     "selection.export.popup.txt": "§a导出 .txt",
     "selection.export.popup.nbt": "§b导出 .nbt",

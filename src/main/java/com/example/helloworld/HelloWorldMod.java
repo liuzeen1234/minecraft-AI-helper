@@ -265,12 +265,13 @@ public class HelloWorldMod implements ModInitializer {
             String fileName = buf.readString();
             String subPath = buf.isReadable() ? buf.readString() : "";
             boolean includeEntities = buf.isReadable() ? buf.readBoolean() : true;
+            java.util.Set<String> ignoredBlocks = readIgnoredBlocks(buf);
             server.execute(() -> {
                 try {
                     net.minecraft.server.world.ServerWorld world = player.getServerWorld();
                     net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
                     net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
-                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName, subPath, includeEntities);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportNbt(world, pos1, pos2, fileName, subPath, includeEntities, ignoredBlocks);
                     String displayPath = subPath.isEmpty() ? fileName + ".nbt" : subPath + "/" + fileName + ".nbt";
                     // 通知客户端导出完成
                     PacketByteBuf resultBuf = PacketByteBufs.create();
@@ -292,13 +293,14 @@ public class HelloWorldMod implements ModInitializer {
             String fileName = buf.readString();
             String subPath = buf.isReadable() ? buf.readString() : "";
             boolean includeEntities = buf.isReadable() ? buf.readBoolean() : true;
+            java.util.Set<String> ignoredBlocks = readIgnoredBlocks(buf);
             server.execute(() -> {
                 try {
                     net.minecraft.server.world.ServerWorld world = player.getServerWorld();
                     net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
                     net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
                     com.example.helloworld.selection.ServerSelectionExporter.exportLitematic(
-                            world, pos1, pos2, fileName, subPath, includeEntities);
+                            world, pos1, pos2, fileName, subPath, includeEntities, ignoredBlocks);
                     String displayPath = subPath.isEmpty() ? fileName + ".litematic"
                             : subPath + "/" + fileName + ".litematic";
                     PacketByteBuf resultBuf = PacketByteBufs.create();
@@ -319,12 +321,13 @@ public class HelloWorldMod implements ModInitializer {
             int x2 = buf.readInt(), y2 = buf.readInt(), z2 = buf.readInt();
             String fileName = buf.readString();
             String subPath = buf.isReadable() ? buf.readString() : "";
+            java.util.Set<String> ignoredBlocks = readIgnoredBlocks(buf);
             server.execute(() -> {
                 try {
                     net.minecraft.server.world.ServerWorld world = player.getServerWorld();
                     net.minecraft.util.math.BlockPos pos1 = new net.minecraft.util.math.BlockPos(x1, y1, z1);
                     net.minecraft.util.math.BlockPos pos2 = new net.minecraft.util.math.BlockPos(x2, y2, z2);
-                    com.example.helloworld.selection.ServerSelectionExporter.exportTxt(world, pos1, pos2, fileName, subPath);
+                    com.example.helloworld.selection.ServerSelectionExporter.exportTxt(world, pos1, pos2, fileName, subPath, ignoredBlocks);
                     String displayPath = subPath.isEmpty() ? fileName + ".txt" : subPath + "/" + fileName + ".txt";
                     PacketByteBuf resultBuf = PacketByteBufs.create();
                     resultBuf.writeString(I18n.tr("server.export.txt.done", displayPath));
@@ -1693,6 +1696,23 @@ public class HelloWorldMod implements ModInitializer {
     /**
      * 服务端读取引用的 txt 文件内容。
      */
+    /**
+     * 从导出请求 packet 中读取"被忽略的方块种类"列表。
+     * 兼容旧客户端：若 buf 中没有该字段则返回空集合。
+     * 格式：int count 后跟 count 个 String（方块 id，不含 minecraft: 前缀）。
+     */
+    private static java.util.Set<String> readIgnoredBlocks(PacketByteBuf buf) {
+        java.util.Set<String> ignored = new java.util.HashSet<>();
+        if (!buf.isReadable()) {
+            return ignored;
+        }
+        int count = buf.readInt();
+        for (int i = 0; i < count && buf.isReadable(); i++) {
+            ignored.add(buf.readString());
+        }
+        return ignored;
+    }
+
     private String loadReferencedFiles(List<String> fileNames) {
         java.nio.file.Path txtsDir = com.example.helloworld.ModPaths.getTxtsDir();
         if (!java.nio.file.Files.isDirectory(txtsDir)) {

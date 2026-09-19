@@ -24,14 +24,21 @@ public class ExportLitematicScreen extends Screen {
     private final Screen parent;
     private final SelectionAnalyzer.AnalysisResult result;
     private final boolean includeEntities;
+    private final java.util.Set<String> ignoredBlocks; // 被忽略（不记录）的方块种类
     private TextFieldWidget pathField;
     private TextFieldWidget nameField;
 
     public ExportLitematicScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
+        this(parent, result, includeEntities, java.util.Collections.emptySet());
+    }
+
+    public ExportLitematicScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities,
+                                 java.util.Set<String> ignoredBlocks) {
         super(Text.literal(com.example.helloworld.I18n.tr("export.litematic.title")));
         this.parent = parent;
         this.result = result;
         this.includeEntities = includeEntities;
+        this.ignoredBlocks = ignoredBlocks == null ? java.util.Collections.emptySet() : ignoredBlocks;
     }
 
     @Override
@@ -98,6 +105,10 @@ public class ExportLitematicScreen extends Screen {
         buffer.writeString(name);
         buffer.writeString(path);
         buffer.writeBoolean(includeEntities);
+        buffer.writeInt(ignoredBlocks.size());
+        for (String id : ignoredBlocks) {
+            buffer.writeString(id);
+        }
         ClientPlayNetworking.send(HelloWorldMod.EXPORT_LITEMATIC_PACKET, buffer);
 
         String displayPath = path.isEmpty() ? name + ".litematic" : path + "/" + name + ".litematic";

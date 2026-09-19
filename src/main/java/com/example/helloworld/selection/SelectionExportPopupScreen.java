@@ -14,16 +14,23 @@ public class SelectionExportPopupScreen extends Screen {
     private final Screen parent;
     private final SelectionAnalyzer.AnalysisResult result;
     private final boolean includeEntities;
+    private final java.util.Set<String> ignoredBlocks;
 
     // 弹窗尺寸
     private static final int POPUP_WIDTH = 260;
     private static final int POPUP_HEIGHT = 136;
 
     public SelectionExportPopupScreen(Screen parent, SelectionAnalyzer.AnalysisResult result, boolean includeEntities) {
+        this(parent, result, includeEntities, java.util.Collections.emptySet());
+    }
+
+    public SelectionExportPopupScreen(Screen parent, SelectionAnalyzer.AnalysisResult result,
+                                      boolean includeEntities, java.util.Set<String> ignoredBlocks) {
         super(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.title")));
         this.parent = parent;
         this.result = result;
         this.includeEntities = includeEntities;
+        this.ignoredBlocks = ignoredBlocks == null ? java.util.Collections.emptySet() : ignoredBlocks;
     }
 
     @Override
@@ -39,19 +46,19 @@ public class SelectionExportPopupScreen extends Screen {
         // "导出.txt" 按钮 → 跳转到 P4 (ExportTxtScreen)
         int txtBtnY = popTop + 28;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.txt")), button -> {
-            this.client.setScreen(new ExportTxtScreen(this, result));
+            this.client.setScreen(new ExportTxtScreen(this, result, ignoredBlocks));
         }).dimensions(btnLeft, txtBtnY, btnW, 20).build());
 
         // "导出.nbt" 按钮 → 跳转到 P3 (ExportNbtScreen)
         int nbtBtnY = txtBtnY + 26;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.nbt")), button -> {
-            this.client.setScreen(new ExportNbtScreen(this, result, includeEntities));
+            this.client.setScreen(new ExportNbtScreen(this, result, includeEntities, ignoredBlocks));
         }).dimensions(btnLeft, nbtBtnY, btnW, 20).build());
 
         // "导出.litematic" 按钮 → 跳转到 Litematica 导出界面
         int litematicBtnY = nbtBtnY + 26;
         this.addDrawableChild(ButtonWidget.builder(Text.literal(com.example.helloworld.I18n.tr("selection.export.popup.litematic")), button -> {
-            this.client.setScreen(new ExportLitematicScreen(this, result, includeEntities));
+            this.client.setScreen(new ExportLitematicScreen(this, result, includeEntities, ignoredBlocks));
         }).dimensions(btnLeft, litematicBtnY, btnW, 20).build());
 
         // 返回按钮
