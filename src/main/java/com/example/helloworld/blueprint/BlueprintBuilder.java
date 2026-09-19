@@ -46,10 +46,19 @@ public class BlueprintBuilder {
      * @return 放置的方块数量
      */
     public static int build(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world) {
+        return build(blueprint, player, world, player.getBlockPos());
+    }
+
+    /**
+     * 在指定原点建造蓝图建筑。自动识别 V1/V2 格式。
+     * @param origin 放置原点（由放置界面指定，缺省时为玩家当前位置）
+     * @return 放置的方块数量
+     */
+    public static int build(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world, BlockPos origin) {
         if (blueprint.isV2()) {
-            return buildV2(blueprint, player.getBlockPos(), world);
+            return buildV2(blueprint, origin, world);
         }
-        return buildV1(blueprint, player, world);
+        return buildV1(blueprint, player, world, origin);
     }
 
     /**
@@ -237,8 +246,7 @@ public class BlueprintBuilder {
     // V1 建造逻辑（原有逻辑，重命名为 buildV1）
     // =========================================================================
 
-    private static int buildV1(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world) {
-        BlockPos origin = player.getBlockPos();
+    private static int buildV1(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world, BlockPos origin) {
         Map<Character, BlueprintData.BlockEntry> legend = blueprint.getLegend();
         List<char[][]> layers = blueprint.getLayers();
 

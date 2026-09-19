@@ -485,26 +485,56 @@ public class StructureBrowserScreen extends Screen {
             return;
         }
 
+        // 确认要放置的结构文件后，进入结构放置界面（显示结构名/大小，可编辑放置原点）。
         if (entry.isLitematic()) {
             // Litematica 结构走专属放置管线（服务端以 litematic/ 为根解析）
             String relative = stripPrefix(entry.fullPath, "litematic/");
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeString(relative);
-            ClientPlayNetworking.send(HelloWorldMod.PLACE_LITEMATIC_PACKET, buf);
-            this.client.setScreen(null);
+            openPlacementScreen(entry, HelloWorldMod.PLACE_LITEMATIC_PACKET, relative);
         } else if (entry.isNbt()) {
             String relative = stripPrefix(entry.fullPath, "nbts/");
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeString(relative);
-            ClientPlayNetworking.send(HelloWorldMod.PLACE_NBT_PACKET, buf);
-            this.client.setScreen(null);
+            openPlacementScreen(entry, HelloWorldMod.PLACE_NBT_PACKET, relative);
         } else if (entry.isTxt()) {
             String relative = stripPrefix(entry.fullPath, "txts/");
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeString(relative);
-            ClientPlayNetworking.send(HelloWorldMod.PLACE_TXT_PACKET, buf);
-            this.client.setScreen(null);
+            openPlacementScreen(entry, HelloWorldMod.PLACE_TXT_PACKET, relative);
         }
+    }
+
+    /**
+     * 解析选中文件的结构名与尺寸，打开 {@link StructurePlacementScreen}。
+     * 解析失败时以文件名作为结构名、尺寸标记为未知（-1），不影响放置流程。
+     */
+    private void openPlacementScreen(ListEntry entry, net.minecraft.util.Identifier packet, String relative) {
+        String name = entry.name;
+        int sx = -1, sy = -1, sz = -1;
+        try {
+            File file = STRUCTURES_DIR.resolve(entry.fullPath).toFile();
+            if (entry.isStructureNbt()) {
+                NbtStructureParser.StructureData data = NbtStructureParser.parseAny(file);
+                name = data.fileName != null ? data.fileName : entry.name;
+                sx = data.sizeX;
+                sy = data.sizeY;
+                sz = data.sizeZ;
+            } else if (entry.isTxt()) {
+                String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+                BlueprintData data = BlueprintParser.parse(content);
+                name = data.getName() != null ? data.getName() : entry.name;
+                if (data.isV2()) {
+                    sx = data.getSizeX();
+                    sy = data.getSizeY();
+                    sz = data.getSizeZ();
+                } else if (!data.getLayers().isEmpty()) {
+                    char[][] firstLayer = data.getLayers().get(0);
+                    int depth = firstLayer.length;
+                    int width = depth > 0 ? firstLayer[0].length : 0;
+                    sx = width;
+                    sy = data.getLayers().size();
+                    sz = depth;
+                }
+            }
+        } catch (Exception e) {
+            // 解析失败：保留文件名作为结构名，尺寸标记为未知
+        }
+        this.client.setScreen(new StructurePlacementScreen(this, packet, relative, name, sx, sy, sz));
     }
 
     /** 去掉路径开头的指定段（大小写不敏感），若不存在则原样返回。 */

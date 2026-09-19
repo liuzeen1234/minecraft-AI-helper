@@ -161,6 +161,11 @@ public class HelloWorldMod implements ModInitializer {
         // 注册接收客户端 NBT 放置请求的处理器
         ServerPlayNetworking.registerGlobalReceiver(PLACE_NBT_PACKET, (server, player, handler, buf, responseSender) -> {
             String filename = buf.readString();
+            // 可选：客户端指定的放置原点（放置界面传入）。缺省时回退为玩家当前位置。
+            boolean hasOrigin = buf.isReadable();
+            int ox = hasOrigin ? buf.readInt() : 0;
+            int oy = hasOrigin ? buf.readInt() : 0;
+            int oz = hasOrigin ? buf.readInt() : 0;
             server.execute(() -> {
                 try {
                     java.io.File file = com.example.helloworld.nbt.NbtCommands.resolveNbtFile(filename);
@@ -170,7 +175,9 @@ public class HelloWorldMod implements ModInitializer {
                     }
                     com.example.helloworld.nbt.NbtStructureParser.StructureData data =
                             com.example.helloworld.nbt.NbtStructureParser.parseAny(file);
-                    net.minecraft.util.math.BlockPos origin = player.getBlockPos();
+                    net.minecraft.util.math.BlockPos origin = hasOrigin
+                            ? new net.minecraft.util.math.BlockPos(ox, oy, oz)
+                            : player.getBlockPos();
                     int count = com.example.helloworld.nbt.NbtStructurePlacer.place(
                             data, player.getServerWorld(), origin);
                     player.sendMessage(Text.literal(I18n.tr("server.nbt.placed",
@@ -186,6 +193,10 @@ public class HelloWorldMod implements ModInitializer {
         // 注册接收客户端 Litematica 结构放置请求的处理器
         ServerPlayNetworking.registerGlobalReceiver(PLACE_LITEMATIC_PACKET, (server, player, handler, buf, responseSender) -> {
             String filename = buf.readString();
+            boolean hasOrigin = buf.isReadable();
+            int ox = hasOrigin ? buf.readInt() : 0;
+            int oy = hasOrigin ? buf.readInt() : 0;
+            int oz = hasOrigin ? buf.readInt() : 0;
             server.execute(() -> {
                 try {
                     java.io.File file = com.example.helloworld.nbt.NbtCommands.resolveLitematicFile(filename);
@@ -195,7 +206,9 @@ public class HelloWorldMod implements ModInitializer {
                     }
                     com.example.helloworld.nbt.NbtStructureParser.StructureData data =
                             com.example.helloworld.nbt.LitematicParser.parse(file);
-                    net.minecraft.util.math.BlockPos origin = player.getBlockPos();
+                    net.minecraft.util.math.BlockPos origin = hasOrigin
+                            ? new net.minecraft.util.math.BlockPos(ox, oy, oz)
+                            : player.getBlockPos();
                     int count = com.example.helloworld.nbt.NbtStructurePlacer.place(
                             data, player.getServerWorld(), origin);
                     player.sendMessage(Text.literal(I18n.tr("server.nbt.placed",
@@ -211,6 +224,10 @@ public class HelloWorldMod implements ModInitializer {
         // 注册接收客户端 TXT 结构放置请求的处理器
         ServerPlayNetworking.registerGlobalReceiver(PLACE_TXT_PACKET, (server, player, handler, buf, responseSender) -> {
             String relativePath = buf.readString();
+            boolean hasOrigin = buf.isReadable();
+            int ox = hasOrigin ? buf.readInt() : 0;
+            int oy = hasOrigin ? buf.readInt() : 0;
+            int oz = hasOrigin ? buf.readInt() : 0;
             server.execute(() -> {
                 try {
                     // 解析 ai-helper/txts/ 目录下的文件路径
@@ -226,9 +243,11 @@ public class HelloWorldMod implements ModInitializer {
                     String content = java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
                     com.example.helloworld.blueprint.BlueprintData data =
                             com.example.helloworld.blueprint.BlueprintParser.parse(content);
-                    net.minecraft.util.math.BlockPos origin = player.getBlockPos();
+                    net.minecraft.util.math.BlockPos origin = hasOrigin
+                            ? new net.minecraft.util.math.BlockPos(ox, oy, oz)
+                            : player.getBlockPos();
                     int count = com.example.helloworld.blueprint.BlueprintBuilder.build(
-                            data, player, player.getServerWorld());
+                            data, player, player.getServerWorld(), origin);
                     player.sendMessage(Text.literal(I18n.tr("server.txt.placed",
                             data.getName(), count, origin.getX(), origin.getY(), origin.getZ())
                     ), false);
