@@ -255,13 +255,32 @@ public class AICommandExecutor {
                 counter++;
             }
 
-            Files.writeString(targetFile, blueprintText);
+            // 剥掉 AI 可能写死的 "# origin:" 头部，避免蓝图固定绝对/相对坐标，
+            // 让放置端在放置时再决定原点（默认玩家当前位置）。
+            String cleaned = stripOriginHeader(blueprintText);
+
+            Files.writeString(targetFile, cleaned);
             LOGGER.info("蓝图已保存到: {}", targetFile);
             return targetFile.toString();
         } catch (IOException e) {
             LOGGER.error("保存蓝图 txt 文件失败: {}", name, e);
             return null;
         }
+    }
+
+    // 匹配整行的 "# origin: ..." 头部（行首可有空白，忽略大小写）
+    private static final Pattern ORIGIN_HEADER_LINE_PATTERN =
+            Pattern.compile("(?im)^[ \\t]*#\\s*origin\\s*:.*(?:\\r?\\n|$)");
+
+    /**
+     * 移除蓝图文本中所有 "# origin:" 头部行，使 AI 生成的蓝图不写死原点。
+     * 放置时由放置界面/玩家位置决定原点。
+     */
+    private static String stripOriginHeader(String blueprintText) {
+        if (blueprintText == null || blueprintText.isEmpty()) {
+            return blueprintText;
+        }
+        return ORIGIN_HEADER_LINE_PATTERN.matcher(blueprintText).replaceAll("");
     }
 
     private static String executeAction(String json, ServerPlayerEntity player, ServerWorld world) {
