@@ -23,6 +23,10 @@ public class BlueprintData {
     private final List<BlockEntry3D> blocks3d;
     private final int sizeX, sizeY, sizeZ;
 
+    // ---- 自定义放置原点（可选，两种格式都支持）----
+    // 为 null 时表示未指定，放置端使用默认原点（玩家脚下位置）。
+    private OriginSpec origin;
+
     /** 构造 V1 蓝图 */
     public BlueprintData(String name, Map<Character, BlockEntry> legend, List<char[][]> layers) {
         this.name = name;
@@ -57,6 +61,52 @@ public class BlueprintData {
     public int getSizeX() { return sizeX; }
     public int getSizeY() { return sizeY; }
     public int getSizeZ() { return sizeZ; }
+
+    // 自定义原点访问器
+    public OriginSpec getOrigin() { return origin; }
+    public boolean hasOrigin() { return origin != null; }
+    public void setOrigin(OriginSpec origin) { this.origin = origin; }
+
+    // -------------------------------------------------------------------------
+    // 自定义放置原点：两种模式
+    //   RELATIVE — 相对玩家当前位置与朝向的偏移（forward=前方, right=右方, up=上方）
+    //   ABSOLUTE — 世界绝对坐标 (x, y, z)
+    // -------------------------------------------------------------------------
+    public static class OriginSpec {
+        public enum Mode { RELATIVE, ABSOLUTE }
+
+        private final Mode mode;
+        // RELATIVE 模式使用：相对玩家朝向的偏移量
+        private final int forward, right, up;
+        // ABSOLUTE 模式使用：世界绝对坐标
+        private final int absX, absY, absZ;
+
+        private OriginSpec(Mode mode, int forward, int right, int up, int absX, int absY, int absZ) {
+            this.mode = mode;
+            this.forward = forward;
+            this.right = right;
+            this.up = up;
+            this.absX = absX;
+            this.absY = absY;
+            this.absZ = absZ;
+        }
+
+        public static OriginSpec relative(int forward, int right, int up) {
+            return new OriginSpec(Mode.RELATIVE, forward, right, up, 0, 0, 0);
+        }
+
+        public static OriginSpec absolute(int x, int y, int z) {
+            return new OriginSpec(Mode.ABSOLUTE, 0, 0, 0, x, y, z);
+        }
+
+        public Mode getMode() { return mode; }
+        public int getForward() { return forward; }
+        public int getRight() { return right; }
+        public int getUp() { return up; }
+        public int getAbsX() { return absX; }
+        public int getAbsY() { return absY; }
+        public int getAbsZ() { return absZ; }
+    }
 
     // -------------------------------------------------------------------------
     // V1 方块条目：方块ID + 可选属性（如朝向、半砖位置等）

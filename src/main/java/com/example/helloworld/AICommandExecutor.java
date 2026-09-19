@@ -192,8 +192,10 @@ public class AICommandExecutor {
             return I18n.tr("cmd.blueprint.parse_failed");
         }
 
-        int count = BlueprintBuilder.build(data, player, world);
-        BlockPos origin = player.getBlockPos();
+        // 计算放置原点：若蓝图指定了自定义原点则使用之，否则默认为玩家脚下位置
+        BlockPos origin = resolveOrigin(data, player);
+
+        int count = BlueprintBuilder.build(data, player, world, origin);
 
         // 自动保存蓝图为 txt 文件到 txts/ 文件夹
         String savedPath = saveBlueprintToTxt(text, data.getName());
@@ -201,6 +203,24 @@ public class AICommandExecutor {
 
         String originStr = origin.getX() + ", " + origin.getY() + ", " + origin.getZ();
         return I18n.tr("cmd.blueprint.placed", data.getName(), count, originStr) + saveMsg;
+    }
+
+    /**
+     * 根据蓝图的自定义原点信息计算实际放置原点。
+     * - 未指定：返回玩家脚下位置（默认行为）。
+     * - RELATIVE：基于玩家朝向的 forward/right/up 偏移。
+     * - ABSOLUTE：世界绝对坐标。
+     */
+    private static BlockPos resolveOrigin(BlueprintData data, ServerPlayerEntity player) {
+        if (!data.hasOrigin()) {
+            return player.getBlockPos();
+        }
+        BlueprintData.OriginSpec spec = data.getOrigin();
+        if (spec.getMode() == BlueprintData.OriginSpec.Mode.ABSOLUTE) {
+            return new BlockPos(spec.getAbsX(), spec.getAbsY(), spec.getAbsZ());
+        }
+        // RELATIVE
+        return calculatePos(player, spec.getForward(), spec.getRight(), spec.getUp());
     }
 
     /**
@@ -654,6 +674,17 @@ public class AICommandExecutor {
              + "- 空气方块不需要写（自动跳过）\n"
              + "- 以 # 开头的行是注释，会被忽略\n"
              + "- 建议用 \"# --- 第 N 层 (y=N) ---\" 注释分隔每层，方便阅读\n\n"
+             + "自定义放置原点（可选，用 \"# origin:\" 头指定，放在 name 下方）：\n"
+             + "- 不写 origin 时，默认原点 (0,0,0) 为玩家脚下位置\n"
+             + "- 相对玩家朝向偏移（推荐，玩家转身时结构会跟随朝向摆放）：\n"
+             + "    # origin: relative forward=10 right=2 up=0\n"
+             + "    forward=玩家面朝方向前方(负=后方), right=玩家右手方向(负=左方), up=上方(负=下方)\n"
+             + "    缺省的分量按 0 处理，relative 关键字可省略：# origin: forward=10\n"
+             + "- 世界绝对坐标（把结构固定放在世界某处，与玩家位置无关）：\n"
+             + "    # origin: absolute 100 64 -200\n"
+             + "    也可写作 # origin: absolute x=100 y=64 z=-200\n"
+             + "- 使用场景：玩家说\"在我前面20格盖\"用 relative forward=20；\n"
+             + "  说\"在坐标100 64 -200盖\"用 absolute 100 64 -200；不确定就不写 origin\n\n"
              + "常用方块属性示例：\n"
              + "- 楼梯: facing=north/south/east/west  half=bottom/top  shape=straight\n"
              + "- 台阶: type=bottom/top/double  waterlogged=false\n"
@@ -1392,7 +1423,7 @@ public class AICommandExecutor {
              + "- x: 东西方向（向东递增），对应玩家位置的东偏移\n"
              + "- y: 上下方向（向上递增），对应玩家位置的高度偏移\n"
              + "- z: 南北方向（向南递增），对应玩家位置的南偏移\n"
-             + "- 原点 (0,0,0) 对应玩家脚下位置\n\n"
+             + "- 原点 (0,0,0) 默认对应玩家脚下位置；可用 \"# origin:\" 头自定义原点（见上文蓝图格式规则）\n\n"
              + "选择指令的原则：\n"
              + "- 建造建筑、房屋、结构等多方块建筑 → 使用 [BLUEPRINT] 蓝图格式（推荐）\n"
              + "- 放置单个方块、填充简单区域 → 使用 [ACTION] 指令\n"

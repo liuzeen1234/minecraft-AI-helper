@@ -37,6 +37,9 @@ public class BlueprintParser {
             Pattern.compile("#\\s*size:\\s*(\\d+)\\s*x\\s*(\\d+)\\s*x\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern V2_NAME_PATTERN =
             Pattern.compile("#\\s*name:\\s*(.+)", Pattern.CASE_INSENSITIVE);
+    // 自定义原点头：# origin: <内容>
+    private static final Pattern V2_ORIGIN_PATTERN =
+            Pattern.compile("#\\s*origin:\\s*(.+)", Pattern.CASE_INSENSITIVE);
 
     // -------------------------------------------------------------------------
     // 入口：自动检测格式
@@ -61,6 +64,7 @@ public class BlueprintParser {
     private static BlueprintData parseV2(String text) {
         String name = "unknown";
         int sizeX = 0, sizeY = 0, sizeZ = 0;
+        BlueprintData.OriginSpec origin = null;
         List<BlueprintData.BlockEntry3D> blocks = new ArrayList<>();
 
         String[] lines = text.split("\n");
@@ -193,6 +197,12 @@ public class BlueprintParser {
                     name = nameMatcher.group(1).trim();
                     continue;
                 }
+                Matcher originMatcher = V2_ORIGIN_PATTERN.matcher(line);
+                if (originMatcher.find()) {
+                    BlueprintData.OriginSpec parsed = parseOrigin(originMatcher.group(1).trim());
+                    if (parsed != null) origin = parsed;
+                    continue;
+                }
                 Matcher sizeMatcher = V2_SIZE_PATTERN.matcher(line);
                 if (sizeMatcher.find()) {
                     sizeX = Integer.parseInt(sizeMatcher.group(1));
@@ -273,7 +283,114 @@ public class BlueprintParser {
         }
 
         LOGGER.info("解析 V2 蓝图 '{}': {} 个方块, 尺寸 {}x{}x{}", name, blocks.size(), sizeX, sizeY, sizeZ);
-        return new BlueprintData(name, blocks, sizeX, sizeY, sizeZ);
+        BlueprintData data = new BlueprintData(name, blocks, sizeX, sizeY, sizeZ);
+        if (origin != null) {
+            data.setOrigin(origin);
+        }
+        return data;
+    }
+
+    /**
+     * 解析 "# origin:" 头部内容，支持两种模式：
+     *
+     *   相对玩家朝向偏移（缺省模式，relative 关键字可省略）：
+     *     # origin: relative forward=10 right=2 up=0
+     *     # origin: forward=10 right=2 up=0
+     *   任意缺省的分量按 0 处理。forward=前方(负=后方)，right=右方(负=左方)，up=上方(负=下方)。
+     *
+     *   世界绝对坐标：
+     *     # origin: absolute 100 64 -200
+     *     # origin: abs x=100 y=64 z=-200
+     *     # origin: absolute x=100 y=64 z=-200
+     *
+     * 解析失败返回 null（放置端回退到默认原点）。
+     */
+    static BlueprintData.OriginSpec parseOrigin(String content) {
+        if (content == null || content.isEmpty()) return null;
+        // 去掉行内注释
+        int commentIdx = content.indexOf('#');
+        if (commentIdx >= 0) content = content.substring(0, commentIdx).trim();
+        if (content.isEmpty()) return null;
+
+        String lower = content.toLowerCase();
+        boolean absolute = lower.startsWith("absolute") || lower.startsWith("abs");
+
+        // 去掉模式关键字前缀
+        String rest = content;
+        if (absolute) {
+            rest = content.replaceFirst("(?i)^(absolute|abs)\\s*", "").trim();
+        } else if (lower.startsWith("relative") || lower.startsWith("rel")) {
+            rest = content.replaceFirst("(?i)^(relative|rel)\\s*", "").trim();
+        }
+
+        if (absolute) {
+            int[] xyz = parseAbsoluteCoords(rest);
+            if (xyz == null) {
+                LOGGER.warn("无法解析 origin 绝对坐标: '{}'", content);
+                return null;
+            }
+            return BlueprintData.OriginSpec.absolute(xyz[0], xyz[1], xyz[2]);
+        }
+
+        // 相对模式：解析 forward/right/up（缺省为 0）
+        int forward = extractOriginComponent(rest, "forward", "f");
+        int right = extractOriginComponent(rest, "right", "r");
+        int up = extractOriginComponent(rest, "up", "u");
+        return BlueprintData.OriginSpec.relative(forward, right, up);
+    }
+
+    /**
+     * 从字符串中提取 key=value 形式的整数分量，支持全称与简写别名，缺省返回 0。
+     */
+    private static int extractOriginComponent(String text, String key, String alias) {
+        Pattern p = Pattern.compile("(?i)\\b(?:" + key + "|" + alias + ")\\s*=\\s*(-?\\d+)");
+        Matcher m = p.matcher(text);
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 解析绝对坐标，支持两种写法：
+     *   "100 64 -200"（空格/逗号分隔的三个整数）
+     *   "x=100 y=64 z=-200"（key=value 形式）
+     */
+    private static int[] parseAbsoluteCoords(String text) {
+        if (text.isEmpty()) return null;
+
+        // 优先尝试 key=value 形式
+        Pattern xp = Pattern.compile("(?i)\\bx\\s*=\\s*(-?\\d+)");
+        Pattern yp = Pattern.compile("(?i)\\by\\s*=\\s*(-?\\d+)");
+        Pattern zp = Pattern.compile("(?i)\\bz\\s*=\\s*(-?\\d+)");
+        Matcher xm = xp.matcher(text);
+        Matcher ym = yp.matcher(text);
+        Matcher zm = zp.matcher(text);
+        if (xm.find() && ym.find() && zm.find()) {
+            return new int[]{
+                    Integer.parseInt(xm.group(1)),
+                    Integer.parseInt(ym.group(1)),
+                    Integer.parseInt(zm.group(1))
+            };
+        }
+
+        // 退回到空格/逗号分隔的三个整数
+        String[] parts = text.split("[,\\s]+");
+        List<Integer> nums = new ArrayList<>();
+        for (String part : parts) {
+            if (part.isEmpty()) continue;
+            try {
+                nums.add(Integer.parseInt(part.trim()));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (nums.size() >= 3) {
+            return new int[]{nums.get(0), nums.get(1), nums.get(2)};
+        }
+        return null;
     }
 
     /**
