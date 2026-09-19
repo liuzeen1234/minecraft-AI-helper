@@ -134,6 +134,57 @@ class BlueprintParserTest {
     }
 
     @Test
+    void testParseV2_KeepsNegativeCoordinates() {
+        // 负坐标不应被丢弃：5x1x5 平面，坐标从 -2 到 2
+        StringBuilder sb = new StringBuilder();
+        sb.append("# MCBLUEPRINT v2\n");
+        sb.append("# name: negative_coords\n");
+        sb.append("# size: 5x1x5\n\n");
+        sb.append("## BLOCKS\n\n");
+        int expected = 0;
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                sb.append(x).append(",0,").append(z).append("   stone\n");
+                expected++;
+            }
+        }
+
+        BlueprintData data = BlueprintParser.parse(sb.toString());
+
+        assertNotNull(data);
+        assertTrue(data.isV2());
+        assertEquals(25, expected);
+        assertEquals(expected, data.getBlocks3d().size(),
+                "负坐标方块应被完整保留，不能被正则丢弃");
+
+        // 确认确实存在负坐标条目
+        boolean hasNegative = data.getBlocks3d().stream()
+                .anyMatch(b -> b.getX() < 0 || b.getY() < 0 || b.getZ() < 0);
+        assertTrue(hasNegative, "解析结果应包含负坐标方块");
+    }
+
+    @Test
+    void testParseV2_InfersSizeWithNegativeCoords() {
+        // 无 size 头，坐标含负值，尺寸应按 max-min+1 跨度计算
+        String blueprint = """
+                # MCBLUEPRINT v2
+                # name: infer_negative
+                
+                ## BLOCKS
+                
+                -2,-1,-3   stone
+                2,1,1   stone
+                """;
+
+        BlueprintData data = BlueprintParser.parse(blueprint);
+
+        assertNotNull(data);
+        assertEquals(5, data.getSizeX()); // 2 - (-2) + 1
+        assertEquals(3, data.getSizeY()); // 1 - (-1) + 1
+        assertEquals(5, data.getSizeZ()); // 1 - (-3) + 1
+    }
+
+    @Test
     void testParseV2_IgnoresComments() {
         String blueprint = """
                 # MCBLUEPRINT v2

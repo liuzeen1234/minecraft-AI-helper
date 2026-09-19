@@ -31,7 +31,7 @@ public class BlueprintParser {
     // V2 格式匹配
     // 方块行：x,y,z  block_id  [key=value ...]
     private static final Pattern V2_BLOCK_PATTERN =
-            Pattern.compile("^(\\d+),(\\d+),(\\d+)\\s+(\\S+)(.*)$");
+            Pattern.compile("^(-?\\d+),(-?\\d+),(-?\\d+)\\s+(\\S+)(.*)$");
     // 头部元数据
     private static final Pattern V2_SIZE_PATTERN =
             Pattern.compile("#\\s*size:\\s*(\\d+)\\s*x\\s*(\\d+)\\s*x\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
@@ -255,13 +255,21 @@ public class BlueprintParser {
             }
         }
 
-        // 如果文件中没有 size 头，从方块坐标推算
+        // 如果文件中没有 size 头，从方块坐标推算（用最大-最小跨度，兼容负坐标）
         if (sizeX == 0 && sizeY == 0 && sizeZ == 0 && !blocks.isEmpty()) {
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
             for (BlueprintData.BlockEntry3D b : blocks) {
-                sizeX = Math.max(sizeX, b.getX() + 1);
-                sizeY = Math.max(sizeY, b.getY() + 1);
-                sizeZ = Math.max(sizeZ, b.getZ() + 1);
+                minX = Math.min(minX, b.getX());
+                minY = Math.min(minY, b.getY());
+                minZ = Math.min(minZ, b.getZ());
+                maxX = Math.max(maxX, b.getX());
+                maxY = Math.max(maxY, b.getY());
+                maxZ = Math.max(maxZ, b.getZ());
             }
+            sizeX = maxX - minX + 1;
+            sizeY = maxY - minY + 1;
+            sizeZ = maxZ - minZ + 1;
         }
 
         LOGGER.info("解析 V2 蓝图 '{}': {} 个方块, 尺寸 {}x{}x{}", name, blocks.size(), sizeX, sizeY, sizeZ);
