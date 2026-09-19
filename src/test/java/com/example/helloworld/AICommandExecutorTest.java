@@ -12,6 +12,36 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class AICommandExecutorTest {
 
+    // ========== 多轮工具循环：游戏操作标签检测 ==========
+
+    @Test
+    void testContainsGameActionTags_Action() {
+        String r = "好的 [ACTION]{\"type\":\"place_block\",\"block\":\"stone\"}[/ACTION]";
+        assertTrue(AICommandExecutor.containsGameActionTags(r));
+    }
+
+    @Test
+    void testContainsGameActionTags_Blueprint() {
+        String r = "开始建造 [BLUEPRINT]\n# MCBLUEPRINT v2\n[/BLUEPRINT]";
+        assertTrue(AICommandExecutor.containsGameActionTags(r));
+    }
+
+    @Test
+    void testContainsGameActionTags_UnclosedBlueprint() {
+        // token 截断导致未闭合，也应识别为请求了游戏操作
+        String r = "开始建造 [BLUEPRINT]\n# MCBLUEPRINT v2\n0,0,0 stone";
+        assertTrue(AICommandExecutor.containsGameActionTags(r));
+    }
+
+    @Test
+    void testContainsGameActionTags_None() {
+        assertFalse(AICommandExecutor.containsGameActionTags("普通聊天回复，没有任何标签。"));
+        assertFalse(AICommandExecutor.containsGameActionTags(""));
+        assertFalse(AICommandExecutor.containsGameActionTags(null));
+        // 仅联网标签不算游戏操作
+        assertFalse(AICommandExecutor.containsGameActionTags("[SEARCH]红石[/SEARCH]"));
+    }
+
     // ========== JSON 解析测试 ==========
 
     @Test

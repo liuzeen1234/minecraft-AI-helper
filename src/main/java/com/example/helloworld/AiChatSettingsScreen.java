@@ -1,7 +1,9 @@
 package com.example.helloworld;
 
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
 /**
@@ -11,6 +13,13 @@ public class AiChatSettingsScreen extends Screen {
 
     private final Screen parent;
     private final ModConfig config;
+
+    private TextFieldWidget maxToolRoundsField;
+    // 输入框相对布局用的坐标缓存（供 render 绘制标签）
+    private int maxRoundsLabelX;
+    private int maxRoundsLabelY;
+    private String maxRoundsStatus = null;
+    private int maxRoundsStatusColor = 0xAAAAAA;
 
     public AiChatSettingsScreen(Screen parent) {
         super(Text.literal(I18n.tr("settings.chat.title")));
@@ -69,21 +78,80 @@ public class AiChatSettingsScreen extends Screen {
                 .build()
         );
 
+        // 最大工具调用轮数输入框（0=禁用多轮）。标签绘制在输入框上方，输入框宽度略小以容纳保存按钮。
+        int roundsY = startY + (btnH + gap) * 4 + 8; // 上方留一点空间给标签
+        maxRoundsLabelX = startX;
+        maxRoundsLabelY = roundsY - 10;
+        maxToolRoundsField = new TextFieldWidget(this.textRenderer, startX, roundsY, 150, btnH,
+                Text.literal("max_tool_rounds"));
+        maxToolRoundsField.setMaxLength(6);
+        maxToolRoundsField.setText(String.valueOf(config.getMaxToolRounds()));
+        this.addDrawableChild(maxToolRoundsField);
+
+        // 保存按钮（在输入框右侧）
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal(I18n.tr("settings.api.save")),
+                button -> saveMaxToolRounds())
+                .dimensions(startX + 155, roundsY, 45, btnH)
+                .build()
+        );
+
         // AI API 设置按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("settings.chat.api_settings")),
                 button -> this.client.setScreen(new AiApiSettingsScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 5 + 8, 200, btnH)
                 .build()
         );
 
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("button.back")),
-                button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
+                button -> {
+                    saveMaxToolRounds();
+                    this.client.setScreen(this.parent);
+                })
+                .dimensions(startX, startY + (btnH + gap) * 6 + 8, 200, btnH)
                 .build()
         );
+    }
+
+    /** 解析输入框内容并保存 max_tool_rounds；非法输入给出提示且不覆盖旧值。 */
+    private void saveMaxToolRounds() {
+        if (maxToolRoundsField == null) return;
+        String raw = maxToolRoundsField.getText().trim();
+        try {
+            int value = Integer.parseInt(raw);
+            if (value < 0) throw new NumberFormatException("negative");
+            config.setMaxToolRounds(value);
+            maxRoundsStatus = I18n.tr("settings.chat.max_tool_rounds.saved", value);
+            maxRoundsStatusColor = 0x55FF55;
+            // 归一化显示（clamp 后回填）
+            maxToolRoundsField.setText(String.valueOf(config.getMaxToolRounds()));
+        } catch (NumberFormatException e) {
+            maxRoundsStatus = I18n.tr("settings.chat.max_tool_rounds.invalid");
+            maxRoundsStatusColor = 0xFF5555;
+        }
+    }
+
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        this.renderBackground(context, mouseX, mouseY, delta);
+        // 输入框上方的说明标签
+        if (maxToolRoundsField != null) {
+            context.drawTextWithShadow(this.textRenderer,
+                    I18n.tr("settings.chat.max_tool_rounds"), maxRoundsLabelX, maxRoundsLabelY, 0xAAAAAA);
+            if (maxRoundsStatus != null) {
+                String clean = maxRoundsStatus.replaceAll("§[0-9a-fk-or]", "");
+                context.drawTextWithShadow(this.textRenderer, clean,
+                        maxRoundsLabelX, maxRoundsField_bottomY(), maxRoundsStatusColor);
+            }
+        }
+        super.render(context, mouseX, mouseY, delta);
+    }
+
+    private int maxRoundsField_bottomY() {
+        return maxToolRoundsField.getY() + maxToolRoundsField.getHeight() + 2;
     }
 
     private Text getScreenshotButtonText() {

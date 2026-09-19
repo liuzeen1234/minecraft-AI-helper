@@ -41,6 +41,17 @@ public final class DebugMenuIntegration {
     /** 供菜单渲染的选项顺序（即循环顺序）。 */
     static final List<String> OPTIONS = List.of(OPTION_ZH, OPTION_EN);
 
+    /** 「强制多轮工具调用」调试开关的唯一标识。 */
+    static final String FORCE_MULTI_TOOL_KEY = "helloworld:force_multi_tool";
+
+    /** 开关显示名——开。 */
+    static final String TOGGLE_ON = "ON";
+    /** 开关显示名——关。 */
+    static final String TOGGLE_OFF = "OFF";
+
+    /** 二态开关的选项顺序。 */
+    static final List<String> TOGGLE_OPTIONS = List.of(TOGGLE_OFF, TOGGLE_ON);
+
     /**
      * 把语言切换注册进 debug_menu。
      * 仅应在 debug-menu 已加载时调用。
@@ -58,6 +69,27 @@ public final class DebugMenuIntegration {
                 DebugMenuIntegration::applyOptionName
         ));
         HelloWorldMod.LOGGER.info("[debug-menu] 已注册语言切换选项: {}", OPTION_KEY);
+
+        // 「强制多轮工具调用」调试开关：开启后系统提示词要求 AI 至少调用 2 次工具。
+        DebugMenuApi.registerOption(new DebugOptionEntry(
+                HelloWorldMod.MOD_ID,
+                FORCE_MULTI_TOOL_KEY,
+                I18n.tr("debug.force_multi_tool.title"),
+                TOGGLE_OPTIONS,
+                DebugMenuIntegration::currentForceMultiToolName,
+                DebugMenuIntegration::applyForceMultiToolName
+        ));
+        HelloWorldMod.LOGGER.info("[debug-menu] 已注册强制多轮工具开关: {}", FORCE_MULTI_TOOL_KEY);
+    }
+
+    /** getter：把当前强制多轮工具开关状态映射为菜单显示名。 */
+    private static String currentForceMultiToolName() {
+        return AICommandExecutor.isForceMultiToolTesting() ? TOGGLE_ON : TOGGLE_OFF;
+    }
+
+    /** setter：把菜单显示名映射回布尔并写入运行时状态。 */
+    private static void applyForceMultiToolName(String optionName) {
+        AICommandExecutor.setForceMultiToolTesting(TOGGLE_ON.equals(optionName));
     }
 
     /**

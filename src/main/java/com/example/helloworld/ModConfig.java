@@ -21,6 +21,7 @@ public class ModConfig {
     private boolean webSearchEnabled;
     private String tavilyApiKey;
     private boolean streamOutputEnabled;
+    private int maxToolRounds;
     private String language;
     private String apiFormat;
 
@@ -33,6 +34,8 @@ public class ModConfig {
     private static final boolean DEFAULT_WEB_SEARCH_ENABLED = true;
     private static final String DEFAULT_TAVILY_API_KEY = "";
     private static final boolean DEFAULT_STREAM_OUTPUT_ENABLED = true;
+    // 多轮工具调用的最大轮数：0=禁用（单层行为），N>0=最多允许 N 轮工具调用后必须给出最终答复
+    private static final int DEFAULT_MAX_TOOL_ROUNDS = 3;
     private static final String DEFAULT_LANGUAGE = "en_us";
     // API 格式：auto（自动检测）/ openai / anthropic
     private static final String DEFAULT_API_FORMAT = "auto";
@@ -64,10 +67,21 @@ public class ModConfig {
         webSearchEnabled = Boolean.parseBoolean(props.getProperty("web_search_enabled", String.valueOf(DEFAULT_WEB_SEARCH_ENABLED)));
         tavilyApiKey = props.getProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
         streamOutputEnabled = Boolean.parseBoolean(props.getProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED)));
+        maxToolRounds = parseMaxToolRounds(props.getProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS)));
         language = props.getProperty("language", DEFAULT_LANGUAGE);
         apiFormat = props.getProperty("api_format", DEFAULT_API_FORMAT);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, language, apiFormat, getEffectiveApiFormat());
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, language, apiFormat, getEffectiveApiFormat());
+    }
+
+    /** 解析 max_tool_rounds，非法值回退默认，并 clamp 到 >=0。 */
+    private static int parseMaxToolRounds(String raw) {
+        try {
+            return Math.max(0, Integer.parseInt(raw.trim()));
+        } catch (NumberFormatException e) {
+            HelloWorldMod.LOGGER.warn("max_tool_rounds 配置值非法: {}，回退默认 {}", raw, DEFAULT_MAX_TOOL_ROUNDS);
+            return DEFAULT_MAX_TOOL_ROUNDS;
+        }
     }
 
     private void createDefault(Path configPath) {
@@ -82,6 +96,7 @@ public class ModConfig {
             props.setProperty("web_search_enabled", String.valueOf(DEFAULT_WEB_SEARCH_ENABLED));
             props.setProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
             props.setProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED));
+            props.setProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS));
             props.setProperty("language", DEFAULT_LANGUAGE);
             props.setProperty("api_format", DEFAULT_API_FORMAT);
             try (OutputStream out = Files.newOutputStream(configPath)) {
@@ -139,6 +154,14 @@ public class ModConfig {
 
     public void setStreamOutputEnabled(boolean streamOutputEnabled) {
         this.streamOutputEnabled = streamOutputEnabled;
+        save();
+    }
+
+    /** 多轮工具调用最大轮数：0=禁用多轮，N>0=最多 N 轮工具调用。 */
+    public int getMaxToolRounds() { return maxToolRounds; }
+
+    public void setMaxToolRounds(int maxToolRounds) {
+        this.maxToolRounds = Math.max(0, maxToolRounds);
         save();
     }
 
@@ -213,6 +236,7 @@ public class ModConfig {
         props.setProperty("web_search_enabled", String.valueOf(webSearchEnabled));
         props.setProperty("tavily_api_key", tavilyApiKey);
         props.setProperty("stream_output_enabled", String.valueOf(streamOutputEnabled));
+        props.setProperty("max_tool_rounds", String.valueOf(maxToolRounds));
         props.setProperty("language", language);
         props.setProperty("api_format", apiFormat);
         try (OutputStream out = Files.newOutputStream(configPath)) {

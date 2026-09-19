@@ -37,6 +37,20 @@ import java.util.regex.Pattern;
 public class AICommandExecutor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("AICommandExecutor");
+
+    /**
+     * 调试开关：强制多轮工具调用。开启后系统提示词会额外要求 AI 至少调用 2 次工具，
+     * 用于手动测试多轮循环（agentic loop）。仅内存态，不写入配置文件，通过 debug-menu 切换。
+     */
+    private static volatile boolean forceMultiToolTesting = false;
+
+    public static boolean isForceMultiToolTesting() { return forceMultiToolTesting; }
+
+    public static void setForceMultiToolTesting(boolean enabled) {
+        forceMultiToolTesting = enabled;
+        LOGGER.info("[调试] 强制多轮工具调用 = {}", enabled);
+    }
+
     private static final Pattern ACTION_PATTERN = Pattern.compile("\\[ACTION\\](.*?)\\[/ACTION\\]", Pattern.DOTALL);
     private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*?)\\[/BLUEPRINT\\]", Pattern.DOTALL);
     // 匹配未闭合的 [BLUEPRINT]（AI 输出被 token 截断时）
@@ -52,6 +66,18 @@ public class AICommandExecutor {
     public static String processResponse(String aiResponse, ServerPlayerEntity player) {
         ProcessResult r = process(aiResponse, player);
         return r.fullText;
+    }
+
+    /**
+     * 判断 AI 回复中是否包含游戏操作类工具标签（[ACTION] 或 [BLUEPRINT]，含被截断的未闭合蓝图）。
+     * 用于多轮工具循环判断本轮是否请求了游戏操作工具。
+     */
+    public static boolean containsGameActionTags(String aiResponse) {
+        if (aiResponse == null || aiResponse.isEmpty()) return false;
+        if (ACTION_PATTERN.matcher(aiResponse).find()) return true;
+        if (BLUEPRINT_PATTERN.matcher(aiResponse).find()) return true;
+        // 未闭合的 [BLUEPRINT]（token 截断）
+        return aiResponse.contains("[BLUEPRINT]");
     }
 
     /**
@@ -1480,7 +1506,32 @@ public class AICommandExecutor {
              + "- 网页内容会自动提供给你，你再基于网页内容回答玩家的问题或执行操作\n"
              + "- 如果玩家要求你参考某个网页来搭建建筑，先用 [FETCH] 获取网页内容，系统会把内容返回给你，然后你再根据内容生成 [BLUEPRINT] 蓝图\n"
              + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n"
+             + getForceMultiToolInstruction()
              + getLanguageInstruction();
+    }
+
+    /**
+     * 调试用：当强制多轮工具调用开关开启时，追加"至少调用 2 次工具"的指令。
+     * 关闭时返回空串，不影响正常提示词。
+     */
+    private static String getForceMultiToolInstruction() {
+        if (!forceMultiToolTesting) {
+            return "";
+        }
+        if (I18n.isEnglish()) {
+            return "\n========== DEBUG: FORCE MULTI-TOOL ==========\n\n"
+                 + "TESTING MODE: For this session you MUST call tools at least TWICE before giving your final answer. "
+                 + "A tool call means emitting a [SEARCH], [FETCH], [ACTION], or [BLUEPRINT] tag. "
+                 + "Split the task into multiple steps and use tools across at least two separate replies "
+                 + "(e.g. search first, then act; or place part of a build, then continue). "
+                 + "Do not finish with a plain-text-only answer until you have used tools at least twice.\n";
+        }
+        return "\n========== 调试：强制多轮工具 ==========\n\n"
+             + "测试模式：本次对话中，你必须在给出最终答复前至少调用 2 次工具。"
+             + "调用工具指的是输出 [SEARCH]、[FETCH]、[ACTION] 或 [BLUEPRINT] 标签。"
+             + "请把任务拆成多个步骤，在至少两次不同的回复里分别使用工具"
+             + "（例如：先搜索、再执行；或先放置一部分建筑、再继续）。"
+             + "在你至少调用过 2 次工具之前，不要只用纯文本回复来结束任务。\n";
     }
 
     /**

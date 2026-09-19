@@ -396,87 +396,15 @@ public class HelloWorldMod implements ModInitializer {
                             return;
                         }
 
-                        // 检查是否需要抓取网页
-                        String fetchUrl = extractFetchUrl(response);
-                        if (fetchUrl != null) {
-                            // 通知聊天界面正在抓取网页
-                            server.execute(() -> {
-                                PacketByteBuf streamBuf = PacketByteBufs.create();
-                                streamBuf.writeString("\n\n§7" + I18n.tr("server.fetching"));
-                                ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false);
-                            });
-                            String pageContent = webFetchService.fetch(fetchUrl);
-                            if (cancelRequested) {
-                                server.execute(() -> {
-                                    PacketByteBuf respBuf = PacketByteBufs.create();
-                                    respBuf.writeString(THINKING_CANCELLED_SENTINEL);
-                                    ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
-                                });
-                                return;
-                            }
-                            if (pageContent != null) {
-                                String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
-                                        + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
-                                if (CONFIG.isStreamOutputEnabled()) {
-                                    server.execute(() -> {
-                                        PacketByteBuf streamBuf = PacketByteBufs.create();
-                                        streamBuf.writeString("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
-                                        ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                    });
-                                    response = callKimiApiStreaming(fetchContext, "", player, server);
-                                } else {
-                                    response = callKimiApi(fetchContext, "");
-                                }
-                            } else {
-                                response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (response.isEmpty()) response = I18n.tr("server.fetch_failed");
-                            }
-                        } else {
-                            // 检查是否需要联网搜索
-                            String searchQuery = extractSearchQuery(response);
-                            if (searchQuery != null && CONFIG.isWebSearchEnabled()
-                                    && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
-                                // 通知聊天界面正在搜索
-                                server.execute(() -> {
-                                    PacketByteBuf streamBuf = PacketByteBufs.create();
-                                    streamBuf.writeString("\n\n§7" + I18n.tr("server.searching"));
-                                    ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                    player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false);
-                                });
-                                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
-                                if (cancelRequested) {
-                                    server.execute(() -> {
-                                        PacketByteBuf respBuf = PacketByteBufs.create();
-                                        respBuf.writeString(THINKING_CANCELLED_SENTINEL);
-                                        ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
-                                    });
-                                    return;
-                                }
-                                if (searchResults != null) {
-                                    String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
-                                            + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
-                                    if (CONFIG.isStreamOutputEnabled()) {
-                                        server.execute(() -> {
-                                            PacketByteBuf streamBuf = PacketByteBufs.create();
-                                            streamBuf.writeString("\n§7" + I18n.tr("server.search_done") + "\n\n");
-                                            ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                        });
-                                        response = callKimiApiStreaming(searchContext, "", player, server);
-                                    } else {
-                                        response = callKimiApi(searchContext, "");
-                                    }
-                                } else {
-                                    response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (response.isEmpty()) response = I18n.tr("server.search_failed");
-                                }
-                            } else {
-                                response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                            }
-                        }
-
-                        // 再次检查取消
-                        if (cancelRequested) {
+                        // 多轮工具调用循环：进度提示通过聊天界面流式包发送
+                        boolean streamingChat = CONFIG.isStreamOutputEnabled();
+                        ToolLoopNotifier chatNotifier = msg -> server.execute(() -> {
+                            PacketByteBuf streamBuf = PacketByteBufs.create();
+                            streamBuf.writeString(msg);
+                            ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                        });
+                        ToolLoopResult loopResult = runToolLoop(response, streamingChat, player, server, streamingChat, chatNotifier);
+                        if (loopResult == null || cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
                                 respBuf.writeString(THINKING_CANCELLED_SENTINEL);
@@ -485,12 +413,8 @@ public class HelloWorldMod implements ModInitializer {
                             return;
                         }
 
-                        // 清理响应中残留的标签
-                        response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                        response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-
-                        // 执行 AI 指令
-                        String processed = AICommandExecutor.processResponse(response, player);
+                        // 执行最后一轮回复里的 AI 指令并展示
+                        String processed = AICommandExecutor.processResponse(loopResult.finalResponse, player);
 
                         // 发送回复到客户端聊天界面
                         String finalResponse = processed;
@@ -606,87 +530,15 @@ public class HelloWorldMod implements ModInitializer {
                             return;
                         }
 
-                        // 检查是否需要抓取网页
-                        String fetchUrl = extractFetchUrl(response);
-                        if (fetchUrl != null) {
-                            // 通知聊天界面正在抓取网页（替换流式内容中的 FETCH 标签显示）
-                            server.execute(() -> {
-                                PacketByteBuf streamBuf = PacketByteBufs.create();
-                                streamBuf.writeString("\n\n§7" + I18n.tr("server.fetching"));
-                                ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false);
-                            });
-                            String pageContent = webFetchService.fetch(fetchUrl);
-                            if (cancelRequested) {
-                                server.execute(() -> {
-                                    PacketByteBuf respBuf = PacketByteBufs.create();
-                                    respBuf.writeString(THINKING_CANCELLED_SENTINEL);
-                                    ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
-                                });
-                                return;
-                            }
-                            if (pageContent != null) {
-                                String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
-                                        + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
-                                if (CONFIG.isStreamOutputEnabled()) {
-                                    // 流式模式：用流式输出让用户实时看到回复
-                                    server.execute(() -> {
-                                        PacketByteBuf streamBuf = PacketByteBufs.create();
-                                        streamBuf.writeString("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
-                                        ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                    });
-                                    response = callKimiApiStreaming(fetchContext, "", player, server);
-                                } else {
-                                    response = callKimiApi(fetchContext, "");
-                                }
-                            } else {
-                                response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (response.isEmpty()) response = I18n.tr("server.fetch_failed");
-                            }
-                        } else {
-                            String searchQuery = extractSearchQuery(response);
-                            if (searchQuery != null && CONFIG.isWebSearchEnabled()
-                                    && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
-                                // 通知聊天界面正在搜索
-                                server.execute(() -> {
-                                    PacketByteBuf streamBuf = PacketByteBufs.create();
-                                    streamBuf.writeString("\n\n§7" + I18n.tr("server.searching"));
-                                    ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                    player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false);
-                                });
-                                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
-                                if (cancelRequested) {
-                                    server.execute(() -> {
-                                        PacketByteBuf respBuf = PacketByteBufs.create();
-                                        respBuf.writeString(THINKING_CANCELLED_SENTINEL);
-                                        ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
-                                    });
-                                    return;
-                                }
-                                if (searchResults != null) {
-                                    String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
-                                            + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
-                                    if (CONFIG.isStreamOutputEnabled()) {
-                                        // 流式模式：用流式输出让用户实时看到回复
-                                        server.execute(() -> {
-                                            PacketByteBuf streamBuf = PacketByteBufs.create();
-                                            streamBuf.writeString("\n§7" + I18n.tr("server.search_done") + "\n\n");
-                                            ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
-                                        });
-                                        response = callKimiApiStreaming(searchContext, "", player, server);
-                                    } else {
-                                        response = callKimiApi(searchContext, "");
-                                    }
-                                } else {
-                                    response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (response.isEmpty()) response = I18n.tr("server.search_failed");
-                                }
-                            } else {
-                                response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                            }
-                        }
-
-                        if (cancelRequested) {
+                        // 多轮工具调用循环：进度提示通过聊天界面流式包发送
+                        boolean streamingImg = CONFIG.isStreamOutputEnabled();
+                        ToolLoopNotifier imgNotifier = msg -> server.execute(() -> {
+                            PacketByteBuf streamBuf = PacketByteBufs.create();
+                            streamBuf.writeString(msg);
+                            ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
+                        });
+                        ToolLoopResult loopResult = runToolLoop(response, streamingImg, player, server, streamingImg, imgNotifier);
+                        if (loopResult == null || cancelRequested) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
                                 respBuf.writeString(THINKING_CANCELLED_SENTINEL);
@@ -695,11 +547,7 @@ public class HelloWorldMod implements ModInitializer {
                             return;
                         }
 
-                        // 清理响应中残留的标签
-                        response = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                        response = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-
-                        String processed = AICommandExecutor.processResponse(response, player);
+                        String processed = AICommandExecutor.processResponse(loopResult.finalResponse, player);
                         String finalResponse = processed;
                         server.execute(() -> {
                             PacketByteBuf respBuf = PacketByteBufs.create();
@@ -779,104 +627,25 @@ public class HelloWorldMod implements ModInitializer {
 
                         // 如果已被取消，直接返回不做后续处理
                         if (cancelRequested) return;
-                        String fetchUrl = extractFetchUrl(response);
-                        if (fetchUrl != null) {
-                            server.execute(() -> {
-                                source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false);
-                            });
 
-                            String pageContent = webFetchService.fetch(fetchUrl);
-                            if (pageContent != null) {
-                                String fetchContext = "以下是网页 " + fetchUrl + " 的内容:\n\n" + pageContent
-                                        + "\n\n请根据以上网页内容回答玩家之前的问题或执行操作。不要再使用 [FETCH] 标签。";
-                                String finalResponse;
-                                if (CONFIG.isStreamOutputEnabled()) {
-                                    finalResponse = callKimiApiStreaming(fetchContext, "", player, server);
-                                } else {
-                                    finalResponse = callKimiApi(fetchContext, "");
-                                }
-                                server.execute(() -> {
-                                    AICommandExecutor.ProcessResult pr = AICommandExecutor.process(finalResponse, player);
-                                    if (!CONFIG.isStreamOutputEnabled()) {
-                                        sendLongMessage(source, pr.fullText);
-                                    } else if (!pr.resultBlock.isEmpty()) {
-                                        sendLongMessage(source, pr.resultBlock);
-                                    }
-                                });
-                            } else {
-                                String cleanResponse = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
-                                if (cleanResponse.isEmpty()) {
-                                    cleanResponse = I18n.tr("server.fetch_failed");
-                                }
-                                String finalClean = cleanResponse;
-                                server.execute(() -> {
-                                    String processed = AICommandExecutor.processResponse(finalClean, player);
-                                    if (!CONFIG.isStreamOutputEnabled()) {
-                                        sendLongMessage(source, processed);
-                                    } else {
-                                        // 流式模式下只显示错误信息
-                                        source.sendFeedback(() -> Text.literal("§c[AI] " + finalClean), false);
-                                    }
-                                });
-                            }
-                        }
-                        // 检查 AI 是否请求联网搜索
-                        else {
-                            String searchQuery = extractSearchQuery(response);
-                            if (searchQuery != null && CONFIG.isWebSearchEnabled()
-                                    && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty()) {
-                                server.execute(() -> {
-                                    source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false);
-                                });
+                        // 多轮工具调用循环：进度提示通过命令反馈发送
+                        boolean streamingCmd = CONFIG.isStreamOutputEnabled();
+                        ToolLoopNotifier cmdNotifier = msg -> server.execute(() ->
+                                source.sendFeedback(() -> Text.literal(stripColorCodes(msg).trim()), false));
+                        ToolLoopResult loopResult = runToolLoop(response, wasStreamed, player, server, streamingCmd, cmdNotifier);
+                        if (loopResult == null || cancelRequested) return;
 
-                                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
-                                if (searchResults != null) {
-                                    String searchContext = "以下是联网搜索「" + searchQuery + "」的结果:\n\n" + searchResults
-                                            + "\n\n请根据以上搜索结果回答玩家之前的问题。不要再使用 [SEARCH] 标签。";
-                                    String finalResponse;
-                                    if (CONFIG.isStreamOutputEnabled()) {
-                                        finalResponse = callKimiApiStreaming(searchContext, "", player, server);
-                                    } else {
-                                        finalResponse = callKimiApi(searchContext, "");
-                                    }
-                                    server.execute(() -> {
-                                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(finalResponse, player);
-                                        if (!CONFIG.isStreamOutputEnabled()) {
-                                            sendLongMessage(source, pr.fullText);
-                                        } else if (!pr.resultBlock.isEmpty()) {
-                                            sendLongMessage(source, pr.resultBlock);
-                                        }
-                                    });
-                                } else {
-                                    String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                    if (cleanResponse.isEmpty()) {
-                                        cleanResponse = I18n.tr("server.search_failed");
-                                    }
-                                    String finalClean = cleanResponse;
-                                    server.execute(() -> {
-                                        String processed = AICommandExecutor.processResponse(finalClean, player);
-                                        if (!CONFIG.isStreamOutputEnabled()) {
-                                            sendLongMessage(source, processed);
-                                        } else {
-                                            source.sendFeedback(() -> Text.literal("§c[AI] " + finalClean), false);
-                                        }
-                                    });
-                                }
-                            } else {
-                                // 不需要搜索也不需要抓取，直接处理回复
-                                String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
-                                final boolean streamedAlready = wasStreamed;
-                                server.execute(() -> {
-                                    AICommandExecutor.ProcessResult pr = AICommandExecutor.process(cleanResponse, player);
-                                    if (!streamedAlready) {
-                                        sendLongMessage(source, pr.fullText);
-                                    } else if (!pr.resultBlock.isEmpty()) {
-                                        // 流式模式下正文已显示，仅补发指令执行结果
-                                        sendLongMessage(source, pr.resultBlock);
-                                    }
-                                });
+                        final String finalClean = loopResult.finalResponse;
+                        final boolean streamedAlready = loopResult.streamedLastRound;
+                        server.execute(() -> {
+                            AICommandExecutor.ProcessResult pr = AICommandExecutor.process(finalClean, player);
+                            if (!streamedAlready) {
+                                sendLongMessage(source, pr.fullText);
+                            } else if (!pr.resultBlock.isEmpty()) {
+                                // 流式模式下正文已显示，仅补发指令执行结果
+                                sendLongMessage(source, pr.resultBlock);
                             }
-                        }
+                        });
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
                         LOGGER.error("[AI诊断] 异常链: {}", getExceptionChain(e));
@@ -1698,6 +1467,179 @@ public class HelloWorldMod implements ModInitializer {
             return query.isEmpty() ? null : query;
         }
         return null;
+    }
+
+    // ================= 多轮工具调用循环 =================
+
+    /**
+     * 进度通知回调：在工具循环各阶段（正在搜索/抓取、开始新一轮等）向对应输出通道发送提示。
+     */
+    interface ToolLoopNotifier {
+        void notify(String message);
+    }
+
+    /**
+     * 多轮工具调用循环的执行结果。
+     * finalResponse : 循环结束时最后一轮 AI 的回复（已清理联网标签，仍含 ACTION/BLUEPRINT 供最终展示）。
+     * streamedLastRound : 最后一轮是否是通过流式输出产生的（用于调用端决定是否重复发送正文）。
+     */
+    static class ToolLoopResult {
+        final String finalResponse;
+        final boolean streamedLastRound;
+        ToolLoopResult(String finalResponse, boolean streamedLastRound) {
+            this.finalResponse = finalResponse;
+            this.streamedLastRound = streamedLastRound;
+        }
+    }
+
+    /**
+     * 运行多轮工具调用循环（agentic loop）。
+     *
+     * 每一轮：检查当前 AI 回复里是否请求了工具（FETCH / SEARCH / ACTION / BLUEPRINT）。
+     * - 若请求了工具且尚未达到 max_tool_rounds 上限：执行工具，把执行结果作为一段反馈文本回喂给 AI，
+     *   再次调用 AI 得到下一轮回复，轮数 +1，继续循环。
+     * - 若没有请求工具，或已达到上限：结束循环，返回最后一轮回复。
+     *
+     * max_tool_rounds = 0 时不进入循环，直接返回首轮回复（等价于旧的单层行为，联网工具仍走首轮里的一次处理）。
+     * 中间轮次调用 AI 时不再携带截图（base64 恒为空）。
+     *
+     * @param initialResponse 首轮 AI 回复
+     * @param initiallyStreamed 首轮是否为流式产生
+     * @param player 玩家
+     * @param server 服务器
+     * @param streaming 是否使用流式输出
+     * @param notifier 进度提示回调（可为 null）
+     * @return 循环结果；若中途被取消返回 null
+     */
+    private ToolLoopResult runToolLoop(String initialResponse, boolean initiallyStreamed,
+                                       ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
+                                       boolean streaming, ToolLoopNotifier notifier) throws Exception {
+        String response = initialResponse;
+        boolean streamedLastRound = initiallyStreamed;
+        int maxRounds = CONFIG.getMaxToolRounds();
+
+        // round 从 1 开始计数已执行的工具轮数
+        int round = 0;
+        while (true) {
+            if (cancelRequested) return null;
+
+            // 达到上限（maxRounds=0 时立刻退出循环，不执行任何工具回喂）后，
+            // 若本轮仍请求了工具，则只做最终展示处理（联网标签会被清理，游戏操作在调用端统一执行）。
+            boolean canDoMoreRounds = maxRounds > 0 && round < maxRounds;
+
+            // 检测本轮请求了哪种工具
+            String fetchUrl = extractFetchUrl(response);
+            String searchQuery = extractSearchQuery(response);
+            boolean webSearchAvailable = searchQuery != null && CONFIG.isWebSearchEnabled()
+                    && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty();
+            boolean hasGameAction = AICommandExecutor.containsGameActionTags(response);
+
+            boolean requestedTool = fetchUrl != null || webSearchAvailable || hasGameAction;
+
+            if (!requestedTool || !canDoMoreRounds) {
+                // 没有可执行的工具，或已达上限：清理联网标签后结束
+                response = stripWebTags(response);
+                return new ToolLoopResult(response, streamedLastRound);
+            }
+
+            // 组装本轮工具执行的反馈文本，回喂给 AI
+            StringBuilder feedback = new StringBuilder();
+
+            // 1) 抓取网页（优先于搜索，保持与旧逻辑一致）
+            if (fetchUrl != null) {
+                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.fetching"));
+                server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false));
+                String pageContent = webFetchService.fetch(fetchUrl);
+                if (cancelRequested) return null;
+                if (pageContent != null) {
+                    if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
+                    feedback.append("以下是网页 ").append(fetchUrl).append(" 的内容:\n\n")
+                            .append(pageContent).append("\n\n");
+                } else {
+                    feedback.append(I18n.tr("server.fetch_failed")).append("\n\n");
+                }
+            } else if (webSearchAvailable) {
+                // 2) 联网搜索
+                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.searching"));
+                server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false));
+                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
+                if (cancelRequested) return null;
+                if (searchResults != null) {
+                    if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.search_done") + "\n\n");
+                    feedback.append("以下是联网搜索「").append(searchQuery).append("」的结果:\n\n")
+                            .append(searchResults).append("\n\n");
+                } else {
+                    feedback.append(I18n.tr("server.search_failed")).append("\n\n");
+                }
+            }
+
+            // 3) 执行游戏操作（ACTION / BLUEPRINT），把执行结果回喂给 AI
+            if (hasGameAction) {
+                final String[] resultHolder = new String[1];
+                final String actionResponse = response;
+                // 方块放置需在主线程执行
+                java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                server.execute(() -> {
+                    try {
+                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player);
+                        resultHolder[0] = pr.resultBlock;
+                    } catch (Exception e) {
+                        LOGGER.error("多轮循环中执行游戏操作失败", e);
+                        resultHolder[0] = I18n.tr("cmd.action.failed", e.getMessage());
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+                try {
+                    latch.await();
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+                if (cancelRequested) return null;
+                String actionResult = resultHolder[0];
+                if (actionResult != null && !actionResult.isEmpty()) {
+                    feedback.append(I18n.tr("server.toolloop.action_result")).append("\n")
+                            .append(stripColorCodes(actionResult)).append("\n\n");
+                }
+            }
+
+            // 进入下一轮：把反馈回喂给 AI
+            round++;
+            boolean lastAllowedRound = !(maxRounds > 0 && round < maxRounds);
+            String reprompt = feedback.toString().trim()
+                    + "\n\n" + I18n.tr("server.toolloop.continue_hint");
+            if (lastAllowedRound) {
+                reprompt += "\n" + I18n.tr("server.toolloop.limit_hint");
+            }
+
+            if (notifier != null) {
+                notifier.notify("\n§7" + I18n.tr("server.toolloop.round", round, maxRounds) + "\n\n");
+            }
+
+            // 中间轮次不携带截图
+            if (streaming) {
+                response = callKimiApiStreaming(reprompt, "", player, server);
+                streamedLastRound = true;
+            } else {
+                response = callKimiApi(reprompt, "");
+                streamedLastRound = false;
+            }
+        }
+    }
+
+    /** 清理联网工具标签（FETCH / SEARCH），保留 ACTION / BLUEPRINT 供最终展示。 */
+    private static String stripWebTags(String response) {
+        if (response == null) return "";
+        String r = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
+        r = r.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+        return r;
+    }
+
+    /** 去掉 Minecraft 颜色代码（§x），使回喂给 AI 的文本干净。 */
+    private static String stripColorCodes(String text) {
+        if (text == null) return "";
+        return text.replaceAll("§[0-9a-fk-or]", "");
     }
 
     /**
