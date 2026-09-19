@@ -50,7 +50,33 @@ public class AICommandExecutor {
      * 当 [BLUEPRINT] 标签因 token 截断未闭合时，也会尝试解析已有部分。
      */
     public static String processResponse(String aiResponse, ServerPlayerEntity player) {
-        if (player == null) return aiResponse;
+        ProcessResult r = process(aiResponse, player);
+        return r.fullText;
+    }
+
+    /**
+     * 执行结果承载对象。
+     * cleanText  : 移除所有指令标签后的纯文本正文。
+     * resultBlock: 指令执行结果块（含结果头 + 每条结果），无指令时为空字符串。
+     * fullText   : cleanText 与 resultBlock 拼接后的完整文本。
+     */
+    public static class ProcessResult {
+        public final String cleanText;
+        public final String resultBlock;
+        public final String fullText;
+        ProcessResult(String cleanText, String resultBlock, String fullText) {
+            this.cleanText = cleanText;
+            this.resultBlock = resultBlock;
+            this.fullText = fullText;
+        }
+    }
+
+    /**
+     * 解析并执行 AI 回复中的指令，返回拆分好的结果。
+     * 流式模式下正文已实时显示，只需补发 {@link ProcessResult#resultBlock}，避免正文重复。
+     */
+    public static ProcessResult process(String aiResponse, ServerPlayerEntity player) {
+        if (player == null) return new ProcessResult(aiResponse, "", aiResponse);
 
         ServerWorld world = player.getServerWorld();
         List<String> results = new ArrayList<>();
@@ -112,18 +138,21 @@ public class AICommandExecutor {
             cleanResponse = BLUEPRINT_UNCLOSED_PATTERN.matcher(cleanResponse).replaceAll("").trim();
         }
 
-        // 如果有执行结果，附加到回复末尾
+        // 如果有执行结果，组装结果块
         if (!results.isEmpty()) {
-            StringBuilder sb = new StringBuilder(cleanResponse);
-            if (!cleanResponse.isEmpty()) sb.append("\n");
-            sb.append(I18n.tr("cmd.result.header"));
+            StringBuilder resultSb = new StringBuilder(I18n.tr("cmd.result.header"));
             for (String r : results) {
-                sb.append("\n").append(r);
+                resultSb.append("\n").append(r);
             }
-            return sb.toString();
+            String resultBlock = resultSb.toString();
+
+            StringBuilder full = new StringBuilder(cleanResponse);
+            if (!cleanResponse.isEmpty()) full.append("\n");
+            full.append(resultBlock);
+            return new ProcessResult(cleanResponse, resultBlock, full.toString());
         }
 
-        return cleanResponse;
+        return new ProcessResult(cleanResponse, "", cleanResponse);
     }
 
     /**
@@ -229,6 +258,7 @@ public class AICommandExecutor {
             case "teleport" -> executeTeleport(json, player);
             case "summon" -> executeSummon(json, player, world);
             case "clear_area" -> executeClearArea(json, player, world);
+            case "find_player" -> executeFindPlayer(json, player);
             case "execute_command" -> executeMinecraftCommand(json, player);
             default -> I18n.tr("cmd.action.unknown_type_arg", type);
         };
@@ -445,6 +475,52 @@ public class AICommandExecutor {
             entityType.spawn(world, pos, net.minecraft.entity.SpawnReason.COMMAND);
         }
         return I18n.tr("cmd.summon.done", formatPos(pos), count, entityName);
+    }
+
+    // ========== 查询玩家位置 ==========
+    private static String executeFindPlayer(String json, ServerPlayerEntity player) {
+        String targetName = extractJsonString(json, "player");
+
+        // 未指定玩家名，或指定为自己 → 返回当前玩家位置
+        if (targetName == null || targetName.isBlank()
+                || targetName.equalsIgnoreCase(player.getName().getString())) {
+            BlockPos self = player.getBlockPos();
+            return I18n.tr("cmd.findplayer.self",
+                    self.getX(), self.getY(), self.getZ(),
+                    dimensionName(player.getServerWorld()));
+        }
+
+        // 在服务器所有在线玩家中查找目标（不区分大小写）
+        ServerPlayerEntity target = null;
+        for (ServerPlayerEntity p : player.getServer().getPlayerManager().getPlayerList()) {
+            if (p.getName().getString().equalsIgnoreCase(targetName)) {
+                target = p;
+                break;
+            }
+        }
+
+        if (target == null) {
+            return I18n.tr("cmd.findplayer.not_found", targetName);
+        }
+
+        BlockPos pos = target.getBlockPos();
+        return I18n.tr("cmd.findplayer.found",
+                target.getName().getString(),
+                pos.getX(), pos.getY(), pos.getZ(),
+                dimensionName(target.getServerWorld()));
+    }
+
+    /**
+     * 返回维度的友好名称（主世界/下界/末地或原始 ID）。
+     */
+    private static String dimensionName(ServerWorld world) {
+        String id = world.getRegistryKey().getValue().toString();
+        return switch (id) {
+            case "minecraft:overworld" -> I18n.tr("cmd.dimension.overworld");
+            case "minecraft:the_nether" -> I18n.tr("cmd.dimension.nether");
+            case "minecraft:the_end" -> I18n.tr("cmd.dimension.end");
+            default -> id;
+        };
     }
 
     // ========== 执行 Minecraft 原版命令 ==========
@@ -1291,7 +1367,14 @@ public class AICommandExecutor {
              + "[ACTION]{\"type\":\"teleport\",\"x\":X坐标,\"y\":Y坐标,\"z\":Z坐标}[/ACTION]\n\n"
              + "9. 生成实体:\n"
              + "[ACTION]{\"type\":\"summon\",\"entity\":\"实体ID\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离,\"count\":数量}[/ACTION]\n\n"
-             + "10. 执行任意 Minecraft 命令（万能后备）:\n"
+             + "10. 查询玩家位置:\n"
+             + "[ACTION]{\"type\":\"find_player\",\"player\":\"玩家名\"}[/ACTION]\n"
+             + "说明: player 为要查询的玩家名；省略 player 或填自己的名字则返回当前玩家的位置。\n"
+             + "返回结果包含该玩家的 x/y/z 坐标和所在维度。\n"
+             + "示例:\n"
+             + "  [ACTION]{\"type\":\"find_player\",\"player\":\"Steve\"}[/ACTION]\n"
+             + "  [ACTION]{\"type\":\"find_player\"}[/ACTION]  (查询我自己)\n\n"
+             + "11. 执行任意 Minecraft 命令（万能后备）:\n"
              + "[ACTION]{\"type\":\"execute_command\",\"command\":\"/命令内容\"}[/ACTION]\n"
              + "示例:\n"
              + "  [ACTION]{\"type\":\"execute_command\",\"command\":\"/effect give @s speed 60 2\"}[/ACTION]\n"

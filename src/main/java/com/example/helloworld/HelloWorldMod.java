@@ -796,9 +796,11 @@ public class HelloWorldMod implements ModInitializer {
                                     finalResponse = callKimiApi(fetchContext, "");
                                 }
                                 server.execute(() -> {
-                                    String processed = AICommandExecutor.processResponse(finalResponse, player);
+                                    AICommandExecutor.ProcessResult pr = AICommandExecutor.process(finalResponse, player);
                                     if (!CONFIG.isStreamOutputEnabled()) {
-                                        sendLongMessage(source, processed);
+                                        sendLongMessage(source, pr.fullText);
+                                    } else if (!pr.resultBlock.isEmpty()) {
+                                        sendLongMessage(source, pr.resultBlock);
                                     }
                                 });
                             } else {
@@ -838,9 +840,11 @@ public class HelloWorldMod implements ModInitializer {
                                         finalResponse = callKimiApi(searchContext, "");
                                     }
                                     server.execute(() -> {
-                                        String processed = AICommandExecutor.processResponse(finalResponse, player);
+                                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(finalResponse, player);
                                         if (!CONFIG.isStreamOutputEnabled()) {
-                                            sendLongMessage(source, processed);
+                                            sendLongMessage(source, pr.fullText);
+                                        } else if (!pr.resultBlock.isEmpty()) {
+                                            sendLongMessage(source, pr.resultBlock);
                                         }
                                     });
                                 } else {
@@ -863,9 +867,12 @@ public class HelloWorldMod implements ModInitializer {
                                 String cleanResponse = response.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
                                 final boolean streamedAlready = wasStreamed;
                                 server.execute(() -> {
-                                    String processed = AICommandExecutor.processResponse(cleanResponse, player);
+                                    AICommandExecutor.ProcessResult pr = AICommandExecutor.process(cleanResponse, player);
                                     if (!streamedAlready) {
-                                        sendLongMessage(source, processed);
+                                        sendLongMessage(source, pr.fullText);
+                                    } else if (!pr.resultBlock.isEmpty()) {
+                                        // 流式模式下正文已显示，仅补发指令执行结果
+                                        sendLongMessage(source, pr.resultBlock);
                                     }
                                 });
                             }
