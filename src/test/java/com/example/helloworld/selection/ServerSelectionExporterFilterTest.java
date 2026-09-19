@@ -142,4 +142,80 @@ class ServerSelectionExporterFilterTest {
             assertTrue(remaining.getCompound(i).getInt("state") == 0, "只剩 oak_planks");
         }
     }
+
+    // =========================================================================
+    // 空气方块过滤：air/cave_air/void_air 作为普通方块种类，通过 ignoredBlocks 控制
+    // =========================================================================
+
+    /** 导出界面默认把这三种空气预置为忽略，对应这里的默认忽略集合。 */
+    private static Set<String> defaultAirIgnoreSet() {
+        Set<String> ignored = new HashSet<>();
+        ignored.add("air");
+        ignored.add("cave_air");
+        ignored.add("void_air");
+        return ignored;
+    }
+
+    @Test
+    void removesPlainAirWhenIgnored() {
+        // 原版 saveFromWorld 会把 air 记入结构；默认忽略集合应把它剔除
+        NbtCompound structure = buildStructure(
+                new String[]{"minecraft:air", "minecraft:stone"},
+                new int[]{0, 1, 0, 1, 0});
+
+        int removed = ServerSelectionExporter.filterStructureNbt(structure, defaultAirIgnoreSet());
+
+        assertEquals(3, removed, "应剔除 3 个 air 方块");
+        NbtList remaining = blocks(structure);
+        assertEquals(2, remaining.size());
+        for (int i = 0; i < remaining.size(); i++) {
+            assertEquals(1, remaining.getCompound(i).getInt("state"), "只剩 stone");
+        }
+    }
+
+    @Test
+    void removesAllAirVariantsWhenIgnored() {
+        // 三种空气各自作为独立 palette 条目，默认全部被剔除
+        NbtCompound structure = buildStructure(
+                new String[]{"minecraft:air", "minecraft:cave_air", "minecraft:void_air", "minecraft:stone"},
+                new int[]{0, 1, 2, 3, 0, 1, 2});
+
+        int removed = ServerSelectionExporter.filterStructureNbt(structure, defaultAirIgnoreSet());
+
+        assertEquals(6, removed, "应剔除全部 air/cave_air/void_air 方块");
+        NbtList remaining = blocks(structure);
+        assertEquals(1, remaining.size());
+        assertEquals(3, remaining.getCompound(0).getInt("state"), "只剩 stone");
+    }
+
+    @Test
+    void keepsAirWhenNotIgnored() {
+        // 用户在导出界面点 +/- 取消忽略 air 后，air 应被保留
+        NbtCompound structure = buildStructure(
+                new String[]{"minecraft:air", "minecraft:stone"},
+                new int[]{0, 1, 0});
+
+        // ignoredBlocks 为空表示不忽略任何种类（包括 air）
+        int removed = ServerSelectionExporter.filterStructureNbt(structure, Collections.emptySet());
+
+        assertEquals(0, removed);
+        assertEquals(3, blocks(structure).size(), "air 应被完整保留");
+    }
+
+    @Test
+    void keepsAirButRemovesOtherAirVariant() {
+        // 混合场景：保存 air，但仍忽略 cave_air —— 各空气种类独立控制
+        NbtCompound structure = buildStructure(
+                new String[]{"minecraft:air", "minecraft:cave_air", "minecraft:stone"},
+                new int[]{0, 1, 2, 0, 1});
+
+        int removed = ServerSelectionExporter.filterStructureNbt(structure, Set.of("cave_air"));
+
+        assertEquals(2, removed, "只剔除 cave_air");
+        NbtList remaining = blocks(structure);
+        assertEquals(3, remaining.size());
+        for (int i = 0; i < remaining.size(); i++) {
+            assertFalse(remaining.getCompound(i).getInt("state") == 1, "不应残留 cave_air");
+        }
+    }
 }

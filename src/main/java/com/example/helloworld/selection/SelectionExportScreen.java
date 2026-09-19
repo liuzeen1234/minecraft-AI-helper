@@ -40,6 +40,11 @@ public class SelectionExportScreen extends Screen {
         super(Text.literal(com.example.helloworld.I18n.tr("selection.export.title")));
         this.parent = parent;
         this.result = result;
+        // 默认不保存空气方块：将 air/cave_air/void_air 预置为忽略。
+        // 它们仍以普通条目出现在方块列表中，用户可点 +/- 切换是否保存。
+        this.ignoredBlocks.add("air");
+        this.ignoredBlocks.add("cave_air");
+        this.ignoredBlocks.add("void_air");
     }
 
     @Override

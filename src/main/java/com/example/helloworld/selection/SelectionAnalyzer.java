@@ -67,9 +67,11 @@ public class SelectionAnalyzer {
                     BlockState state = world.getBlockState(pos);
                     totalBlocks++;
 
+                    // 空气方块（air/cave_air/void_air）不再被跳过：像普通方块一样
+                    // 各自按真实 id 统计并加入 blocks 列表，用户可在导出界面用 +/- 选择是否保存。
+                    // airBlocks 仍单独累加三种空气总数，供界面统计行展示。
                     if (state.isAir()) {
                         airBlocks++;
-                        continue;
                     }
 
                     String blockId = Registries.BLOCK.getId(state.getBlock()).getPath();

@@ -70,7 +70,7 @@ class BlueprintParserTest {
     }
 
     @Test
-    void testParseV2_SkipsAirBlocks() {
+    void testParseV2_KeepsAirBlocks() {
         String blueprint = """
                 # MCBLUEPRINT v2
                 # name: air_test
@@ -85,8 +85,12 @@ class BlueprintParserTest {
         BlueprintData data = BlueprintParser.parse(blueprint);
 
         assertNotNull(data);
-        // air 应被跳过
-        assertEquals(2, data.getBlocks3d().size());
+        // air 不再被跳过：是否保存 air 由导出端决定，文件中出现 air 行即应保留，
+        // 放置时如实还原（清空目标格子）。
+        assertEquals(3, data.getBlocks3d().size());
+        boolean hasAir = data.getBlocks3d().stream()
+                .anyMatch(b -> "air".equals(b.getBlockId()));
+        assertTrue(hasAir, "解析结果应保留 air 条目");
     }
 
     @Test

@@ -296,10 +296,9 @@ public class ServerSelectionExporter {
                     BlockPos pos = new BlockPos(x, y, z);
                     BlockState state = world.getBlockState(pos);
 
-                    if (state.isAir()) continue;
-
                     String blockId = Registries.BLOCK.getId(state.getBlock()).getPath();
-                    // 跳过被忽略的方块种类
+                    // 跳过被忽略的方块种类（air/cave_air/void_air 也通过 ignored 集合控制，
+                    // 默认在导出界面被预置为忽略，故默认不写入）
                     if (ignored.contains(blockId)) continue;
 
                     // 写层头（延迟到有非空气方块时才写）

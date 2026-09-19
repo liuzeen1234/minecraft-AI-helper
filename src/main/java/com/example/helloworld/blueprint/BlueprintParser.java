@@ -226,8 +226,9 @@ public class BlueprintParser {
                 String propsStr = blockMatcher.group(5).trim();
                 Map<String, String> properties = parseV2Properties(propsStr);
 
-                // 跳过空气
-                if (blockId.equals("air")) continue;
+                // 不再无条件跳过空气：TXT 是否含 air 由导出端的忽略开关决定。
+                // 若文件里出现 air/cave_air/void_air 行，说明用户选择了保存空气，
+                // 放置时应如实还原（清空目标格子）。
 
                 // 暂存，等看下一行是否是 items:/sign_text:
                 pendingX = x;

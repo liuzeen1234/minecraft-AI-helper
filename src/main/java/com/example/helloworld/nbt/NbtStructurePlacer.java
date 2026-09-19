@@ -45,9 +45,10 @@ public class NbtStructurePlacer {
         for (NbtStructureParser.BlockEntry block : data.blocks) {
             NbtStructureParser.PaletteEntry palette = data.palette.get(block.paletteIndex);
 
-            // 跳过空气和结构空位
-            if (palette.blockName.equals("minecraft:air")
-                    || palette.blockName.equals("minecraft:structure_void")) {
+            // 只跳过结构空位（structure_void 表示"此处不改动"）。
+            // 空气方块（air/cave_air/void_air）如实放置，会清空目标格子——
+            // 是否保存 air 由导出端决定，放置端只负责还原。
+            if (palette.blockName.equals("minecraft:structure_void")) {
                 continue;
             }
 
