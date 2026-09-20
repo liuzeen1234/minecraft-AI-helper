@@ -396,6 +396,145 @@ public class ServerSelectionExporter {
                 fileName, sizeX, sizeY, sizeZ, blockCount, containerCount);
     }
 
+    /** 单次地形查询允许扫描的最大方块体积。超过则拒绝扫描，提示 AI 分多次查询。 */
+    public static final int MAX_QUERY_VOLUME = 30000;
+
+    /**
+     * 扫描选区并返回 MCBLUEPRINT v2 格式的文本（不写文件），用于把地形信息回喂给 AI。
+     *
+     * 与 {@link #exportTxt} 使用同一套逐方块扫描逻辑（方块 id + block state 属性 +
+     * 容器内容物 + 告示牌文字），但直接返回字符串而非落盘。空气方块（air/cave_air/void_air）
+     * 会被跳过以节省 token。
+     *
+     * 若区域体积超过 {@link #MAX_QUERY_VOLUME}，不进行扫描，返回一条以 "ERROR:" 开头的
+     * 提示文本，交由调用方回喂给 AI 让其缩小范围、分多次查询。
+     *
+     * @param world 服务端世界
+     * @param pos1  选区一角
+     * @param pos2  选区对角
+     * @return MCBLUEPRINT v2 文本；体积超限时返回 "ERROR: ..." 提示
+     */
+    public static String scanToText(ServerWorld world, BlockPos pos1, BlockPos pos2) {
+        BlockPos min = new BlockPos(
+                Math.min(pos1.getX(), pos2.getX()),
+                Math.min(pos1.getY(), pos2.getY()),
+                Math.min(pos1.getZ(), pos2.getZ()));
+        BlockPos max = new BlockPos(
+                Math.max(pos1.getX(), pos2.getX()),
+                Math.max(pos1.getY(), pos2.getY()),
+                Math.max(pos1.getZ(), pos2.getZ()));
+
+        int sizeX = max.getX() - min.getX() + 1;
+        int sizeY = max.getY() - min.getY() + 1;
+        int sizeZ = max.getZ() - min.getZ() + 1;
+        long volume = (long) sizeX * sizeY * sizeZ;
+
+        if (volume > MAX_QUERY_VOLUME) {
+            return "ERROR: 查询区域体积为 " + volume + " 个方块，超过单次上限 " + MAX_QUERY_VOLUME
+                    + " 个方块（尺寸 " + sizeX + "x" + sizeY + "x" + sizeZ + "）。"
+                    + "请缩小范围，或将区域拆分为多个小块，分多次调用 [QUERY_REGION] 查询。";
+        }
+
+        // 默认忽略三种空气，避免大量空位刷屏、浪费 token
+        Set<String> ignored = new HashSet<>(Arrays.asList("air", "cave_air", "void_air"));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("# MCBLUEPRINT v2\n");
+        sb.append("# name: region_query\n");
+        sb.append("# size: ").append(sizeX).append("x").append(sizeY).append("x").append(sizeZ).append("\n");
+        sb.append("# origin: absolute ").append(min.getX()).append(" ").append(min.getY()).append(" ").append(min.getZ()).append("\n");
+        sb.append("# 说明：以下为该区域现有地形，坐标为世界绝对坐标 x,y,z（已省略空气方块）\n");
+        sb.append("# 格式：x,y,z  block_id  [key=value ...]\n");
+        sb.append("\n");
+        sb.append("## BLOCKS\n");
+        sb.append("\n");
+
+        int blockCount = 0;
+
+        for (int y = min.getY(); y <= max.getY(); y++) {
+            boolean layerHeaderWritten = false;
+            for (int z = min.getZ(); z <= max.getZ(); z++) {
+                for (int x = min.getX(); x <= max.getX(); x++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    BlockState state = world.getBlockState(pos);
+
+                    String blockId = Registries.BLOCK.getId(state.getBlock()).getPath();
+                    if (ignored.contains(blockId)) continue;
+
+                    if (!layerHeaderWritten) {
+                        sb.append("# --- y=").append(y).append(" ---\n");
+                        layerHeaderWritten = true;
+                    }
+
+                    // 使用世界绝对坐标，方便 AI 后续用绝对坐标建造/操作
+                    sb.append(x).append(",").append(y).append(",").append(z);
+                    sb.append("   ").append(blockId);
+
+                    for (Property<?> prop : state.getProperties()) {
+                        sb.append("   ").append(prop.getName()).append("=").append(getPropertyValueString(state, prop));
+                    }
+                    sb.append("\n");
+                    blockCount++;
+
+                    // 容器内容物
+                    BlockEntity blockEntity = world.getBlockEntity(pos);
+                    if (blockEntity instanceof Inventory inv && inv.size() > 0) {
+                        List<String> itemLines = new ArrayList<>();
+                        for (int slot = 0; slot < inv.size(); slot++) {
+                            ItemStack stack = inv.getStack(slot);
+                            if (stack.isEmpty()) continue;
+                            String itemId = Registries.ITEM.getId(stack.getItem()).getPath();
+                            StringBuilder itemLine = new StringBuilder();
+                            itemLine.append("    slot=").append(slot);
+                            itemLine.append("  ").append(itemId);
+                            itemLine.append("  count=").append(stack.getCount());
+                            if (stack.hasNbt()) {
+                                itemLine.append("  nbt=").append(stack.getNbt().toString());
+                            }
+                            itemLines.add(itemLine.toString());
+                        }
+                        if (!itemLines.isEmpty()) {
+                            sb.append("  items:\n");
+                            for (String itemLine : itemLines) {
+                                sb.append(itemLine).append("\n");
+                            }
+                        }
+                    }
+
+                    // 告示牌文字
+                    if (blockEntity instanceof SignBlockEntity signEntity) {
+                        List<String> frontLines = getSignTextLines(signEntity.getFrontText());
+                        List<String> backLines = getSignTextLines(signEntity.getBackText());
+                        boolean hasText = false;
+                        for (String line : frontLines) if (!line.isEmpty()) { hasText = true; break; }
+                        if (!hasText) for (String line : backLines) if (!line.isEmpty()) { hasText = true; break; }
+
+                        if (hasText) {
+                            sb.append("  sign_text:\n");
+                            sb.append("    front:\n");
+                            for (String line : frontLines) {
+                                sb.append("      ").append(line).append("\n");
+                            }
+                            sb.append("    back:\n");
+                            for (String line : backLines) {
+                                sb.append("      ").append(line).append("\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (blockCount == 0) {
+            sb.append("# （该区域全为空气，没有实心方块）\n");
+        }
+
+        LOGGER.info("服务端地形查询: {}x{}x{} (体积 {}), 非空气方块 {} 个",
+                sizeX, sizeY, sizeZ, volume, blockCount);
+
+        return sb.toString();
+    }
+
     /**
      * 从 SignText 中提取 4 行纯文本内容。
      */

@@ -53,6 +53,8 @@ public class AICommandExecutor {
 
     private static final Pattern ACTION_PATTERN = Pattern.compile("\\[ACTION\\](.*?)\\[/ACTION\\]", Pattern.DOTALL);
     private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*?)\\[/BLUEPRINT\\]", Pattern.DOTALL);
+    // 地形查询工具：[QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION] 或 [QUERY_REGION]around <半径>[/QUERY_REGION]
+    private static final Pattern QUERY_REGION_PATTERN = Pattern.compile("\\[QUERY_REGION\\](.*?)\\[/QUERY_REGION\\]", Pattern.DOTALL);
     // 匹配未闭合的 [BLUEPRINT]（AI 输出被 token 截断时）
     private static final Pattern BLUEPRINT_UNCLOSED_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*)", Pattern.DOTALL);
 
@@ -719,7 +721,12 @@ public class AICommandExecutor {
              + "  向四周展开写 -N..N 的坐标；放置时会自动按最小坐标对齐，不会丢失负坐标部分。\n"
              + "- 方块ID 使用 Minecraft 英文 ID（不含 minecraft: 前缀）\n"
              + "- 属性用空格分隔的 key=value 对，如 facing=north waterlogged=false\n"
-             + "- 空气方块不需要写（自动跳过）\n"
+             + "- 空气方块的处理：如果某个格子你不想改动（保留原有地形），直接不写该坐标即可，不会覆盖。\n"
+             + "- 【清除/替换地形】你也可以主动写 air 方块来清空目标格子——写一行 \"x,y,z   air\" 会把该位置替换成空气，\n"
+             + "  即把原有的方块（泥土、石头、树木、水等）清除掉。这在需要平整地形、挖出空间、削掉挡路的山体或旧建筑时很有用。\n"
+             + "  例如要在坡地上盖房，可先用 [QUERY_REGION] 查出高出的方块坐标，再在蓝图里对这些坐标写 air 把它们削平，然后放置结构。\n"
+             + "  同理，也可用 air 在地下/山体中挖出房间或隧道的内部空腔。\n"
+             + "  注意：写 air 是破坏性操作，会清掉原方块，请只对确实需要清理的格子写 air，不要整片区域无脑填 air。\n"
              + "- 以 # 开头的行是注释，会被忽略\n"
              + "- 建议用 \"# --- 第 N 层 (y=N) ---\" 注释分隔每层，方便阅读\n\n"
              + "自定义放置原点（可选，用 \"# origin:\" 头指定，放在 name 下方）：\n"
@@ -732,7 +739,12 @@ public class AICommandExecutor {
              + "    # origin: absolute 100 64 -200\n"
              + "    也可写作 # origin: absolute x=100 y=64 z=-200\n"
              + "- 使用场景：玩家说\"在我前面20格盖\"用 relative forward=20；\n"
-             + "  说\"在坐标100 64 -200盖\"用 absolute 100 64 -200；不确定就不写 origin\n\n"
+             + "  说\"在坐标100 64 -200盖\"用 absolute 100 64 -200；不确定就不写 origin\n"
+             + "- 【推荐】只要你知道目标位置的世界绝对坐标（尤其是先用 [QUERY_REGION] 勘查过地形后），\n"
+             + "  就优先使用 \"# origin: absolute x y z\" 来建造。绝对坐标能让结构精确落在你勘查过的位置——\n"
+             + "  比如贴着真实地面、避开或衔接已有建筑、跨越坡地。这比 relative 更可控，也不会因玩家移动或转身而错位。\n"
+             + "  典型流程：[QUERY_REGION] 查地形 → 从返回的方块绝对坐标确定地面高度和落点 → \n"
+             + "  用蓝图坐标(0,0,0 为结构西北角最低层) + \"# origin: absolute\" 指定该落点，把结构精确放上去。\n\n"
              + "常用方块属性示例：\n"
              + "- 楼梯: facing=north/south/east/west  half=bottom/top  shape=straight\n"
              + "- 台阶: type=bottom/top/double  waterlogged=false\n"
@@ -1505,7 +1517,27 @@ public class AICommandExecutor {
              + "- 每次回复最多使用一个 [FETCH] 标签\n"
              + "- 网页内容会自动提供给你，你再基于网页内容回答玩家的问题或执行操作\n"
              + "- 如果玩家要求你参考某个网页来搭建建筑，先用 [FETCH] 获取网页内容，系统会把内容返回给你，然后你再根据内容生成 [BLUEPRINT] 蓝图\n"
-             + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n"
+             + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n\n"
+             + "地形查询（读取世界现有方块）：\n"
+             + "- 当你需要了解某块区域的现有地形、地面高度、已有建筑或方块分布时，使用 [QUERY_REGION]...[/QUERY_REGION] 标签查询。\n"
+             + "- 系统会扫描该区域并把其中所有非空气方块（含世界绝对坐标 x,y,z、方块 ID、block state 属性、容器物品、告示牌文字）以 MCBLUEPRINT v2 文本返回给你。\n"
+             + "- 两种写法：\n"
+             + "    1) 绝对坐标：[QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION]\n"
+             + "       两组坐标用空格分隔，每组内 x,y,z 用逗号分隔，表示区域的两个对角。\n"
+             + "       例：[QUERY_REGION]100,60,-200 120,80,-180[/QUERY_REGION]\n"
+             + "    2) 玩家周围：[QUERY_REGION]around 半径[/QUERY_REGION]\n"
+             + "       以玩家所在方块为中心，向上下、四周各扩展\"半径\"格的立方体。\n"
+             + "       例：[QUERY_REGION]around 16[/QUERY_REGION] 查询以玩家为中心 33x33x33 的区域。\n"
+             + "- 单次查询区域体积上限为 30000 个方块（长x宽x高）。若超过上限，系统不会扫描，"
+             + "而是返回一条错误提示；此时请把大区域拆分成多个小块，分多次调用 [QUERY_REGION] 逐块查询。\n"
+             + "- 建造前若不确定地形（如坡地、已有建筑、水面），先用 [QUERY_REGION] 查一下再决定放置位置和朝向。\n"
+             + "- 查询结果里的坐标是世界绝对坐标，可直接用于后续 [ACTION] 绝对坐标操作或 [BLUEPRINT] 的 \"# origin: absolute\"。\n"
+             + "- 重要：你通常不知道玩家所处的世界绝对坐标。因此当你还不知道具体坐标时，"
+             + "请优先用 [QUERY_REGION]around 半径[/QUERY_REGION] 从玩家周围开始探查——它以玩家为中心，无需你提供坐标。\n"
+             + "- 拿到 around 的查询结果后，其中每个方块都带有真实的世界绝对坐标；"
+             + "你可以据此推断玩家附近的坐标范围，再用绝对坐标写法 [QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION] 精确查询更远或更大的区域。\n"
+             + "- 典型流程：先 around 探周围地形 → 分析 → 决定建造位置 → （必要时再精查目标区域）→ 用绝对坐标生成蓝图/操作。\n"
+             + "- 每次回复最多使用一个 [QUERY_REGION] 标签。\n"
              + getForceMultiToolInstruction()
              + getLanguageInstruction();
     }
@@ -1545,6 +1577,107 @@ public class AICommandExecutor {
         } else {
             return "\n========== 语言 ==========\n\n"
                  + "请使用中文回复玩家。所有对话文字使用中文。技术标签如 [BLUEPRINT]、[ACTION]、[SEARCH]、[FETCH] 保持不变。\n";
+        }
+    }
+
+    // ================= 地形查询工具 [QUERY_REGION] =================
+
+    /**
+     * 判断 AI 回复中是否请求了地形查询工具（[QUERY_REGION]）。
+     */
+    public static boolean containsQueryRegionTag(String aiResponse) {
+        if (aiResponse == null || aiResponse.isEmpty()) return false;
+        return QUERY_REGION_PATTERN.matcher(aiResponse).find();
+    }
+
+    /**
+     * 从 AI 回复中提取第一个 [QUERY_REGION] 标签的内容（去除首尾空白）。
+     * 未找到时返回 null。
+     */
+    public static String extractQueryRegionSpec(String aiResponse) {
+        if (aiResponse == null) return null;
+        Matcher m = QUERY_REGION_PATTERN.matcher(aiResponse);
+        if (m.find()) {
+            String spec = m.group(1).trim();
+            return spec.isEmpty() ? null : spec;
+        }
+        return null;
+    }
+
+    /**
+     * 执行地形查询：解析 [QUERY_REGION] 标签内容为两个坐标点，扫描该区域并返回 txt 文本。
+     *
+     * 支持两种写法：
+     *   绝对坐标： x1,y1,z1 x2,y2,z2   （两组坐标用空格分隔，每组内用逗号分隔）
+     *   相对玩家： around &lt;半径&gt;  （以玩家所在方块为中心，向各方向扩展 半径 格的立方体）
+     *
+     * 需在服务端主线程调用（会读取世界方块）。
+     *
+     * @param spec   [QUERY_REGION] 标签内的文本
+     * @param player 发起查询的玩家（用于 around 的中心点）
+     * @param world  服务端世界
+     * @return 扫描得到的 MCBLUEPRINT v2 文本，或以 "ERROR:" 开头的错误提示（供回喂给 AI）
+     */
+    public static String executeQueryRegion(String spec, ServerPlayerEntity player, ServerWorld world) {
+        if (spec == null || spec.isBlank()) {
+            return "ERROR: [QUERY_REGION] 内容为空。用法：绝对坐标 \"x1,y1,z1 x2,y2,z2\"，或相对玩家 \"around <半径>\"。";
+        }
+
+        BlockPos[] corners = parseRegionSpec(spec, player);
+        if (corners == null) {
+            return "ERROR: 无法解析查询区域 \"" + spec + "\"。用法：绝对坐标 \"x1,y1,z1 x2,y2,z2\"，或相对玩家 \"around <半径>\"。";
+        }
+
+        return com.example.helloworld.selection.ServerSelectionExporter.scanToText(world, corners[0], corners[1]);
+    }
+
+    /**
+     * 解析 [QUERY_REGION] 标签内容为两个角坐标。无法解析时返回 null。
+     * 包级可见，便于单元测试。
+     */
+    static BlockPos[] parseRegionSpec(String spec, ServerPlayerEntity player) {
+        if (spec == null) return null;
+        String s = spec.trim();
+
+        // around <半径>：以玩家方块为中心的立方体
+        Matcher around = Pattern.compile("(?i)^around\\s+(\\d+)$").matcher(s);
+        if (around.find()) {
+            if (player == null) return null;
+            int r = Integer.parseInt(around.group(1));
+            BlockPos c = player.getBlockPos();
+            BlockPos p1 = new BlockPos(c.getX() - r, c.getY() - r, c.getZ() - r);
+            BlockPos p2 = new BlockPos(c.getX() + r, c.getY() + r, c.getZ() + r);
+            return new BlockPos[]{p1, p2};
+        }
+
+        // 绝对坐标：x1,y1,z1 x2,y2,z2  （允许多个空白分隔两组）
+        String[] groups = s.split("\\s+");
+        if (groups.length == 2) {
+            Integer[] a = parseCoordTriple(groups[0]);
+            Integer[] b = parseCoordTriple(groups[1]);
+            if (a != null && b != null) {
+                return new BlockPos[]{
+                        new BlockPos(a[0], a[1], a[2]),
+                        new BlockPos(b[0], b[1], b[2])
+                };
+            }
+        }
+
+        return null;
+    }
+
+    /** 把 "x,y,z" 解析为整数三元组，失败返回 null。 */
+    private static Integer[] parseCoordTriple(String triple) {
+        String[] parts = triple.split(",");
+        if (parts.length != 3) return null;
+        try {
+            return new Integer[]{
+                    Integer.parseInt(parts[0].trim()),
+                    Integer.parseInt(parts[1].trim()),
+                    Integer.parseInt(parts[2].trim())
+            };
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 }

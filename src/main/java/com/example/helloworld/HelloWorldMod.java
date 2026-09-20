@@ -1533,8 +1533,10 @@ public class HelloWorldMod implements ModInitializer {
             boolean webSearchAvailable = searchQuery != null && CONFIG.isWebSearchEnabled()
                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty();
             boolean hasGameAction = AICommandExecutor.containsGameActionTags(response);
+            String regionQuerySpec = AICommandExecutor.extractQueryRegionSpec(response);
 
-            boolean requestedTool = fetchUrl != null || webSearchAvailable || hasGameAction;
+            boolean requestedTool = fetchUrl != null || webSearchAvailable || hasGameAction
+                    || regionQuerySpec != null;
 
             if (!requestedTool || !canDoMoreRounds) {
                 // 没有可执行的工具，或已达上限：清理联网标签后结束
@@ -1555,8 +1557,10 @@ public class HelloWorldMod implements ModInitializer {
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
                     feedback.append("以下是网页 ").append(fetchUrl).append(" 的内容:\n\n")
                             .append(pageContent).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.fetch"), pageContent);
                 } else {
                     feedback.append(I18n.tr("server.fetch_failed")).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.fetch"), I18n.tr("server.fetch_failed"));
                 }
             } else if (webSearchAvailable) {
                 // 2) 联网搜索
@@ -1568,8 +1572,10 @@ public class HelloWorldMod implements ModInitializer {
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.search_done") + "\n\n");
                     feedback.append("以下是联网搜索「").append(searchQuery).append("」的结果:\n\n")
                             .append(searchResults).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.search"), searchResults);
                 } else {
                     feedback.append(I18n.tr("server.search_failed")).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.search"), I18n.tr("server.search_failed"));
                 }
             }
 
@@ -1601,7 +1607,38 @@ public class HelloWorldMod implements ModInitializer {
                 if (actionResult != null && !actionResult.isEmpty()) {
                     feedback.append(I18n.tr("server.toolloop.action_result")).append("\n")
                             .append(stripColorCodes(actionResult)).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.game_action"), actionResult);
                 }
+            }
+
+            // 4) 地形查询（QUERY_REGION）：在主线程扫描世界，把地形 txt 回喂给 AI
+            if (regionQuerySpec != null) {
+                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.querying_region"));
+                final String[] regionHolder = new String[1];
+                final String spec = regionQuerySpec;
+                java.util.concurrent.CountDownLatch regionLatch = new java.util.concurrent.CountDownLatch(1);
+                server.execute(() -> {
+                    try {
+                        regionHolder[0] = AICommandExecutor.executeQueryRegion(spec, player, player.getServerWorld());
+                    } catch (Exception e) {
+                        LOGGER.error("地形查询失败", e);
+                        regionHolder[0] = "ERROR: 地形查询执行失败: " + e.getMessage();
+                    } finally {
+                        regionLatch.countDown();
+                    }
+                });
+                try {
+                    regionLatch.await();
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+                if (cancelRequested) return null;
+                String regionResult = regionHolder[0];
+                if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.query_region_done") + "\n\n");
+                feedback.append("以下是你查询的区域 [").append(spec).append("] 的现有地形：\n\n")
+                        .append(regionResult).append("\n\n");
+                debugPrintToolResult(player, server, I18n.tr("debug.tool.query_region"), regionResult);
             }
 
             // 进入下一轮：把反馈回喂给 AI
@@ -1628,11 +1665,35 @@ public class HelloWorldMod implements ModInitializer {
         }
     }
 
-    /** 清理联网工具标签（FETCH / SEARCH），保留 ACTION / BLUEPRINT 供最终展示。 */
+    /**
+     * 调试用：把某次工具调用的返回值打印到玩家聊天框。
+     * 仅当 debug-menu 里的「打印工具返回值到聊天框」开关开启时才发送。
+     *
+     * @param player   接收消息的玩家
+     * @param server   服务器实例（聊天消息需在主线程发送）
+     * @param toolName 工具名（如"联网搜索""抓取网页""游戏操作"），用于标注来源
+     * @param result   工具返回值文本
+     */
+    private static void debugPrintToolResult(ServerPlayerEntity player,
+                                             net.minecraft.server.MinecraftServer server,
+                                             String toolName, String result) {
+        if (!AICommandExecutor.isPrintToolResultsToChat()) return;
+        if (result == null || result.isEmpty()) return;
+        String header = "§8[" + I18n.tr("debug.print_tool_result.prefix") + "] §7"
+                + I18n.tr("debug.print_tool_result.entry", toolName);
+        String body = "§7" + stripColorCodes(result);
+        server.execute(() -> {
+            player.sendMessage(Text.literal(header), false);
+            player.sendMessage(Text.literal(body), false);
+        });
+    }
+
+    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION），保留 ACTION / BLUEPRINT 供最终展示。 */
     private static String stripWebTags(String response) {
         if (response == null) return "";
         String r = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
         r = r.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
+        r = r.replaceAll("(?s)\\[QUERY_REGION\\].*?\\[/QUERY_REGION\\]", "").trim();
         return r;
     }
 
