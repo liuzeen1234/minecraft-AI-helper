@@ -51,6 +51,21 @@ public class AICommandExecutor {
         LOGGER.info("[调试] 强制多轮工具调用 = {}", enabled);
     }
 
+    /**
+     * 调试开关：把 AI 每轮工具调用的返回值打印到聊天框。开启后，多轮工具循环
+     * （agentic loop）里每次工具（联网搜索 / 抓取网页 / 游戏操作）产生的返回值
+     * 都会以调试文本形式发送到玩家聊天框，便于观察 AI 实际拿到了什么。
+     * 仅内存态，不写入配置文件，通过 debug-menu 切换。
+     */
+    private static volatile boolean printToolResultsToChat = false;
+
+    public static boolean isPrintToolResultsToChat() { return printToolResultsToChat; }
+
+    public static void setPrintToolResultsToChat(boolean enabled) {
+        printToolResultsToChat = enabled;
+        LOGGER.info("[调试] 打印工具返回值到聊天框 = {}", enabled);
+    }
+
     private static final Pattern ACTION_PATTERN = Pattern.compile("\\[ACTION\\](.*?)\\[/ACTION\\]", Pattern.DOTALL);
     private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*?)\\[/BLUEPRINT\\]", Pattern.DOTALL);
     // 地形查询工具：[QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION] 或 [QUERY_REGION]around <半径>[/QUERY_REGION]

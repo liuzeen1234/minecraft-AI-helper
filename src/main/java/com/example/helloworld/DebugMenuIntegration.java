@@ -44,6 +44,9 @@ public final class DebugMenuIntegration {
     /** 「强制多轮工具调用」调试开关的唯一标识。 */
     static final String FORCE_MULTI_TOOL_KEY = "helloworld:force_multi_tool";
 
+    /** 「打印工具返回值到聊天框」调试开关的唯一标识。 */
+    static final String PRINT_TOOL_RESULT_KEY = "helloworld:print_tool_result";
+
     /** 开关显示名——开。 */
     static final String TOGGLE_ON = "ON";
     /** 开关显示名——关。 */
@@ -80,6 +83,27 @@ public final class DebugMenuIntegration {
                 DebugMenuIntegration::applyForceMultiToolName
         ));
         HelloWorldMod.LOGGER.info("[debug-menu] 已注册强制多轮工具开关: {}", FORCE_MULTI_TOOL_KEY);
+
+        // 「打印工具返回值到聊天框」调试开关：开启后每轮工具调用的返回值会发到聊天框。
+        DebugMenuApi.registerOption(new DebugOptionEntry(
+                HelloWorldMod.MOD_ID,
+                PRINT_TOOL_RESULT_KEY,
+                I18n.tr("debug.print_tool_result.title"),
+                TOGGLE_OPTIONS,
+                DebugMenuIntegration::currentPrintToolResultName,
+                DebugMenuIntegration::applyPrintToolResultName
+        ));
+        HelloWorldMod.LOGGER.info("[debug-menu] 已注册打印工具返回值开关: {}", PRINT_TOOL_RESULT_KEY);
+    }
+
+    /** getter：把当前「打印工具返回值」开关状态映射为菜单显示名。 */
+    private static String currentPrintToolResultName() {
+        return AICommandExecutor.isPrintToolResultsToChat() ? TOGGLE_ON : TOGGLE_OFF;
+    }
+
+    /** setter：把菜单显示名映射回布尔并写入运行时状态。 */
+    private static void applyPrintToolResultName(String optionName) {
+        AICommandExecutor.setPrintToolResultsToChat(TOGGLE_ON.equals(optionName));
     }
 
     /** getter：把当前强制多轮工具开关状态映射为菜单显示名。 */
