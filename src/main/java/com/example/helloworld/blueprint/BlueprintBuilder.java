@@ -70,6 +70,8 @@ public class BlueprintBuilder {
         List<BlueprintData.BlockEntry3D> blocks = blueprint.getBlocks3d();
         int placedCount = 0;
         List<BlueprintData.BlockEntry3D> deferred = new ArrayList<>();
+        // 记录所有实际放置的方块位置，放置完成后统一做一次方块更新
+        List<BlockPos> placedPositions = new ArrayList<>();
 
         // 第一阶段：放置实体方块，收集附着方块
         for (BlueprintData.BlockEntry3D block : blocks) {
@@ -87,6 +89,7 @@ public class BlueprintBuilder {
             if (state != null) {
                 world.setBlockState(pos, state);
                 placedCount++;
+                placedPositions.add(pos);
                 // 写入容器物品
                 if (block.hasItems()) {
                     applyContainerItems(world, pos, block.getItems());
@@ -109,11 +112,53 @@ public class BlueprintBuilder {
             if (state != null) {
                 world.setBlockState(pos, state);
                 placedCount++;
+                placedPositions.add(pos);
             }
         }
 
+        // 第三阶段：对所有放置的方块做一次方块更新，防止非法放置（无支撑的火把/门/红石等会被清理）
+        applyBlockUpdates(world, placedPositions);
+
         LOGGER.info("V2 蓝图 '{}' 建造完成，放置 {} 个方块", blueprint.getName(), placedCount);
         return placedCount;
+    }
+
+    /**
+     * 对结构中所有放置过的方块位置执行一次方块更新。
+     *
+     * <p>放置过程使用 setBlockState 逐个写入，某些方块（火把、门、床、红石元件、
+     * 栅栏、玻璃板等）在写入时其依赖的相邻方块可能尚未就位，导致状态不正确或本应
+     * 无法放置。这里在全部方块就位后，统一向每个位置的邻居广播一次更新，让 Minecraft
+     * 重新校验：非法放置（缺少支撑）的方块会被自然移除/掉落，可连接方块会正确连接。
+     *
+     * @param world     目标世界
+     * @param positions 所有实际放置的方块位置
+     */
+    private static void applyBlockUpdates(ServerWorld world, List<BlockPos> positions) {
+        for (BlockPos pos : positions) {
+            BlockState state = world.getBlockState(pos);
+            if (state.isAir()) {
+                continue;
+            }
+
+            // 非法放置校验：调用原版 canPlaceAt，若方块在此处无法存在（如无支撑的火把、
+            // 花、地毯、门等），用原版 breakBlock 移除并掉落，与玩家破坏该方块行为一致。
+            if (!state.canPlaceAt(world, pos)) {
+                world.breakBlock(pos, true);
+                continue;
+            }
+
+            // 连接状态重算：调用原版 Block.postProcessState，内部对六个方向执行
+            // getStateForNeighborUpdate，让栅栏、玻璃板、红石线、墙等正确连接。
+            // 这与原版 StructureTemplate 放置后的处理方式一致。
+            BlockState processed = Block.postProcessState(state, world, pos);
+            if (processed != state) {
+                world.setBlockState(pos, processed, Block.NOTIFY_LISTENERS);
+            }
+
+            // 向邻居广播方块更新，触发相邻方块的 neighborUpdate 校验（原版行为）。
+            world.updateNeighbors(pos, world.getBlockState(pos).getBlock());
+        }
     }
 
     /**
@@ -251,6 +296,8 @@ public class BlueprintBuilder {
         List<char[][]> layers = blueprint.getLayers();
 
         int placedCount = 0;
+        // 记录所有实际放置的方块位置，放置完成后统一做一次方块更新
+        List<BlockPos> placedPositions = new ArrayList<>();
         // 延迟放置的附着方块
         List<DeferredBlock> deferred = new ArrayList<>();
         // 床的 head 部分位置记录（跳过放置，由 foot 自动生成）
@@ -316,6 +363,7 @@ public class BlueprintBuilder {
                         if (state != null) {
                             world.setBlockState(pos, state);
                             placedCount++;
+                            placedPositions.add(pos);
                         }
                     }
                 }
@@ -341,6 +389,7 @@ public class BlueprintBuilder {
 
             world.setBlockState(db.pos, state);
             placedCount++;
+            placedPositions.add(db.pos);
         }
 
         // 第三阶段：放置床（根据 foot 和 head 的相对位置推断 facing）
@@ -356,6 +405,7 @@ public class BlueprintBuilder {
             }
             world.setBlockState(db.pos, state);
             placedCount++;
+            placedPositions.add(db.pos);
 
             // 在 facing 方向放置 head 部分
             if (facing != null) {
@@ -366,9 +416,13 @@ public class BlueprintBuilder {
                     headState = applyProperty(headState, "facing", facing);
                     world.setBlockState(headPos, headState);
                     placedCount++;
+                    placedPositions.add(headPos);
                 }
             }
         }
+
+        // 最后：对所有放置的方块做一次方块更新，防止非法放置（无支撑的火把/门/红石等会被清理）
+        applyBlockUpdates(world, placedPositions);
 
         return placedCount;
     }
