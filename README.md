@@ -2,7 +2,7 @@
 
 > 一款把 AI 对话能力集成进 Minecraft 的 Fabric Mod。用自然语言与 AI 聊天，让它帮你建造结构、管理 NBT / 蓝图文件、导出选区，还能联网搜索信息 —— 全部在游戏内完成。
 
-[![Version](https://img.shields.io/badge/Version-1.4.0-blueviolet)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.4.1-blueviolet)](CHANGELOG.md)
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.20.4-brightgreen)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-blue)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://adoptium.net/)
@@ -37,7 +37,7 @@
 
 1. 安装 [Fabric Loader](https://fabricmc.net/)（≥ 0.15.0）
 2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `ai-builder-1.4.0.jar` 放入 `.minecraft/mods/` 目录
+3. 将 `ai-builder-1.4.1.jar` 放入 `.minecraft/mods/` 目录
 4. 启动游戏，按 `K` 打开设置或使用 `/aiconfig` 配置你的 API 密钥
 
 ---

@@ -1,6 +1,6 @@
 # AI Builder User Manual
 
-> Version 1.4.0 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.4.1 | Minecraft 1.20.4 | Fabric Mod
 
 ## Installation & Requirements
 
@@ -12,7 +12,7 @@
 | Prerequisite mod | Fabric API (required) |
 
 1. Install Fabric Loader and Fabric API.
-2. Drop `ai-builder-1.4.0.jar` into `.minecraft/mods/`.
+2. Drop `ai-builder-1.4.1.jar` into `.minecraft/mods/`.
 3. Launch the game and press `K` to open the AI Builder settings.
 
 ## First-Time Setup
@@ -239,7 +239,7 @@ A V2 block line has the format `x,y,z   block_id   [key=value ...]`. `# name:`, 
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.4.0.jar
+└── mods/ai-builder-1.4.1.jar
 ```
 
 All structure directories support subfolders at any depth.

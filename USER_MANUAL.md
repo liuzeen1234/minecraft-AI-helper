@@ -1,6 +1,6 @@
 # AI Builder 用户手册
 
-> 版本 1.4.0 | Minecraft 1.20.4 | Fabric Mod
+> 版本 1.4.1 | Minecraft 1.20.4 | Fabric Mod
 
 ## 安装与环境要求
 
@@ -12,7 +12,7 @@
 | 前置 Mod | Fabric API（必须） |
 
 1. 安装 Fabric Loader 和 Fabric API。
-2. 将 `ai-builder-1.4.0.jar` 放入 `.minecraft/mods/`。
+2. 将 `ai-builder-1.4.1.jar` 放入 `.minecraft/mods/`。
 3. 启动游戏，按 `K` 打开 AI Builder 设置。
 
 ## 首次配置
@@ -239,7 +239,7 @@ V2 的方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# 
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.4.0.jar
+└── mods/ai-builder-1.4.1.jar
 ```
 
 所有结构目录均支持任意深度的子文件夹。
