@@ -48,9 +48,8 @@
     "cmd.dimension.nether": "Nether",
     "cmd.dimension.end": "The End",
     "cmd.arg.missing_command": "§cMissing 'command' parameter",
-    "cmd.command.blacklisted": "§cSecurity restriction: /%s is not allowed",
-    "cmd.command.executed": "§aExecuted command: /%s",
-    "cmd.command.failed": "§cCommand failed: /%s - %s",
+    "cmd.command.suggested": "§eAI suggested a command: %s (filled into your chat box, review it and press Enter to send)",
+    "cmd.command.suggest_failed": "§cFailed to suggest command: %s - %s",
 
     "selection.title": "Selection Tool",
     "selection.pos1.current": "Pos1=Current",

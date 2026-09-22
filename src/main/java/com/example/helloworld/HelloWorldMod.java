@@ -68,6 +68,8 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier CHAT_SCREEN_STREAM_PACKET = new Identifier(MOD_ID, "chat_screen_stream");
     // 客户端 -> 服务端：聊天界面发送消息（带截图）
     public static final Identifier CHAT_SCREEN_MSG_WITH_IMG_PACKET = new Identifier(MOD_ID, "chat_screen_msg_img");
+    // 服务端 -> 客户端：AI 建议的原版命令，预填到聊天输入框，需玩家自行确认发送（不会自动执行）
+    public static final Identifier SUGGEST_COMMAND_PACKET = new Identifier(MOD_ID, "suggest_command");
 
     /**
      * "思考已终止" 消息的稳定哨兵值（跨端网络协议 + 客户端逻辑判断使用）。

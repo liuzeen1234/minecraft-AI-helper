@@ -133,6 +133,17 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
+        // 注册接收服务端建议的命令：只把命令预填到聊天输入框，绝不自动发送/执行，
+        // 必须由玩家自己看到内容后手动按回车确认，真正的执行和权限检查完全走原版聊天系统。
+        ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.SUGGEST_COMMAND_PACKET, (client, handler, buf, responseSender) -> {
+            String command = buf.readString();
+            client.execute(() -> {
+                if (client.player == null) return;
+                // 若当前正打开 AI 聊天界面等自定义屏幕，先关闭，避免遮挡聊天输入框
+                client.setScreen(new net.minecraft.client.gui.screen.ChatScreen(command));
+            });
+        });
+
         // 注册接收 AI 聊天界面流式增量回复
         ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.CHAT_SCREEN_STREAM_PACKET, (client, handler, buf, responseSender) -> {
             String delta = buf.readString();

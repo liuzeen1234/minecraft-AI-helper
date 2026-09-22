@@ -86,7 +86,7 @@ You can also press `K` → **AI Chat Settings** for a visual configuration. The 
 
 Press `K` → **AI Chat**, or use `/ai <message>`. The chat screen supports up to 20 messages (10 rounds) of context, up to 1024 characters of input, TXT blueprint references, clearing history, canceling requests, and incremental streaming display. The screenshot feature is off by default; when enabled, it captures a scaled game frame when you send a message.
 
-The AI can place, fill, or clear blocks, give items, spawn entities, set time/weather, teleport, and generate/place blueprints. A single fill or clear is limited to 10,000 blocks, giving is limited to 64 items, and spawning is limited to 20 entities. `execute_command` runs at permission level 2, but dangerous root commands such as server management, banning, kicking, and stopping/saving the world are rejected; do not describe it as able to run arbitrary vanilla commands.
+The AI can place, fill, or clear blocks, give items, spawn entities, set time/weather, teleport, and generate/place blueprints. A single fill or clear is limited to 10,000 blocks, giving is limited to 64 items, and spawning is limited to 20 entities. `execute_command` never executes anything automatically — the AI can only pre-fill a suggested command into your chat input box; you must review it yourself and press Enter to actually send it, and whatever permission you already have in-game is what applies. Do not describe it as able to run commands automatically or with elevated permissions.
 
 Blueprint coordinates are relative: X is east, Y is up, Z is south, and the origin is at the player's feet. Both V1 and MCBLUEPRINT v2 TXT formats can be loaded.
 

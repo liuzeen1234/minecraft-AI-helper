@@ -46,9 +46,8 @@
     "cmd.dimension.nether": "下界",
     "cmd.dimension.end": "末地",
     "cmd.arg.missing_command": "§c缺少 command 参数",
-    "cmd.command.blacklisted": "§c安全限制: 不允许执行 /%s 命令",
-    "cmd.command.executed": "§a已执行命令: /%s",
-    "cmd.command.failed": "§c命令执行失败: /%s - %s",
+    "cmd.command.suggested": "§eAI 建议了一条命令: %s（已填入聊天框，请自行确认后按回车发送）",
+    "cmd.command.suggest_failed": "§c建议命令发送失败: %s - %s",
 
     "selection.title": "选区工具",
     "selection.pos1.current": "坐标1=当前位置",
