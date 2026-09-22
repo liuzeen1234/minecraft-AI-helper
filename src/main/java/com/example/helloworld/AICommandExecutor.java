@@ -337,7 +337,6 @@ public class AICommandExecutor {
             case "give_item" -> executeGiveItem(json, player);
             case "set_time" -> executeSetTime(json, world);
             case "set_weather" -> executeSetWeather(json, world);
-            case "teleport" -> executeTeleport(json, player);
             case "summon" -> executeSummon(json, player, world);
             case "clear_area" -> executeClearArea(json, player, world);
             case "find_player" -> executeFindPlayer(json, player);
@@ -400,10 +399,6 @@ public class AICommandExecutor {
         int maxY = Math.max(from.getY(), to.getY());
         int maxZ = Math.max(from.getZ(), to.getZ());
 
-        // 安全限制：最多 10000 个方块
-        int volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-        if (volume > 10000) return I18n.tr("cmd.fill.too_large", volume);
-
         BlockState state = block.getDefaultState();
         int count = 0;
         for (int x = minX; x <= maxX; x++) {
@@ -435,9 +430,6 @@ public class AICommandExecutor {
         int maxX = Math.max(from.getX(), to.getX());
         int maxY = Math.max(from.getY(), to.getY());
         int maxZ = Math.max(from.getZ(), to.getZ());
-
-        int volume = (maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-        if (volume > 10000) return I18n.tr("cmd.clear.too_large", volume);
 
         int count = 0;
         for (int x = minX; x <= maxX; x++) {
@@ -515,27 +507,6 @@ public class AICommandExecutor {
             }
             default -> { return I18n.tr("cmd.weather.unknown", weather); }
         }
-    }
-
-    // ========== 传送 ==========
-    private static String executeTeleport(String json, ServerPlayerEntity player) {
-        // 支持绝对坐标或相对坐标
-        int absX = extractJsonInt(json, "x", Integer.MIN_VALUE);
-        int absY = extractJsonInt(json, "y", Integer.MIN_VALUE);
-        int absZ = extractJsonInt(json, "z", Integer.MIN_VALUE);
-
-        if (absX != Integer.MIN_VALUE && absY != Integer.MIN_VALUE && absZ != Integer.MIN_VALUE) {
-            player.teleport(absX + 0.5, absY, absZ + 0.5);
-            return I18n.tr("cmd.teleport.abs", absX, absY, absZ);
-        }
-
-        // 相对坐标
-        int forward = extractJsonInt(json, "forward", 0);
-        int right = extractJsonInt(json, "right", 0);
-        int up = extractJsonInt(json, "up", 0);
-        BlockPos pos = calculatePos(player, forward, right, up);
-        player.teleport(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
-        return I18n.tr("cmd.teleport.rel", formatPos(pos));
     }
 
     // ========== 生成实体 ==========
@@ -1500,26 +1471,24 @@ public class AICommandExecutor {
              + "- lower 在 y=N，upper 必须在 y=N+1，相同的 x,z 坐标\n"
              + "- 两者的 facing、hinge、open 属性必须一致\n\n"
              + "========== 单条指令（简单操作）==========\n\n"
-             + "对于简单操作（放单个方块、填充简单区域、给物品、传送等），使用 [ACTION]...[/ACTION] 标签：\n\n"
+             + "对于简单操作（放单个方块、填充简单区域、给物品等），使用 [ACTION]...[/ACTION] 标签：\n\n"
              + "1. 放置方块:\n"
              + "[ACTION]{\"type\":\"place_block\",\"block\":\"方块ID\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离}[/ACTION]\n\n"
              + "2. 批量填充方块:\n"
-             + "[ACTION]{\"type\":\"fill_blocks\",\"block\":\"方块ID\",\"forward_from\":起始前方,\"forward_to\":结束前方,\"right_from\":起始右方,\"right_to\":结束右方,\"up_from\":起始上方,\"up_to\":结束上方}[/ACTION]\n\n"
+             + "[ACTION]{\"type\":\"fill_blocks\",\"block\":\"方块ID\",\"forward_from\":起始前方,\"forward_to\":结束前方,\"right_from\":起始右方,\"right_to\":结束右方,\"up_from\":起始上方,\"up_to\":结束上方}[/ACTION]\n"
+             + "建议单次不超过约 10000 个方块，范围过大请拆分为多次调用，避免服务器卡顿。\n\n"
              + "3. 清除区域:\n"
-             + "[ACTION]{\"type\":\"clear_area\",\"forward_from\":起始前方,\"forward_to\":结束前方,\"right_from\":起始右方,\"right_to\":结束右方,\"up_from\":起始上方,\"up_to\":结束上方}[/ACTION]\n\n"
+             + "[ACTION]{\"type\":\"clear_area\",\"forward_from\":起始前方,\"forward_to\":结束前方,\"right_from\":起始右方,\"right_to\":结束右方,\"up_from\":起始上方,\"up_to\":结束上方}[/ACTION]\n"
+             + "建议单次不超过约 10000 个方块，范围过大请拆分为多次调用，避免服务器卡顿。\n\n"
              + "4. 给予物品:\n"
              + "[ACTION]{\"type\":\"give_item\",\"item\":\"物品ID\",\"count\":数量}[/ACTION]\n\n"
              + "5. 设置时间:\n"
              + "[ACTION]{\"type\":\"set_time\",\"value\":\"day/noon/night/midnight/sunrise/sunset 或数字\"}[/ACTION]\n\n"
              + "6. 设置天气:\n"
              + "[ACTION]{\"type\":\"set_weather\",\"value\":\"clear/rain/thunder\"}[/ACTION]\n\n"
-             + "7. 传送 (相对坐标):\n"
-             + "[ACTION]{\"type\":\"teleport\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离}[/ACTION]\n\n"
-             + "8. 传送 (绝对坐标):\n"
-             + "[ACTION]{\"type\":\"teleport\",\"x\":X坐标,\"y\":Y坐标,\"z\":Z坐标}[/ACTION]\n\n"
-             + "9. 生成实体:\n"
+             + "7. 生成实体:\n"
              + "[ACTION]{\"type\":\"summon\",\"entity\":\"实体ID\",\"forward\":前方距离,\"right\":右方距离,\"up\":上方距离,\"count\":数量}[/ACTION]\n\n"
-             + "10. 查询玩家位置:\n"
+             + "8. 查询玩家位置:\n"
              + "[ACTION]{\"type\":\"find_player\",\"player\":\"玩家名\"}[/ACTION]\n"
              + "说明: player 为要查询的玩家名；省略 player 或填自己的名字则返回当前玩家的位置。\n"
              + "返回结果包含该玩家的 x/y/z 坐标和所在维度。\n"
@@ -1546,7 +1515,7 @@ public class AICommandExecutor {
              + "其他规则：\n"
              + "- 可以一次执行多个操作（多个标签）\n"
              + "- 方块和物品 ID 使用 Minecraft 的英文 ID（不含 minecraft: 前缀）\n"
-             + "- fill_blocks 最多填充 10000 个方块\n"
+             + "- fill_blocks 建议单次不超过约 10000 个方块，范围过大请拆分为多次调用\n"
              + "- summon 最多生成 20 个实体\n"
              + "- 蓝图中的方块属性必须是 Minecraft 原版 block state 属性名和值\n\n"
              + "大型结构处理：\n"
@@ -1579,8 +1548,8 @@ public class AICommandExecutor {
              + "    2) 玩家周围：[QUERY_REGION]around 半径[/QUERY_REGION]\n"
              + "       以玩家所在方块为中心，向上下、四周各扩展\"半径\"格的立方体。\n"
              + "       例：[QUERY_REGION]around 16[/QUERY_REGION] 查询以玩家为中心 33x33x33 的区域。\n"
-             + "- 单次查询区域体积上限为 30000 个方块（长x宽x高）。若超过上限，系统不会扫描，"
-             + "而是返回一条错误提示；此时请把大区域拆分成多个小块，分多次调用 [QUERY_REGION] 逐块查询。\n"
+             + "- 单次查询区域体积建议不超过约 30000 个方块（长x宽x高）。范围过大会返回大量文本、"
+             + "占用较多上下文，建议把大区域拆分成多个小块，分多次调用 [QUERY_REGION] 逐块查询。\n"
              + "- 建造前若不确定地形（如坡地、已有建筑、水面），先用 [QUERY_REGION] 查一下再决定放置位置和朝向。\n"
              + "- 查询结果里的坐标是世界绝对坐标，可直接用于后续 [ACTION] 绝对坐标操作或 [BLUEPRINT] 的 \"# origin: absolute\"。\n"
              + "- 重要：你通常不知道玩家所处的世界绝对坐标。因此当你还不知道具体坐标时，"

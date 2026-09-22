@@ -396,9 +396,6 @@ public class ServerSelectionExporter {
                 fileName, sizeX, sizeY, sizeZ, blockCount, containerCount);
     }
 
-    /** 单次地形查询允许扫描的最大方块体积。超过则拒绝扫描，提示 AI 分多次查询。 */
-    public static final int MAX_QUERY_VOLUME = 30000;
-
     /**
      * 扫描选区并返回 MCBLUEPRINT v2 格式的文本（不写文件），用于把地形信息回喂给 AI。
      *
@@ -406,13 +403,13 @@ public class ServerSelectionExporter {
      * 容器内容物 + 告示牌文字），但直接返回字符串而非落盘。空气方块（air/cave_air/void_air）
      * 会被跳过以节省 token。
      *
-     * 若区域体积超过 {@link #MAX_QUERY_VOLUME}，不进行扫描，返回一条以 "ERROR:" 开头的
-     * 提示文本，交由调用方回喂给 AI 让其缩小范围、分多次查询。
+     * 区域体积没有硬性上限（由 system prompt 以软性建议约束 AI 的查询范围），
+     * 范围过大时会返回较长文本，请留意上下文占用与性能。
      *
      * @param world 服务端世界
      * @param pos1  选区一角
      * @param pos2  选区对角
-     * @return MCBLUEPRINT v2 文本；体积超限时返回 "ERROR: ..." 提示
+     * @return MCBLUEPRINT v2 文本
      */
     public static String scanToText(ServerWorld world, BlockPos pos1, BlockPos pos2) {
         BlockPos min = new BlockPos(
@@ -427,13 +424,6 @@ public class ServerSelectionExporter {
         int sizeX = max.getX() - min.getX() + 1;
         int sizeY = max.getY() - min.getY() + 1;
         int sizeZ = max.getZ() - min.getZ() + 1;
-        long volume = (long) sizeX * sizeY * sizeZ;
-
-        if (volume > MAX_QUERY_VOLUME) {
-            return "ERROR: 查询区域体积为 " + volume + " 个方块，超过单次上限 " + MAX_QUERY_VOLUME
-                    + " 个方块（尺寸 " + sizeX + "x" + sizeY + "x" + sizeZ + "）。"
-                    + "请缩小范围，或将区域拆分为多个小块，分多次调用 [QUERY_REGION] 查询。";
-        }
 
         // 默认忽略三种空气，避免大量空位刷屏、浪费 token
         Set<String> ignored = new HashSet<>(Arrays.asList("air", "cave_air", "void_air"));
@@ -530,7 +520,7 @@ public class ServerSelectionExporter {
         }
 
         LOGGER.info("服务端地形查询: {}x{}x{} (体积 {}), 非空气方块 {} 个",
-                sizeX, sizeY, sizeZ, volume, blockCount);
+                sizeX, sizeY, sizeZ, (long) sizeX * sizeY * sizeZ, blockCount);
 
         return sb.toString();
     }

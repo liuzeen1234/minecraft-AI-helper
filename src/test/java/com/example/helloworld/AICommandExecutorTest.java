@@ -212,26 +212,6 @@ class AICommandExecutorTest {
         assertEquals(1, AICommandExecutor.extractJsonInt(json, "count", 1));
     }
 
-    // ========== teleport 参数解析测试 ==========
-
-    @Test
-    void testTeleportParams_Absolute() {
-        String json = "{\"type\":\"teleport\",\"x\":100,\"y\":64,\"z\":-200}";
-        assertEquals("teleport", AICommandExecutor.extractJsonString(json, "type"));
-        assertEquals(100, AICommandExecutor.extractJsonInt(json, "x", Integer.MIN_VALUE));
-        assertEquals(64, AICommandExecutor.extractJsonInt(json, "y", Integer.MIN_VALUE));
-        assertEquals(-200, AICommandExecutor.extractJsonInt(json, "z", Integer.MIN_VALUE));
-    }
-
-    @Test
-    void testTeleportParams_Relative() {
-        String json = "{\"type\":\"teleport\",\"forward\":50,\"right\":0,\"up\":10}";
-        assertEquals("teleport", AICommandExecutor.extractJsonString(json, "type"));
-        assertEquals(50, AICommandExecutor.extractJsonInt(json, "forward", 0));
-        assertEquals(0, AICommandExecutor.extractJsonInt(json, "right", 0));
-        assertEquals(10, AICommandExecutor.extractJsonInt(json, "up", 0));
-    }
-
     // ========== summon 参数解析测试 ==========
 
     @Test
@@ -273,7 +253,6 @@ class AICommandExecutorTest {
         assertTrue(prompt.contains("give_item"));
         assertTrue(prompt.contains("set_time"));
         assertTrue(prompt.contains("set_weather"));
-        assertTrue(prompt.contains("teleport"));
         assertTrue(prompt.contains("summon"));
         assertTrue(prompt.contains("clear_area"));
         assertTrue(prompt.contains("[BLUEPRINT]"));
