@@ -22,6 +22,7 @@ public class ModConfig {
     private String tavilyApiKey;
     private boolean streamOutputEnabled;
     private int maxToolRounds;
+    private boolean vanillaCommandsEnabled;
     private String language;
     private String apiFormat;
 
@@ -36,6 +37,9 @@ public class ModConfig {
     private static final boolean DEFAULT_STREAM_OUTPUT_ENABLED = true;
     // 多轮工具调用的最大轮数：0=禁用（单层行为），N>0=最多允许 N 轮工具调用后必须给出最终答复
     private static final int DEFAULT_MAX_TOOL_ROUNDS = 3;
+    // 是否允许 AI 使用原版命令（execute_command）：关闭时 system prompt 不会出现该指令说明，
+    // AI 只能使用 mod 自带的具体功能（ACTION/BLUEPRINT 等）
+    private static final boolean DEFAULT_VANILLA_COMMANDS_ENABLED = true;
     private static final String DEFAULT_LANGUAGE = "en_us";
     // API 格式：auto（自动检测）/ openai / anthropic
     private static final String DEFAULT_API_FORMAT = "auto";
@@ -68,10 +72,11 @@ public class ModConfig {
         tavilyApiKey = props.getProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
         streamOutputEnabled = Boolean.parseBoolean(props.getProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED)));
         maxToolRounds = parseMaxToolRounds(props.getProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS)));
+        vanillaCommandsEnabled = Boolean.parseBoolean(props.getProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED)));
         language = props.getProperty("language", DEFAULT_LANGUAGE);
         apiFormat = props.getProperty("api_format", DEFAULT_API_FORMAT);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, language, apiFormat, getEffectiveApiFormat());
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, language, apiFormat, getEffectiveApiFormat());
     }
 
     /** 解析 max_tool_rounds，非法值回退默认，并 clamp 到 >=0。 */
@@ -97,6 +102,7 @@ public class ModConfig {
             props.setProperty("tavily_api_key", DEFAULT_TAVILY_API_KEY);
             props.setProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED));
             props.setProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS));
+            props.setProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED));
             props.setProperty("language", DEFAULT_LANGUAGE);
             props.setProperty("api_format", DEFAULT_API_FORMAT);
             try (OutputStream out = Files.newOutputStream(configPath)) {
@@ -162,6 +168,18 @@ public class ModConfig {
 
     public void setMaxToolRounds(int maxToolRounds) {
         this.maxToolRounds = Math.max(0, maxToolRounds);
+        save();
+    }
+
+    /**
+     * 是否允许 AI 使用原版命令（execute_command）。
+     * 关闭时，system prompt 不会包含 execute_command 相关说明，且运行时也会二次拦截，
+     * AI 只能使用 mod 自带的具体功能（放置方块、给物品、生成实体等），不能建议任何原版命令。
+     */
+    public boolean isVanillaCommandsEnabled() { return vanillaCommandsEnabled; }
+
+    public void setVanillaCommandsEnabled(boolean vanillaCommandsEnabled) {
+        this.vanillaCommandsEnabled = vanillaCommandsEnabled;
         save();
     }
 
@@ -237,6 +255,7 @@ public class ModConfig {
         props.setProperty("tavily_api_key", tavilyApiKey);
         props.setProperty("stream_output_enabled", String.valueOf(streamOutputEnabled));
         props.setProperty("max_tool_rounds", String.valueOf(maxToolRounds));
+        props.setProperty("vanilla_commands_enabled", String.valueOf(vanillaCommandsEnabled));
         props.setProperty("language", language);
         props.setProperty("api_format", apiFormat);
         try (OutputStream out = Files.newOutputStream(configPath)) {

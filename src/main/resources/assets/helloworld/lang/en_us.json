@@ -50,6 +50,7 @@
     "cmd.arg.missing_command": "§cMissing 'command' parameter",
     "cmd.command.suggested": "§eAI suggested a command: %s (filled into your chat box, review it and press Enter to send)",
     "cmd.command.suggest_failed": "§cFailed to suggest command: %s - %s",
+    "cmd.command.disabled_by_setting": "§cVanilla command suggestions are disabled in AI Permission Settings",
 
     "selection.title": "Selection Tool",
     "selection.pos1.current": "Pos1=Current",
@@ -172,6 +173,9 @@
     "settings.chat.max_tool_rounds.saved": "§aSaved: Max Tool-Call Rounds = %s",
     "settings.chat.max_tool_rounds.invalid": "§cEnter an integer \u2265 0",
     "settings.chat.api_settings": "AI API Settings",
+    "settings.chat.permission_settings": "AI Permission Settings",
+    "settings.permission.title": "AI Permission Settings",
+    "settings.permission.vanilla_commands": "Allow AI to Use Vanilla Commands: %s",
     "settings.api.title": "AI API Settings",
     "settings.api.save": "Save",
     "settings.api.validating": "§7Validating API connection...",

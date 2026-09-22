@@ -282,4 +282,25 @@ class AICommandExecutorTest {
         assertTrue(prompt.contains("[FETCH]"));
         assertTrue(prompt.contains("MCBLUEPRINT v2"));
     }
+
+    @Test
+    void testGetSystemPrompt_VanillaCommandsEnabled_ContainsExecuteCommand() {
+        String prompt = AICommandExecutor.getSystemPrompt(true);
+        assertTrue(prompt.contains("execute_command"));
+    }
+
+    @Test
+    void testGetSystemPrompt_VanillaCommandsDisabled_OmitsExecuteCommand() {
+        String prompt = AICommandExecutor.getSystemPrompt(false);
+        assertFalse(prompt.contains("execute_command"));
+        // 关闭时其他指令说明应仍然存在，不受影响
+        assertTrue(prompt.contains("place_block"));
+        assertTrue(prompt.contains("[BLUEPRINT]"));
+    }
+
+    @Test
+    void testGetSystemPrompt_NoArgDefaultsToEnabled() {
+        // 无参重载版本应等价于 getSystemPrompt(true)，保持向后兼容
+        assertEquals(AICommandExecutor.getSystemPrompt(true), AICommandExecutor.getSystemPrompt());
+    }
 }

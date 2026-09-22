@@ -1027,7 +1027,7 @@ public class HelloWorldMod implements ModInitializer {
         String currentUserMessage = buildUserMessage(escapedMessage, base64Image);
 
         // system prompt 用于告诉 AI 可用的游戏指令
-        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt());
+        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt(CONFIG.isVanillaCommandsEnabled()));
 
         // 构建 messages 数组（OpenAI 格式会自动加入 system 消息）
         String messagesArray = buildMessagesArray(currentUserMessage, systemPrompt);
@@ -1084,7 +1084,7 @@ public class HelloWorldMod implements ModInitializer {
         // 构建当前用户消息
         String currentUserMessage = buildUserMessage(escapedMessage, base64Image);
 
-        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt());
+        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt(CONFIG.isVanillaCommandsEnabled()));
 
         // 构建 messages 数组（OpenAI 格式会自动加入 system 消息）
         String messagesArray = buildMessagesArray(currentUserMessage, systemPrompt);

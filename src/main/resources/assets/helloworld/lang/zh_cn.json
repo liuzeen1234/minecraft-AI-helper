@@ -48,6 +48,7 @@
     "cmd.arg.missing_command": "§c缺少 command 参数",
     "cmd.command.suggested": "§eAI 建议了一条命令: %s（已填入聊天框，请自行确认后按回车发送）",
     "cmd.command.suggest_failed": "§c建议命令发送失败: %s - %s",
+    "cmd.command.disabled_by_setting": "§c已在 AI 权限设置中关闭原版命令建议功能",
 
     "selection.title": "选区工具",
     "selection.pos1.current": "坐标1=当前位置",
@@ -170,6 +171,9 @@
     "settings.chat.max_tool_rounds.saved": "§a已保存: 最大工具调用轮数 = %s",
     "settings.chat.max_tool_rounds.invalid": "§c请输入 ≥0 的整数",
     "settings.chat.api_settings": "AI API 设置",
+    "settings.chat.permission_settings": "AI 权限设置",
+    "settings.permission.title": "AI 权限设置",
+    "settings.permission.vanilla_commands": "允许 AI 使用原版命令: %s",
     "settings.api.title": "AI API 设置",
     "settings.api.save": "保存",
     "settings.api.validating": "§7正在验证 API 连接...",
