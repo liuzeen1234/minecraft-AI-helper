@@ -405,26 +405,29 @@ public class HelloWorldMod implements ModInitializer {
                             streamBuf.writeString(msg);
                             ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
                         });
-                        ToolLoopResult loopResult = runToolLoop(response, streamingChat, player, server, streamingChat, chatNotifier);
-                        if (loopResult == null || cancelRequested) {
+                        ToolLoopFinisher chatFinisher = outcome -> {
+                            if (outcome.cancelled || outcome.error != null) {
+                                if (outcome.error != null) {
+                                    LOGGER.error("聊天界面 AI 请求失败", outcome.error);
+                                }
+                                server.execute(() -> {
+                                    PacketByteBuf respBuf = PacketByteBufs.create();
+                                    respBuf.writeString(outcome.error != null
+                                            ? I18n.tr("server.request_failed", outcome.error.getMessage())
+                                            : THINKING_CANCELLED_SENTINEL);
+                                    ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                                });
+                                return;
+                            }
+                            // runToolLoopInternal 已经执行完最后一轮回复里的所有 AI 指令，这里直接展示
+                            String finalResponse = outcome.result.finalResponse;
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
+                                respBuf.writeString(finalResponse);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
-                            return;
-                        }
-
-                        // 执行最后一轮回复里的 AI 指令并展示
-                        String processed = AICommandExecutor.processResponse(loopResult.finalResponse, player);
-
-                        // 发送回复到客户端聊天界面
-                        String finalResponse = processed;
-                        server.execute(() -> {
-                            PacketByteBuf respBuf = PacketByteBufs.create();
-                            respBuf.writeString(finalResponse);
-                            ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
-                        });
+                        };
+                        runToolLoop(response, streamingChat, player, server, streamingChat, chatNotifier, chatFinisher);
                     } catch (Exception e) {
                         if (cancelRequested) {
                             server.execute(() -> {
@@ -539,23 +542,29 @@ public class HelloWorldMod implements ModInitializer {
                             streamBuf.writeString(msg);
                             ServerPlayNetworking.send(player, CHAT_SCREEN_STREAM_PACKET, streamBuf);
                         });
-                        ToolLoopResult loopResult = runToolLoop(response, streamingImg, player, server, streamingImg, imgNotifier);
-                        if (loopResult == null || cancelRequested) {
+                        ToolLoopFinisher imgFinisher = outcome -> {
+                            if (outcome.cancelled || outcome.error != null) {
+                                if (outcome.error != null) {
+                                    LOGGER.error("聊天界面 AI 请求失败", outcome.error);
+                                }
+                                server.execute(() -> {
+                                    PacketByteBuf respBuf = PacketByteBufs.create();
+                                    respBuf.writeString(outcome.error != null
+                                            ? I18n.tr("server.request_failed", outcome.error.getMessage())
+                                            : THINKING_CANCELLED_SENTINEL);
+                                    ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
+                                });
+                                return;
+                            }
+                            // runToolLoopInternal 已经执行完最后一轮回复里的所有 AI 指令，这里直接展示
+                            String finalResponse = outcome.result.finalResponse;
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
-                                respBuf.writeString(THINKING_CANCELLED_SENTINEL);
+                                respBuf.writeString(finalResponse);
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
-                            return;
-                        }
-
-                        String processed = AICommandExecutor.processResponse(loopResult.finalResponse, player);
-                        String finalResponse = processed;
-                        server.execute(() -> {
-                            PacketByteBuf respBuf = PacketByteBufs.create();
-                            respBuf.writeString(finalResponse);
-                            ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
-                        });
+                        };
+                        runToolLoop(response, streamingImg, player, server, streamingImg, imgNotifier, imgFinisher);
                     } catch (Exception e) {
                         if (cancelRequested) {
                             server.execute(() -> {
@@ -634,20 +643,29 @@ public class HelloWorldMod implements ModInitializer {
                         boolean streamingCmd = CONFIG.isStreamOutputEnabled();
                         ToolLoopNotifier cmdNotifier = msg -> server.execute(() ->
                                 source.sendFeedback(() -> Text.literal(stripColorCodes(msg).trim()), false));
-                        ToolLoopResult loopResult = runToolLoop(response, wasStreamed, player, server, streamingCmd, cmdNotifier);
-                        if (loopResult == null || cancelRequested) return;
-
-                        final String finalClean = loopResult.finalResponse;
-                        final boolean streamedAlready = loopResult.streamedLastRound;
-                        server.execute(() -> {
-                            AICommandExecutor.ProcessResult pr = AICommandExecutor.process(finalClean, player);
-                            if (!streamedAlready) {
-                                sendLongMessage(source, pr.fullText);
-                            } else if (!pr.resultBlock.isEmpty()) {
-                                // 流式模式下正文已显示，仅补发指令执行结果
-                                sendLongMessage(source, pr.resultBlock);
+                        ToolLoopFinisher cmdFinisher = outcome -> {
+                            if (outcome.cancelled) return;
+                            if (outcome.error != null) {
+                                LOGGER.error("调用 AI API 失败", outcome.error);
+                                LOGGER.error("[AI诊断] 异常链: {}", getExceptionChain(outcome.error));
+                                server.execute(() -> source.sendFeedback(
+                                        () -> Text.literal(I18n.tr("server.ai.request_failed", outcome.error.getMessage())), false));
+                                return;
                             }
-                        });
+                            // runToolLoopInternal 已经执行完最后一轮回复里的所有 AI 指令，这里直接展示
+                            final String fullText = outcome.result.finalResponse;
+                            final String resultBlockOnly = outcome.result.resultBlock;
+                            final boolean streamedAlready = outcome.result.streamedLastRound;
+                            server.execute(() -> {
+                                if (!streamedAlready) {
+                                    sendLongMessage(source, fullText);
+                                } else if (resultBlockOnly != null && !resultBlockOnly.isEmpty()) {
+                                    // 流式模式下正文已显示，仅补发指令执行结果
+                                    sendLongMessage(source, resultBlockOnly);
+                                }
+                            });
+                        };
+                        runToolLoop(response, wasStreamed, player, server, streamingCmd, cmdNotifier, cmdFinisher);
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
                         LOGGER.error("[AI诊断] 异常链: {}", getExceptionChain(e));
@@ -804,6 +822,29 @@ public class HelloWorldMod implements ModInitializer {
                     }
                     return 1;
                 })
+            );
+
+            // /aiconfirm <requestId> <yes|no> - 玩家点击聊天框 [是]/[否] 按钮时触发，
+            // 用于确认或拒绝 AI 使用 mod 自定义功能前弹出的操作确认请求（见 PendingActionConfirmation）。
+            dispatcher.register(CommandManager.literal("aiconfirm")
+                .then(CommandManager.argument("requestId", StringArgumentType.word())
+                    .then(CommandManager.argument("decision", StringArgumentType.word())
+                        .executes(ctx -> {
+                            ServerPlayerEntity player = ctx.getSource().getPlayer();
+                            if (player == null) return 0;
+                            String requestId = StringArgumentType.getString(ctx, "requestId");
+                            String decision = StringArgumentType.getString(ctx, "decision");
+                            boolean accepted = "yes".equalsIgnoreCase(decision);
+                            if (!accepted && !"no".equalsIgnoreCase(decision)) {
+                                ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("confirm.invalid_decision")), false);
+                                return 0;
+                            }
+                            String feedback = PendingActionConfirmation.resolve(requestId, accepted, player);
+                            ctx.getSource().sendFeedback(() -> Text.literal(feedback), false);
+                            return 1;
+                        })
+                    )
+                )
             );
         });
     }
@@ -1482,25 +1523,67 @@ public class HelloWorldMod implements ModInitializer {
 
     /**
      * 多轮工具调用循环的执行结果。
-     * finalResponse : 循环结束时最后一轮 AI 的回复（已清理联网标签，仍含 ACTION/BLUEPRINT 供最终展示）。
+     * finalResponse : 循环结束时的完整最终文本（已执行完所有 ACTION/BLUEPRINT，清理了联网标签，
+     *                  等价于 cleanText 与 resultBlock 拼接后的结果，可直接展示）。
+     * cleanText     : 纯正文部分（不含指令执行结果块）。
+     * resultBlock   : 指令执行结果块（无指令执行时为空字符串）。
      * streamedLastRound : 最后一轮是否是通过流式输出产生的（用于调用端决定是否重复发送正文）。
      */
     static class ToolLoopResult {
         final String finalResponse;
+        final String cleanText;
+        final String resultBlock;
         final boolean streamedLastRound;
         ToolLoopResult(String finalResponse, boolean streamedLastRound) {
+            this(finalResponse, finalResponse, "", streamedLastRound);
+        }
+        ToolLoopResult(String finalResponse, String cleanText, String resultBlock, boolean streamedLastRound) {
             this.finalResponse = finalResponse;
+            this.cleanText = cleanText;
+            this.resultBlock = resultBlock;
             this.streamedLastRound = streamedLastRound;
         }
     }
 
     /**
+     * 多轮工具循环的最终产出：可能是正常结果、取消，或异常。
+     * 三种输出方式统一走 {@link ToolLoopFinisher}，无论是同步结束，还是"信息获取型工具"
+     * 经玩家确认后异步续跑结束，调用方的收尾逻辑都只需要写一次。
+     */
+    static final class ToolLoopOutcome {
+        final ToolLoopResult result; // 正常结束时非 null
+        final boolean cancelled;
+        final Exception error; // 非 null 表示异步续跑过程中抛出了异常
+
+        private ToolLoopOutcome(ToolLoopResult result, boolean cancelled, Exception error) {
+            this.result = result;
+            this.cancelled = cancelled;
+            this.error = error;
+        }
+
+        static ToolLoopOutcome of(ToolLoopResult result) { return new ToolLoopOutcome(result, false, null); }
+        static ToolLoopOutcome cancelled() { return new ToolLoopOutcome(null, true, null); }
+        static ToolLoopOutcome failed(Exception e) { return new ToolLoopOutcome(null, false, e); }
+    }
+
+    /** 多轮工具循环的最终收尾回调：无论同步结束还是异步续跑结束，都通过它投递结果。 */
+    interface ToolLoopFinisher {
+        void finish(ToolLoopOutcome outcome);
+    }
+
+    /**
      * 运行多轮工具调用循环（agentic loop）。
      *
-     * 每一轮：检查当前 AI 回复里是否请求了工具（FETCH / SEARCH / ACTION / BLUEPRINT）。
+     * 每一轮：检查当前 AI 回复里是否请求了工具（FETCH / SEARCH / ACTION / BLUEPRINT / QUERY_REGION）。
      * - 若请求了工具且尚未达到 max_tool_rounds 上限：执行工具，把执行结果作为一段反馈文本回喂给 AI，
      *   再次调用 AI 得到下一轮回复，轮数 +1，继续循环。
-     * - 若没有请求工具，或已达到上限：结束循环，返回最后一轮回复。
+     * - 若没有请求工具，或已达到上限：结束循环，把最后一轮回复通过 finisher 投递。
+     *
+     * 当"执行前需确认"开关开启时：
+     * - 只读的信息获取型工具（联网搜索/抓取网页/地形查询）确认后会自动把结果回喂给 AI 并继续本次循环
+     *   （对玩家来说体验等同于原来的自动执行，只是多了一步允许/拒绝）。
+     * - 会改变游戏状态的操作型工具（ACTION/BLUEPRINT，如放置方块、建造蓝图等）确认后不会自动继续推演，
+     *   只会把执行结果单独发到聊天框，循环到此结束，是否继续对话由玩家决定。
      *
      * max_tool_rounds = 0 时不进入循环，直接返回首轮回复（等价于旧的单层行为，联网工具仍走首轮里的一次处理）。
      * 中间轮次调用 AI 时不再携带截图（base64 恒为空）。
@@ -1511,11 +1594,21 @@ public class HelloWorldMod implements ModInitializer {
      * @param server 服务器
      * @param streaming 是否使用流式输出
      * @param notifier 进度提示回调（可为 null）
-     * @return 循环结果；若中途被取消返回 null
+     * @param finisher 最终结果收尾回调（同步结束或异步确认续跑结束都会调用一次，且只调用一次）
      */
-    private ToolLoopResult runToolLoop(String initialResponse, boolean initiallyStreamed,
-                                       ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
-                                       boolean streaming, ToolLoopNotifier notifier) throws Exception {
+    private void runToolLoop(String initialResponse, boolean initiallyStreamed,
+                              ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
+                              boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+        try {
+            runToolLoopInternal(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher);
+        } catch (Exception e) {
+            finisher.finish(ToolLoopOutcome.failed(e));
+        }
+    }
+
+    private void runToolLoopInternal(String initialResponse, boolean initiallyStreamed,
+                                      ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
+                                      boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) throws Exception {
         String response = initialResponse;
         boolean streamedLastRound = initiallyStreamed;
         int maxRounds = CONFIG.getMaxToolRounds();
@@ -1523,7 +1616,7 @@ public class HelloWorldMod implements ModInitializer {
         // round 从 1 开始计数已执行的工具轮数
         int round = 0;
         while (true) {
-            if (cancelRequested) return null;
+            if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
 
             // 达到上限（maxRounds=0 时立刻退出循环，不执行任何工具回喂）后，
             // 若本轮仍请求了工具，则只做最终展示处理（联网标签会被清理，游戏操作在调用端统一执行）。
@@ -1541,9 +1634,56 @@ public class HelloWorldMod implements ModInitializer {
                     || regionQuerySpec != null;
 
             if (!requestedTool || !canDoMoreRounds) {
-                // 没有可执行的工具，或已达上限：清理联网标签后结束
-                response = stripWebTags(response);
-                return new ToolLoopResult(response, streamedLastRound);
+                // 没有可执行的工具，或已达上限：先清理联网标签（FETCH/SEARCH/QUERY_REGION），
+                // 再执行最后一轮回复里可能残留的 ACTION/BLUEPRINT（若有），然后结束循环。
+                // 这里即便触发确认，确认完成后也只是把结果展示出来，不再开启新一轮循环（已到终点）。
+                String cleanedResponse = stripWebTags(response);
+                final boolean finalStreamedLastRound = streamedLastRound;
+                if (hasGameAction) {
+                    java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                    final AICommandExecutor.ProcessResult[] prHolder = new AICommandExecutor.ProcessResult[1];
+                    server.execute(() -> {
+                        try {
+                            prHolder[0] = AICommandExecutor.process(cleanedResponse, player, toolFeedback -> {
+                                // 已到终点：确认完成后只展示"已到终点"文本本身不含指令标签，
+                                // 真正的执行结果已经在 toolFeedback 里，直接作为结果块展示。
+                                finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(
+                                        cleanedResponse.replaceAll("\\[ACTION\\].*?\\[/ACTION\\]", "").trim()
+                                                + (toolFeedback.isBlank() ? "" : "\n" + I18n.tr("cmd.result.header") + "\n" + toolFeedback.trim()),
+                                        cleanedResponse, toolFeedback, finalStreamedLastRound)));
+                            });
+                        } catch (Exception e) {
+                            LOGGER.error("多轮循环终点执行游戏操作失败", e);
+                            prHolder[0] = null;
+                        } finally {
+                            latch.countDown();
+                        }
+                    });
+                    try {
+                        latch.await();
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        finisher.finish(ToolLoopOutcome.cancelled());
+                        return;
+                    }
+                    if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                    if (prHolder[0] != null && prHolder[0].hasPendingConfirmation) {
+                        // 挂起等待确认：先把"等待确认"提示展示出来，真正的展示在上面的续跑回调里发生
+                        String pendingText = prHolder[0].resultBlock != null ? prHolder[0].resultBlock : "";
+                        finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
+                        return;
+                    }
+                    // 未触发确认（开关关闭，或本轮没有需要确认的操作）：沿用原有同步展示路径
+                    if (prHolder[0] != null) {
+                        finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(
+                                prHolder[0].fullText, prHolder[0].cleanText, prHolder[0].resultBlock, finalStreamedLastRound)));
+                    } else {
+                        finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(cleanedResponse, finalStreamedLastRound)));
+                    }
+                    return;
+                }
+                finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(cleanedResponse, streamedLastRound)));
+                return;
             }
 
             // 组装本轮工具执行的反馈文本，回喂给 AI
@@ -1551,13 +1691,36 @@ public class HelloWorldMod implements ModInitializer {
 
             // 1) 抓取网页（优先于搜索，保持与旧逻辑一致）
             if (fetchUrl != null) {
+                final String url = fetchUrl;
+                if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                    String summary = I18n.tr("confirm.summary.fetch", url);
+                    final int roundForResume = round;
+                    final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                    PendingActionConfirmation.request(player, summary, () -> {
+                        // 抓取网页 + 续跑时的 AI 调用都是网络阻塞操作，绝不能在 /aiconfirm 命令线程
+                        // （服务端主线程）上同步执行，否则会卡住整个服务器 tick。丢到独立线程异步处理。
+                        CompletableFuture.runAsync(() -> {
+                            String pageContent = webFetchService.fetch(url);
+                            String toolFeedback = pageContent != null
+                                    ? "以下是网页 " + url + " 的内容:\n\n" + pageContent + "\n\n"
+                                    : I18n.tr("server.fetch_failed") + "\n\n";
+                            debugPrintToolResult(player, server, I18n.tr("debug.tool.fetch"),
+                                    pageContent != null ? pageContent : I18n.tr("server.fetch_failed"));
+                            resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
+                                    player, server, streaming, notifier, finisher);
+                        });
+                    });
+                    String pendingText = I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
+                    finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
+                    return;
+                }
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.fetching"));
-                server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", fetchUrl)), false));
-                String pageContent = webFetchService.fetch(fetchUrl);
-                if (cancelRequested) return null;
+                server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", url)), false));
+                String pageContent = webFetchService.fetch(url);
+                if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                 if (pageContent != null) {
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
-                    feedback.append("以下是网页 ").append(fetchUrl).append(" 的内容:\n\n")
+                    feedback.append("以下是网页 ").append(url).append(" 的内容:\n\n")
                             .append(pageContent).append("\n\n");
                     debugPrintToolResult(player, server, I18n.tr("debug.tool.fetch"), pageContent);
                 } else {
@@ -1566,13 +1729,35 @@ public class HelloWorldMod implements ModInitializer {
                 }
             } else if (webSearchAvailable) {
                 // 2) 联网搜索
+                final String query = searchQuery;
+                if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                    String summary = I18n.tr("confirm.summary.web_search", query);
+                    final int roundForResume = round;
+                    final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                    PendingActionConfirmation.request(player, summary, () -> {
+                        // 联网搜索 + 续跑时的 AI 调用都是网络阻塞操作，丢到独立线程异步处理，避免卡主线程。
+                        CompletableFuture.runAsync(() -> {
+                            String searchResults = webSearchService.search(query, CONFIG.getTavilyApiKey());
+                            String toolFeedback = searchResults != null
+                                    ? "以下是联网搜索「" + query + "」的结果:\n\n" + searchResults + "\n\n"
+                                    : I18n.tr("server.search_failed") + "\n\n";
+                            debugPrintToolResult(player, server, I18n.tr("debug.tool.search"),
+                                    searchResults != null ? searchResults : I18n.tr("server.search_failed"));
+                            resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
+                                    player, server, streaming, notifier, finisher);
+                        });
+                    });
+                    String pendingText = I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
+                    finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
+                    return;
+                }
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.searching"));
-                server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", searchQuery)), false));
-                String searchResults = webSearchService.search(searchQuery, CONFIG.getTavilyApiKey());
-                if (cancelRequested) return null;
+                server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", query)), false));
+                String searchResults = webSearchService.search(query, CONFIG.getTavilyApiKey());
+                if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                 if (searchResults != null) {
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.search_done") + "\n\n");
-                    feedback.append("以下是联网搜索「").append(searchQuery).append("」的结果:\n\n")
+                    feedback.append("以下是联网搜索「").append(query).append("」的结果:\n\n")
                             .append(searchResults).append("\n\n");
                     debugPrintToolResult(player, server, I18n.tr("debug.tool.search"), searchResults);
                 } else {
@@ -1581,16 +1766,28 @@ public class HelloWorldMod implements ModInitializer {
                 }
             }
 
-            // 3) 执行游戏操作（ACTION / BLUEPRINT），把执行结果回喂给 AI
+            // 3) 执行游戏操作（ACTION / BLUEPRINT），把执行结果回喂给 AI。
+            // 这类操作会改变游戏状态。开启确认时：本轮所有需确认的操作合并成一批一次性发给玩家，
+            // 全部处理完（无论接受/拒绝）后自动把结果续跑回喂给 AI，避免漏工具、避免对话卡死。
             if (hasGameAction) {
                 final String[] resultHolder = new String[1];
+                final boolean[] pendingHolder = new boolean[1];
                 final String actionResponse = response;
+                final int roundForResume = round;
+                final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
                 // 方块放置需在主线程执行
                 java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
                 server.execute(() -> {
                     try {
-                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player);
+                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player, toolFeedback -> {
+                            // 批次内所有操作均已确认完毕：网络调用（续跑 AI）不能卡在这个回调所在的
+                            // /aiconfirm 命令线程（服务端主线程）上，切到独立线程异步处理。
+                            CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
+                                    toolFeedback, roundForResume, lastAllowedForResume,
+                                    player, server, streaming, notifier, finisher));
+                        });
                         resultHolder[0] = pr.resultBlock;
+                        pendingHolder[0] = pr.hasPendingConfirmation;
                     } catch (Exception e) {
                         LOGGER.error("多轮循环中执行游戏操作失败", e);
                         resultHolder[0] = I18n.tr("cmd.action.failed", e.getMessage());
@@ -1602,9 +1799,20 @@ public class HelloWorldMod implements ModInitializer {
                     latch.await();
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    return null;
+                    finisher.finish(ToolLoopOutcome.cancelled());
+                    return;
                 }
-                if (cancelRequested) return null;
+                if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+
+                // 有操作正在等待玩家点击 [是]/[否] 确认：必须在这里停止循环，
+                // 不能把"等待确认"这句提示当作已完成的结果继续喂给 AI 做下一步推演。
+                // 真正的续跑会在这批全部确认完毕后，由上面的回调自动触发。
+                if (pendingHolder[0]) {
+                    String pendingText = resultHolder[0] != null ? resultHolder[0] : "";
+                    finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(stripWebTags(pendingText), false)));
+                    return;
+                }
+
                 String actionResult = resultHolder[0];
                 if (actionResult != null && !actionResult.isEmpty()) {
                     feedback.append(I18n.tr("server.toolloop.action_result")).append("\n")
@@ -1613,34 +1821,83 @@ public class HelloWorldMod implements ModInitializer {
                 }
             }
 
-            // 4) 地形查询（QUERY_REGION）：在主线程扫描世界，把地形 txt 回喂给 AI
+            // 4) 地形查询（QUERY_REGION）：在主线程扫描世界，把地形 txt 回喂给 AI。
+            // 这是只读的信息获取型工具，确认后会自动把结果续跑回喂给 AI（见下方 else 分支之外的确认逻辑）。
             if (regionQuerySpec != null) {
-                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.querying_region"));
-                final String[] regionHolder = new String[1];
                 final String spec = regionQuerySpec;
-                java.util.concurrent.CountDownLatch regionLatch = new java.util.concurrent.CountDownLatch(1);
-                server.execute(() -> {
+
+                // 地形查询也是 AI 使用 mod 自定义功能，需要按同一开关确认。开启时先发确认消息挂起，
+                // 不执行查询也不继续回喂 AI，直到玩家点击 [是]/[否]；确认后自动续跑循环。
+                if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                    final boolean[] confirmedHolder = new boolean[1];
+                    final String[] summaryHolder = new String[1];
+                    final int roundForResume = round;
+                    final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                    java.util.concurrent.CountDownLatch confirmLatch = new java.util.concurrent.CountDownLatch(1);
+                    server.execute(() -> {
+                        try {
+                            String summary = I18n.tr("confirm.summary.query_region", spec);
+                            summaryHolder[0] = summary;
+                            PendingActionConfirmation.request(player, summary, () -> {
+                                // executeQueryRegion 读取世界方块，此刻在主线程（/aiconfirm 命令线程）上
+                                // 同步执行是安全且快速的；但续跑要调用 AI（网络阻塞），必须切到独立线程，
+                                // 避免卡住服务器主线程 tick。
+                                String result = AICommandExecutor.executeQueryRegion(spec, player, player.getServerWorld());
+                                String toolFeedback = "以下是你查询的区域 [" + spec + "] 的现有地形：\n\n" + result + "\n\n";
+                                debugPrintToolResult(player, server, I18n.tr("debug.tool.query_region"), result);
+                                CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
+                                        toolFeedback, roundForResume, lastAllowedForResume,
+                                        player, server, streaming, notifier, finisher));
+                            });
+                            confirmedHolder[0] = true;
+                        } catch (Exception e) {
+                            LOGGER.error("发送地形查询确认请求失败", e);
+                        } finally {
+                            confirmLatch.countDown();
+                        }
+                    });
                     try {
-                        regionHolder[0] = AICommandExecutor.executeQueryRegion(spec, player, player.getServerWorld());
-                    } catch (Exception e) {
-                        LOGGER.error("地形查询失败", e);
-                        regionHolder[0] = "ERROR: 地形查询执行失败: " + e.getMessage();
-                    } finally {
-                        regionLatch.countDown();
+                        confirmLatch.await();
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        finisher.finish(ToolLoopOutcome.cancelled());
+                        return;
                     }
-                });
-                try {
-                    regionLatch.await();
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return null;
+                    if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                    if (confirmedHolder[0]) {
+                        String pendingText = I18n.tr("confirm.pending", summaryHolder[0], PendingActionConfirmation.TIMEOUT_SECONDS);
+                        finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
+                        return;
+                    }
+                    // 发送确认请求本身失败时，跳过本次查询，避免整轮卡死
+                } else {
+                    if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.querying_region"));
+                    final String[] regionHolder = new String[1];
+                    java.util.concurrent.CountDownLatch regionLatch = new java.util.concurrent.CountDownLatch(1);
+                    server.execute(() -> {
+                        try {
+                            regionHolder[0] = AICommandExecutor.executeQueryRegion(spec, player, player.getServerWorld());
+                        } catch (Exception e) {
+                            LOGGER.error("地形查询失败", e);
+                            regionHolder[0] = "ERROR: 地形查询执行失败: " + e.getMessage();
+                        } finally {
+                            regionLatch.countDown();
+                        }
+                    });
+                    try {
+                        regionLatch.await();
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        finisher.finish(ToolLoopOutcome.cancelled());
+                        return;
+                    }
+                    if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                    String regionResult = regionHolder[0];
+                    if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.query_region_done") + "\n\n");
+                    feedback.append("以下是你查询的区域 [").append(spec).append("] 的现有地形：\n\n")
+                            .append(regionResult).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.query_region"), regionResult);
                 }
-                if (cancelRequested) return null;
-                String regionResult = regionHolder[0];
-                if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.query_region_done") + "\n\n");
-                feedback.append("以下是你查询的区域 [").append(spec).append("] 的现有地形：\n\n")
-                        .append(regionResult).append("\n\n");
-                debugPrintToolResult(player, server, I18n.tr("debug.tool.query_region"), regionResult);
             }
 
             // 进入下一轮：把反馈回喂给 AI
@@ -1664,6 +1921,41 @@ public class HelloWorldMod implements ModInitializer {
                 response = callKimiApi(reprompt, "");
                 streamedLastRound = false;
             }
+        }
+    }
+
+    /**
+     * 信息获取型工具（联网搜索/抓取网页/地形查询）经玩家确认后的续跑逻辑：
+     * 把工具结果组装成反馈文本，重新调用 AI，再递归进入 {@link #runToolLoopInternal} 处理后续可能的工具调用。
+     * 该方法运行在 /aiconfirm 命令处理线程上（服务端主线程），调用 AI 是网络阻塞操作，
+     * 但这条命令本身就是玩家主动触发的一次性操作，阻塞时长可接受（与 /ai 命令同步等待 AI 回复的体验一致）。
+     */
+    private void resumeToolLoopAfterConfirmedInfoTool(String toolFeedback, int roundBeforeResume, boolean lastAllowedRound,
+                                                        ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
+                                                        boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+        int round = roundBeforeResume + 1;
+        String reprompt = toolFeedback.trim() + "\n\n" + I18n.tr("server.toolloop.continue_hint");
+        if (lastAllowedRound) {
+            reprompt += "\n" + I18n.tr("server.toolloop.limit_hint");
+        }
+        if (notifier != null) {
+            notifier.notify("\n§7" + I18n.tr("server.toolloop.round", round, CONFIG.getMaxToolRounds()) + "\n\n");
+        }
+        try {
+            String response;
+            boolean streamedThisRound;
+            if (streaming) {
+                response = callKimiApiStreaming(reprompt, "", player, server);
+                streamedThisRound = true;
+            } else {
+                response = callKimiApi(reprompt, "");
+                streamedThisRound = false;
+            }
+            if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+            runToolLoop(response, streamedThisRound, player, server, streaming, notifier, finisher);
+        } catch (Exception e) {
+            LOGGER.error("确认后续跑多轮工具循环失败", e);
+            finisher.finish(ToolLoopOutcome.failed(e));
         }
     }
 

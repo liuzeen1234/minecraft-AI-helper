@@ -47,8 +47,21 @@ public class AiPermissionSettingsScreen extends Screen {
                 .build()
         );
 
+        // 执行前需玩家确认开关。开启后，AI 使用 mod 自定义功能（放置方块、建造蓝图、
+        // 给物品、查询等）前会先在聊天框发一条 [是]/[否] 确认消息，玩家点击"是"才会真正执行。
+        int confirmY = startY + (btnH + gap);
+        this.addDrawableChild(ButtonWidget.builder(
+                getConfirmBeforeExecuteButtonText(),
+                button -> {
+                    config.setConfirmBeforeExecuteEnabled(!config.isConfirmBeforeExecuteEnabled());
+                    button.setMessage(getConfirmBeforeExecuteButtonText());
+                })
+                .dimensions(startX, confirmY, 200, btnH)
+                .build()
+        );
+
         // 最大工具调用轮数输入框（0=禁用多轮）。标签绘制在输入框上方，输入框宽度略小以容纳保存按钮。
-        int roundsY = startY + (btnH + gap) + 10; // 上方留一点空间给标签
+        int roundsY = confirmY + (btnH + gap) + 10; // 上方留一点空间给标签
         maxRoundsLabelX = startX;
         maxRoundsLabelY = roundsY - 10;
         maxToolRoundsField = new TextFieldWidget(this.textRenderer, startX, roundsY, 150, btnH,
@@ -80,6 +93,11 @@ public class AiPermissionSettingsScreen extends Screen {
     private Text getVanillaCommandsButtonText() {
         String state = config.isVanillaCommandsEnabled() ? I18n.tr("settings.chat.on") : I18n.tr("settings.chat.off");
         return Text.literal(I18n.tr("settings.permission.vanilla_commands", state));
+    }
+
+    private Text getConfirmBeforeExecuteButtonText() {
+        String state = config.isConfirmBeforeExecuteEnabled() ? I18n.tr("settings.chat.on") : I18n.tr("settings.chat.off");
+        return Text.literal(I18n.tr("settings.permission.confirm_before_execute", state));
     }
 
     /** 解析输入框内容并保存 max_tool_rounds；非法输入给出提示且不覆盖旧值。 */

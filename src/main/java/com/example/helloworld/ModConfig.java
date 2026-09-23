@@ -23,6 +23,7 @@ public class ModConfig {
     private boolean streamOutputEnabled;
     private int maxToolRounds;
     private boolean vanillaCommandsEnabled;
+    private boolean confirmBeforeExecuteEnabled;
     private String language;
     private String apiFormat;
 
@@ -40,6 +41,9 @@ public class ModConfig {
     // 是否允许 AI 使用原版命令（execute_command）：关闭时 system prompt 不会出现该指令说明，
     // AI 只能使用 mod 自带的具体功能（ACTION/BLUEPRINT 等）
     private static final boolean DEFAULT_VANILLA_COMMANDS_ENABLED = true;
+    // 是否要求玩家在 AI 执行 mod 自定义功能（ACTION/BLUEPRINT）前先在聊天框确认：
+    // 关闭时保持原有行为（AI 决定即执行），开启后需玩家点击 [是] 才会真正执行，默认关闭以保持现有体验。
+    private static final boolean DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED = false;
     private static final String DEFAULT_LANGUAGE = "en_us";
     // API 格式：auto（自动检测）/ openai / anthropic
     private static final String DEFAULT_API_FORMAT = "auto";
@@ -73,10 +77,11 @@ public class ModConfig {
         streamOutputEnabled = Boolean.parseBoolean(props.getProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED)));
         maxToolRounds = parseMaxToolRounds(props.getProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS)));
         vanillaCommandsEnabled = Boolean.parseBoolean(props.getProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED)));
+        confirmBeforeExecuteEnabled = Boolean.parseBoolean(props.getProperty("confirm_before_execute_enabled", String.valueOf(DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED)));
         language = props.getProperty("language", DEFAULT_LANGUAGE);
         apiFormat = props.getProperty("api_format", DEFAULT_API_FORMAT);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, language, apiFormat, getEffectiveApiFormat());
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, confirmBeforeExecute={}, language={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, confirmBeforeExecuteEnabled, language, apiFormat, getEffectiveApiFormat());
     }
 
     /** 解析 max_tool_rounds，非法值回退默认，并 clamp 到 >=0。 */
@@ -103,6 +108,7 @@ public class ModConfig {
             props.setProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED));
             props.setProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS));
             props.setProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED));
+            props.setProperty("confirm_before_execute_enabled", String.valueOf(DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED));
             props.setProperty("language", DEFAULT_LANGUAGE);
             props.setProperty("api_format", DEFAULT_API_FORMAT);
             try (OutputStream out = Files.newOutputStream(configPath)) {
@@ -183,6 +189,17 @@ public class ModConfig {
         save();
     }
 
+    /**
+     * 是否要求玩家在 AI 执行 mod 自定义功能（放置方块、建造蓝图、给物品、查询等 ACTION/BLUEPRINT 操作）前，
+     * 先在聊天框点击 [是]/[否] 确认。关闭时保持原有行为（AI 决定即执行）。
+     */
+    public boolean isConfirmBeforeExecuteEnabled() { return confirmBeforeExecuteEnabled; }
+
+    public void setConfirmBeforeExecuteEnabled(boolean confirmBeforeExecuteEnabled) {
+        this.confirmBeforeExecuteEnabled = confirmBeforeExecuteEnabled;
+        save();
+    }
+
     public String getLanguage() { return language; }
 
     public void setLanguage(String language) {
@@ -256,6 +273,7 @@ public class ModConfig {
         props.setProperty("stream_output_enabled", String.valueOf(streamOutputEnabled));
         props.setProperty("max_tool_rounds", String.valueOf(maxToolRounds));
         props.setProperty("vanilla_commands_enabled", String.valueOf(vanillaCommandsEnabled));
+        props.setProperty("confirm_before_execute_enabled", String.valueOf(confirmBeforeExecuteEnabled));
         props.setProperty("language", language);
         props.setProperty("api_format", apiFormat);
         try (OutputStream out = Files.newOutputStream(configPath)) {

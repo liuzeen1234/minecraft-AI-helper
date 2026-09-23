@@ -12,7 +12,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
@@ -102,25 +101,75 @@ public class AICommandExecutor {
      * cleanText  : 移除所有指令标签后的纯文本正文。
      * resultBlock: 指令执行结果块（含结果头 + 每条结果），无指令时为空字符串。
      * fullText   : cleanText 与 resultBlock 拼接后的完整文本。
+     * hasPendingConfirmation: 本次处理中是否有操作被挂起等待玩家点击 [是]/[否] 确认。
+     *   为 true 时，调用方（多轮工具循环等）必须停止继续推演/回喂 AI，等玩家确认后再继续，
+     *   否则 AI 会基于"尚未真正发生"的挂起提示文本继续做下一步决策。
      */
     public static class ProcessResult {
         public final String cleanText;
         public final String resultBlock;
         public final String fullText;
-        ProcessResult(String cleanText, String resultBlock, String fullText) {
+        public final boolean hasPendingConfirmation;
+        ProcessResult(String cleanText, String resultBlock, String fullText, boolean hasPendingConfirmation) {
             this.cleanText = cleanText;
             this.resultBlock = resultBlock;
             this.fullText = fullText;
+            this.hasPendingConfirmation = hasPendingConfirmation;
         }
+    }
+
+    /**
+     * 收集"当前这次 process() 调用中触发确认的操作"。由 executeBlueprintMaybeConfirm /
+     * executeActionMaybeConfirm 在命中确认路径时追加一项，process() 结束时统一批量发起确认
+     * 并清理。用 ThreadLocal 是因为服务端每次请求在各自线程处理，不会跨线程污染。
+     */
+    private static final ThreadLocal<List<PendingActionConfirmation.BatchItem>> PENDING_BATCH_ITEMS =
+            ThreadLocal.withInitial(ArrayList::new);
+    /** 与 {@link #PENDING_BATCH_ITEMS} 一一对应，记录每项的摘要和最终结果，用于批次完成后拼接续跑反馈文本。 */
+    private static final ThreadLocal<List<BatchEntry>> PENDING_BATCH_ENTRIES = ThreadLocal.withInitial(ArrayList::new);
+
+    /** 批次中一项的记录：摘要 + 是否被接受 + 真实执行结果文本（拒绝/超时时为 null）。 */
+    private static final class BatchEntry {
+        final String summary;
+        boolean accepted = false;
+        String actualResult = null;
+        BatchEntry(String summary) { this.summary = summary; }
+    }
+
+    /**
+     * 登记一个需要确认才能执行的操作。真正的执行逻辑通过 {@code executor} 提供
+     * （在玩家点击"是"时才会被调用，返回真实的执行结果文本，用于回喂给 AI）。
+     */
+    private static void enqueueConfirmation(String summary, java.util.function.Supplier<String> executor) {
+        BatchEntry entry = new BatchEntry(summary);
+        PENDING_BATCH_ENTRIES.get().add(entry);
+        PENDING_BATCH_ITEMS.get().add(new PendingActionConfirmation.BatchItem(summary, () -> {
+            entry.accepted = true;
+            entry.actualResult = executor.get();
+        }));
+    }
+
+    /**
+     * 解析并执行 AI 回复中的指令，返回拆分好的结果。不支持"确认后自动续跑"，
+     * 用于展示环节（多轮工具循环之外的最终展示），等价于 {@code process(aiResponse, player, null)}。
+     */
+    public static ProcessResult process(String aiResponse, ServerPlayerEntity player) {
+        return process(aiResponse, player, null);
     }
 
     /**
      * 解析并执行 AI 回复中的指令，返回拆分好的结果。
      * 流式模式下正文已实时显示，只需补发 {@link ProcessResult#resultBlock}，避免正文重复。
+     *
+     * @param onAllConfirmed 当本次调用中有操作触发了确认挂起时，这些操作全部被玩家处理完
+     *                        （无论接受/拒绝/超时）后调用一次，参数为汇总的续跑反馈文本
+     *                        （只包含被接受并成功执行的操作结果）。可为 null（不需要续跑）。
      */
-    public static ProcessResult process(String aiResponse, ServerPlayerEntity player) {
-        if (player == null) return new ProcessResult(aiResponse, "", aiResponse);
+    public static ProcessResult process(String aiResponse, ServerPlayerEntity player, java.util.function.Consumer<String> onAllConfirmed) {
+        if (player == null) return new ProcessResult(aiResponse, "", aiResponse, false);
 
+        PENDING_BATCH_ITEMS.get().clear();
+        PENDING_BATCH_ENTRIES.get().clear();
         ServerWorld world = player.getServerWorld();
         List<String> results = new ArrayList<>();
         boolean foundBlueprint = false;
@@ -132,7 +181,7 @@ public class AICommandExecutor {
             foundBlueprint = true;
             String blueprintText = blueprintMatcher.group(1).trim();
             try {
-                String result = executeBlueprint(blueprintText, player, world);
+                String result = executeBlueprintMaybeConfirm(blueprintText, player, world);
                 results.add(result);
             } catch (Exception e) {
                 LOGGER.error("执行蓝图放置失败", e);
@@ -150,7 +199,7 @@ public class AICommandExecutor {
                 // 去掉最后一行不完整的内容（截断行）
                 blueprintText = trimLastIncompleteLine(blueprintText);
                 try {
-                    String result = executeBlueprint(blueprintText, player, world);
+                    String result = executeBlueprintMaybeConfirm(blueprintText, player, world);
                     results.add(result);
                     results.add(I18n.tr("cmd.blueprint.truncated_note"));
                 } catch (Exception e) {
@@ -165,7 +214,7 @@ public class AICommandExecutor {
         while (matcher.find()) {
             String json = matcher.group(1).trim();
             try {
-                String result = executeAction(json, player, world);
+                String result = executeActionMaybeConfirm(json, player, world);
                 results.add(result);
             } catch (Exception e) {
                 LOGGER.error("执行 AI 指令失败: {}", json, e);
@@ -181,6 +230,36 @@ public class AICommandExecutor {
             cleanResponse = BLUEPRINT_UNCLOSED_PATTERN.matcher(cleanResponse).replaceAll("").trim();
         }
 
+        List<PendingActionConfirmation.BatchItem> batchItems = PENDING_BATCH_ITEMS.get();
+        boolean pendingConfirmation = !batchItems.isEmpty();
+
+        if (pendingConfirmation) {
+            // 统一批量发起确认：本轮所有需确认的操作合并成一条消息，逐条各自 [是]/[否]。
+            // 全部处理完（无论接受/拒绝/超时）后，把被接受操作的真实执行结果拼成反馈文本回调出去，
+            // 由调用方（多轮工具循环）决定是否续跑给 AI。
+            List<BatchEntry> entries = new ArrayList<>(PENDING_BATCH_ENTRIES.get());
+            List<PendingActionConfirmation.BatchItem> itemsCopy = new ArrayList<>(batchItems);
+            PENDING_BATCH_ITEMS.remove();
+            PENDING_BATCH_ENTRIES.remove();
+
+            Runnable onBatchDone = () -> {
+                if (onAllConfirmed == null) return;
+                StringBuilder fb = new StringBuilder();
+                for (BatchEntry entry : entries) {
+                    if (entry.accepted && entry.actualResult != null) {
+                        fb.append(entry.actualResult).append("\n");
+                    } else {
+                        fb.append(I18n.tr("confirm.summary.rejected_line", entry.summary)).append("\n");
+                    }
+                }
+                onAllConfirmed.accept(fb.toString());
+            };
+            PendingActionConfirmation.requestBatch(player, itemsCopy, onBatchDone);
+        } else {
+            PENDING_BATCH_ITEMS.remove();
+            PENDING_BATCH_ENTRIES.remove();
+        }
+
         // 如果有执行结果，组装结果块
         if (!results.isEmpty()) {
             StringBuilder resultSb = new StringBuilder(I18n.tr("cmd.result.header"));
@@ -192,10 +271,10 @@ public class AICommandExecutor {
             StringBuilder full = new StringBuilder(cleanResponse);
             if (!cleanResponse.isEmpty()) full.append("\n");
             full.append(resultBlock);
-            return new ProcessResult(cleanResponse, resultBlock, full.toString());
+            return new ProcessResult(cleanResponse, resultBlock, full.toString(), pendingConfirmation);
         }
 
-        return new ProcessResult(cleanResponse, "", cleanResponse);
+        return new ProcessResult(cleanResponse, "", cleanResponse, pendingConfirmation);
     }
 
     /**
@@ -221,9 +300,10 @@ public class AICommandExecutor {
     }
 
     /**
-     * 执行蓝图放置：解析 V2 格式文本，使用 BlueprintBuilder 在玩家位置建造。
+     * 蓝图放置的确认包装：先解析出蓝图数据以生成摘要（结构名 + 方块数），
+     * 再根据"执行前需确认"开关决定直接建造，还是先发确认消息、挂起后由玩家点击 [是] 再建造。
      */
-    private static String executeBlueprint(String blueprintText, ServerPlayerEntity player, ServerWorld world) {
+    private static String executeBlueprintMaybeConfirm(String blueprintText, ServerPlayerEntity player, ServerWorld world) {
         // 确保文本以 V2 头部开始，如果 AI 没写头部则自动补上
         String text = blueprintText.stripLeading();
         if (!text.startsWith("# MCBLUEPRINT v2") && !text.startsWith("#MCBLUEPRINT v2")) {
@@ -235,6 +315,22 @@ public class AICommandExecutor {
             return I18n.tr("cmd.blueprint.parse_failed");
         }
 
+        final String finalText = text;
+        if (!HelloWorldMod.getConfig().isConfirmBeforeExecuteEnabled()) {
+            return executeBlueprint(data, finalText, player, world);
+        }
+
+        int blockCount = data.getBlocks3d() != null ? data.getBlocks3d().size() : 0;
+        String summary = I18n.tr("confirm.summary.blueprint", data.getName(), blockCount);
+        // 登记到本次 process() 的确认批次，真正执行推迟到玩家点击 [是] 且整批确认完毕之后
+        enqueueConfirmation(summary, () -> executeBlueprint(data, finalText, player, world));
+        return I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
+    }
+
+    /**
+     * 执行蓝图放置：使用 BlueprintBuilder 在玩家位置建造已解析好的蓝图数据。
+     */
+    private static String executeBlueprint(BlueprintData data, String text, ServerPlayerEntity player, ServerWorld world) {
         // 计算放置原点：若蓝图指定了自定义原点则使用之，否则默认为玩家脚下位置
         BlockPos origin = resolveOrigin(data, player);
 
@@ -324,6 +420,58 @@ public class AICommandExecutor {
             return blueprintText;
         }
         return ORIGIN_HEADER_LINE_PATTERN.matcher(blueprintText).replaceAll("");
+    }
+
+    /**
+     * ACTION 指令的确认包装：根据"执行前需确认"开关决定直接执行，还是先在聊天框
+     * 发 [是]/[否] 确认消息、挂起后由玩家点击 [是] 再真正执行 {@link #executeAction}。
+     * {@code execute_command} 本身已有"预填聊天框待玩家确认"的机制，为避免重复确认，此处不再二次拦截。
+     */
+    private static String executeActionMaybeConfirm(String json, ServerPlayerEntity player, ServerWorld world) {
+        String type = extractJsonString(json, "type");
+        if (type == null) return I18n.tr("cmd.action.unknown_type");
+
+        if (!HelloWorldMod.getConfig().isConfirmBeforeExecuteEnabled() || "execute_command".equals(type)) {
+            return executeAction(json, player, world);
+        }
+
+        String summary = buildActionSummary(type, json);
+        if (summary == null) {
+            // 未知指令类型等无需确认的情况，直接走原逻辑（会返回错误提示）
+            return executeAction(json, player, world);
+        }
+
+        // 登记到本次 process() 的确认批次，真正执行推迟到玩家点击 [是] 且整批确认完毕之后
+        enqueueConfirmation(summary, () -> executeAction(json, player, world));
+        return I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
+    }
+
+    /**
+     * 根据指令类型和参数生成给玩家展示的操作摘要（用于确认消息）。
+     * 返回 null 表示该类型不在已知摘要范围内，调用方应回退到直接执行原逻辑（由 executeAction 给出错误提示）。
+     */
+    private static String buildActionSummary(String type, String json) {
+        return switch (type) {
+            case "place_block" -> I18n.tr("confirm.summary.place_block",
+                    String.valueOf(extractJsonString(json, "block")));
+            case "fill_blocks" -> I18n.tr("confirm.summary.fill_blocks",
+                    String.valueOf(extractJsonString(json, "block")));
+            case "give_item" -> I18n.tr("confirm.summary.give_item",
+                    extractJsonInt(json, "count", 1), String.valueOf(extractJsonString(json, "item")));
+            case "set_time" -> I18n.tr("confirm.summary.set_time",
+                    String.valueOf(extractJsonString(json, "value")));
+            case "set_weather" -> I18n.tr("confirm.summary.set_weather",
+                    String.valueOf(extractJsonString(json, "value")));
+            case "summon" -> I18n.tr("confirm.summary.summon",
+                    extractJsonInt(json, "count", 1), String.valueOf(extractJsonString(json, "entity")));
+            case "clear_area" -> I18n.tr("confirm.summary.clear_area");
+            case "find_player" -> {
+                String target = extractJsonString(json, "player");
+                yield I18n.tr("confirm.summary.find_player",
+                        (target == null || target.isBlank()) ? I18n.tr("confirm.summary.find_player.self") : target);
+            }
+            default -> null;
+        };
     }
 
     private static String executeAction(String json, ServerPlayerEntity player, ServerWorld world) {
