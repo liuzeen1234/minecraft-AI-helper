@@ -2,7 +2,7 @@
 
 > 一款把 AI 对话能力集成进 Minecraft 的 Fabric Mod。用自然语言与 AI 聊天，让它帮你建造结构、管理 NBT / 蓝图文件、导出选区，还能联网搜索信息 —— 全部在游戏内完成。
 
-[![Version](https://img.shields.io/badge/Version-1.4.1-blueviolet)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.4.2-blueviolet)](CHANGELOG.md)
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.20.4-brightgreen)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-blue)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://adoptium.net/)
@@ -12,7 +12,8 @@
 
 ## 功能特性
 
-- **AI 聊天与命令建议** — `/ai <消息>` 可驱动放置/填充/清除方块、给予物品、生成实体、设置时间天气和传送。对于没有专用指令覆盖的操作，AI 只会把对应的原版命令预填到你的聊天输入框，由你自己确认后按回车发送；mod 不会以任何提升权限的方式自动执行命令。支持多轮对话记忆与可选截图分析。
+- **AI 聊天与命令建议** — `/ai <消息>` 可驱动放置/填充/清除方块、给予物品、生成实体、设置时间天气。对于没有专用指令覆盖的操作，AI 只会把对应的原版命令预填到你的聊天输入框，由你自己确认后按回车发送；mod 不会以任何提升权限的方式自动执行命令。支持多轮对话记忆、多轮工具调用与可选截图分析。
+- **AI 权限设置** — 独立的权限设置页面（`K` → AI 权限设置），可关闭"允许 AI 使用原版命令"、开启"执行前需玩家确认"（聊天框 [是]/[否] 按钮确认，超时自动取消），并设置最大工具调用轮数。
 - **AI 建造** — 用一句话让 AI 生成并放置建筑蓝图，支持相对坐标（前/右/上）与绝对坐标。
 - **统一结构浏览器** — 图形化浏览、搜索、放置或删除 `.nbt`、`.litematic` 与 `.txt` 文件，完整保留 NBT/Litematica 的方块实体数据。
 - **TXT 蓝图系统** — 支持 V1（字符网格 + 图例）与 V2（MCBLUEPRINT v2，精确坐标 + 完整方块状态）两种蓝图格式。
@@ -37,7 +38,7 @@
 
 1. 安装 [Fabric Loader](https://fabricmc.net/)（≥ 0.15.0）
 2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `ai-builder-1.4.1.jar` 放入 `.minecraft/mods/` 目录
+3. 将 `ai-builder-1.4.2.jar` 放入 `.minecraft/mods/` 目录
 4. 启动游戏，按 `K` 打开设置或使用 `/aiconfig` 配置你的 API 密钥
 
 ---
@@ -73,6 +74,7 @@
 | `/ai blueprints` | 列出所有已加载的蓝图 |
 | `/ainew` | 清空对话历史，开始新对话 |
 | `/aistop` | 终止正在进行的 AI 回复 |
+| `/aiconfirm <请求ID> <yes\|no>` | 确认或拒绝待处理的 AI 操作请求（通常通过聊天框 [是]/[否] 按钮点击触发） |
 | `/aiconfig show` | 显示当前配置 |
 | `/aiconfig reload` | 热加载配置文件 |
 | `/ainbt list` / `info` / `all` / `place` | 管理和放置 NBT / Litematica 结构；图形化浏览器通过 `K` → 加载结构打开 |
@@ -133,8 +135,8 @@
 ## 文档
 
 - **[用户手册 (USER_MANUAL.md)](USER_MANUAL.md)** — 完整功能详解、配置说明、蓝图格式与 FAQ
+- **[英文用户手册 (USER_MANUAL_EN.md)](USER_MANUAL_EN.md)**
 - **[更新日志 (CHANGELOG.md)](CHANGELOG.md)** — 版本更新记录
-- **[Modrinth 发布信息 (MODRINTH_LISTING.md)](MODRINTH_LISTING.md)** — 英文项目描述与发布清单
 
 ---
 

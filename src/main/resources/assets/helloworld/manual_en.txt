@@ -1,10 +1,10 @@
 # AI Builder User Manual
 
-> Version 1.4.1 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.4.2 | Minecraft 1.20.4 | Fabric Mod
 
 ## Installation
 
-Requires Minecraft 1.20.4, Fabric Loader 0.15.0 or later, Java 17 or later, and Fabric API. Install those dependencies, place `ai-builder-1.4.1.jar` in `.minecraft/mods/`, then start the game and press `K`.
+Requires Minecraft 1.20.4, Fabric Loader 0.15.0 or later, Java 17 or later, and Fabric API. Install those dependencies, place `ai-builder-1.4.2.jar` in `.minecraft/mods/`, then start the game and press `K`.
 
 ## Initial Setup
 
@@ -43,6 +43,7 @@ Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other key
 | `/ainew` | Clear conversation history |
 | `/aistop` | Cancel the active AI request |
 | `/aipos` | Show the current coordinates and dimension |
+| `/aiconfirm <requestId> <yes\|no>` | Confirm or reject a pending AI action request; normally triggered automatically by clicking the [Yes]/[No] chat buttons |
 
 ### Configuration commands
 
@@ -77,9 +78,17 @@ Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other key
 
 Open **AI Chat** with `K`, or use `/ai <message>`. The chat UI supports up to 20 messages (10 turns) of history, 1024-character input, TXT blueprint references, request cancellation, and incremental streaming output. Screenshot capture is disabled by default.
 
-AI can place, fill, or clear blocks; give items; summon entities; set time/weather; teleport; and create/place blueprints. A fill or clear operation is limited to 10,000 blocks, `give` to 64 items, and entity spawning to 20 entities. `execute_command` runs with permission level 2, but unsafe server-administration, moderation, and stop/save root commands are rejected; AI cannot run arbitrary vanilla commands.
+AI can place, fill, or clear blocks; give items; summon entities; set time/weather; create/place blueprints; and proactively query the terrain of a region (`[QUERY_REGION]`). A fill or clear operation is recommended to stay under about 10,000 blocks (not hard-enforced; going far beyond this may affect server performance), `give` is limited to 64 items, entity spawning to 20 entities, and a single terrain query to about 30,000 blocks in volume. `execute_command` never executes anything automatically — the AI can only pre-fill a suggested command into your chat input box; you must review it and press Enter yourself, and whatever permission you already have in-game is what applies.
 
-Blueprint coordinates are relative: X east, Y up, Z south, with the origin at player feet. V1 and MCBLUEPRINT v2 TXT blueprints are supported.
+Blueprint coordinates are relative: X east, Y up, Z south, with the origin at player feet. V1 and MCBLUEPRINT v2 TXT blueprints are supported, and blueprints support a custom placement origin (relative to facing direction, or absolute); a confirmation screen lets you edit the origin before placement.
+
+### AI Permission Settings
+
+Press `K` → **AI Permission Settings** (split out from AI Chat Settings) to control:
+
+- **Allow AI to Use Vanilla Commands** (`vanilla_commands_enabled`, on by default): when off, the AI can only use the mod's built-in features and will not suggest any vanilla commands.
+- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, the AI sends a [Yes]/[No] confirmation message in chat before using a mod-specific feature; unconfirmed requests are canceled after 60 seconds.
+- **Max tool-call rounds** (the `max_tool_rounds` setting, moved here from chat settings): caps the multi-round agentic tool-call loop.
 
 ### Unified Structure Browser
 
@@ -119,10 +128,13 @@ Configuration file: `ai-helper/config/ai-builder.properties`
 | `web_search_enabled` | `true` | Allow Tavily web search |
 | `tavily_api_key` | empty | Tavily API key |
 | `stream_output_enabled` | `true` | Incrementally show AI responses |
+| `max_tool_rounds` | `3` | Max rounds for the multi-round tool-call loop; 0 disables multi-round tool calls |
+| `vanilla_commands_enabled` | `true` | Whether the AI is allowed to use vanilla commands (`execute_command`) |
+| `confirm_before_execute_enabled` | `false` | Whether the player must confirm in chat before the AI executes a mod-specific action |
 | `language` | `en_us` | `zh_cn` or `en_us` |
 | `api_format` | `auto` | `auto`, `openai`, or `anthropic` |
 
-**AI Chat Settings** controls the four Boolean settings. The API settings screen edits the endpoint, key, model, and Tavily key. Run `/aiconfig reload` after manual edits. Change language through `K` → **Mod Language**; the next client startup resets it to the current Minecraft language.
+**AI Chat Settings** controls the screenshot, context, web-search, and streaming toggles. **AI Permission Settings** controls the vanilla-commands toggle, confirm-before-execute toggle, and max tool-call rounds. The API settings screen edits the endpoint, key, model, and Tavily key. Run `/aiconfig reload` after manual edits. Change language through `K` → **Mod Language**; the next client startup resets it to the current Minecraft language.
 
 ## Blueprint Format
 
@@ -226,7 +238,7 @@ A V2 block line is `x,y,z   block_id   [key=value ...]`. `# name:`, `# size:`, a
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.4.1.jar
+└── mods/ai-builder-1.4.2.jar
 ```
 
 All structure directories support arbitrarily nested folders.
