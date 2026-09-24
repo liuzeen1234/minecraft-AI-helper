@@ -1,8 +1,8 @@
-# RAG 知识库实施计划（未实施）
+# RAG 知识库实施计划（已实施）
 
-> 状态（2026-09-15、AI Builder 1.4.0）：**代码实现 0%**。本文件是待确认的设计计划，不是当前 Mod 功能说明。
+> 状态（2026-09-25 更新）：**代码已实现**。本文件原为设计计划，现补充实施结果说明；下方各章节的设计描述与实际代码基本一致（除个别命名差异见文末更新记录），仍可作为机制参考文档使用。
 >
-> 当前发布版没有 `KnowledgeDoc`、`KnowledgeBase`、`[KNOWLEDGE]` 标签处理、`rag.*` 配置、`ModPaths.getKnowledgeDir()`、`ai-helper/knowledge/` 目录或默认知识库资源释放逻辑。AI 目前仍使用代码内置的提示词与既有 `[SEARCH]` / `[FETCH]` 流程。
+> 当前代码已包含 `KnowledgeBase`（`src/main/java/com/example/helloworld/KnowledgeBase.java`）、`AICommandExecutor` 中的 `[KNOWLEDGE]` 标签说明与目录生成（`getKnowledgeBaseSection()`）、`HelloWorldMod` 中的标签解析与两阶段回填逻辑（`extractKnowledgeDocNames()` 及工具轮询处理）、`ModConfig` 中的 `rag_enabled`/`rag_max_docs`/`rag_max_chars` 配置项，以及内置英文知识库资源 `src/main/resources/assets/helloworld/knowledge/basic_info_en/`。AI 可在 `[SEARCH]` / `[FETCH]` 之外，通过 `[KNOWLEDGE]` 标签查阅这些本地文档。
 >
 > 目标 MC 版本为 **Java 1.20.4**，与 Mod 运行版本一致。`参考文件.txt` 是候选资料来源，不能代表已实现功能或可直接再分发的资源。
 
@@ -73,7 +73,7 @@ summary: 单向传递信号、可设延迟、可锁定。
 
 `summary` 与 `keywords` 用于目录展示，正文只在 AI 点名后注入。仓库现有的 `rag_plan/rag_resources/` 不等于此目标目录，也不会被自动复制到运行目录。
 
-## 四、预期代码改动（未实施）
+## 四、代码改动（已实施）
 
 ### 新增
 
@@ -88,12 +88,12 @@ summary: 单向传递信号、可设延迟、可锁定。
 - `HelloWorldMod`：解析 `[KNOWLEDGE]`，读取正文并发起第二轮请求；
 - `ModConfig`：加入 RAG 开关和注入上限。
 
-拟议配置：
+实际配置项（`ai-builder.properties`，属性名使用下划线命名，与 `ModConfig` 一致）：
 
 ```properties
-rag.enabled=true
-rag.maxDocs=8
-rag.maxChars=20000
+rag_enabled=true
+rag_max_docs=8
+rag_max_chars=20000
 ```
 
 根据项目工作流，**修改 `ai-builder.properties` 前必须先取得用户确认**。
@@ -120,17 +120,21 @@ rag.maxChars=20000
 | 阶段 | 状态 |
 |---|---|
 | 0. 调研现状与既有搜索/抓取链路 | 已完成（调研） |
-| 1. 编写/迁移默认知识库文档 | 未开始 |
-| 2. `getKnowledgeDir()` 与首次释放 | 未开始 |
-| 3. `KnowledgeDoc` 与 `KnowledgeBase` | 未开始 |
-| 4. Prompt 与 `[KNOWLEDGE]` 两阶段接入 | 未开始 |
-| 5. RAG 配置 | 未开始，需先确认 properties 改动 |
-| 6. JUnit/Mockito 测试与构建验证 | 未开始 |
-| 7. 更新用户文档 | 未开始 |
+| 1. 编写/迁移默认知识库文档 | 已完成（英文版 `basic_info_en/`；中文版仅作规划底稿，见第二点五节） |
+| 2. 首次释放逻辑（`KnowledgeBase.ensureDefaultDocsReleased()`） | 已完成 |
+| 3. `KnowledgeBase`（含文档解析、目录生成、按名检索） | 已完成（未单独拆出 `KnowledgeDoc` 类，逻辑内聚在 `KnowledgeBase` 内） |
+| 4. Prompt 与 `[KNOWLEDGE]` 两阶段接入 | 已完成（`AICommandExecutor.getKnowledgeBaseSection()` + `HelloWorldMod` 中的解析/回填/二次请求） |
+| 5. RAG 配置（`rag_enabled`/`rag_max_docs`/`rag_max_chars`） | 已完成 |
+| 6. JUnit/Mockito 测试与构建验证 | 已完成（`KnowledgeBaseTest.java`、`AICommandExecutorTest.java` 均含相关用例） |
+| 7. 更新用户文档 | 待确认：`USER_MANUAL.md`/`USER_MANUAL_EN.md` 是否已同步说明知识库功能，需单独核实 |
 
-## 七、已知局限（待实施时验证）
+## 七、已知局限（实施后仍需关注）
 
 1. 两阶段请求会增加建筑/红石问题的耗时与 API 成本。
-2. 需要验证取消、超时和流式输出对第二轮请求同样有效。
+2. 取消、超时和流式输出在第二轮请求中的表现建议在实际使用中持续观察。
 3. 纯 AI 选择可能漏选资料，需依靠清晰的标题、关键词和摘要降低风险。
-4. 蓝图范例可能占用大量上下文，必须由注入上限控制。
+4. 蓝图范例可能占用大量上下文，已由 `rag_max_docs`/`rag_max_chars` 注入上限控制，但上限具体取值是否合适仍可根据实际 token 消耗调整。
+
+## 八、更新记录
+
+- 2026-09-25：文档状态由"未实施/0%"更新为"已实施"，修正配置项命名（设计稿 `rag.*` 点号命名 → 实际 `rag_*` 下划线命名），并根据代码现状更新第六、七节。原设计描述（第二至五节）与实际实现基本一致，保留作为机制说明，未逐句改写。
