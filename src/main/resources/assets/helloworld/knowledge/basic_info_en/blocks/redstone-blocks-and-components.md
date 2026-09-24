@@ -2,8 +2,8 @@
 title: Redstone Blocks and Components (Block of Redstone, Pressure Plates, Repeater, Observer, Comparator)
 version: 1.20.4
 category: Blocks
-keywords: [block of redstone, pressure plate, redstone repeater, observer, redstone comparator]
-summary: Traits and mechanics of the block of redstone, pressure plates, redstone repeaters, observers, and redstone comparators.
+keywords: [block of redstone, pressure plate, redstone repeater, observer, redstone comparator, container signal strength, comparator formula, fullness]
+summary: Traits and mechanics of the block of redstone, pressure plates, redstone repeaters, observers, redstone comparators, and the precise container fill-level signal formula.
 source: Chinese Minecraft Wiki (Fandom mirror); content paraphrased, condensed, and translated for this reference doc rather than reproduced verbatim.
 ---
 
@@ -80,3 +80,13 @@ A redstone comparator is a component that can hold, compare, subtract, or read s
 - A redstone comparator accepts signals from its back and its sides (left and right). Side inputs can only come from a block of redstone (Java Edition only), redstone dust, a repeater, an observer (Java Edition only), a lightning rod (Java Edition only), or another comparator. The comparator's front is its output.
 - A signal passing through a redstone comparator takes 1 redstone tick (2 game ticks, or 0.1 seconds ignoring lag), regardless of whether the input comes from the back or the side. A redstone comparator typically won't react to an input change lasting only 1 tick — for example, a single-tick pulse generator feeding a side input is treated as always having no signal, while feeding the back input is treated as staying on.
 - A redstone comparator has four main uses: holding a signal strength, comparing signal strengths, subtracting signal strengths, and reading a block's state (most commonly, a container's fill level).
+
+### Container Fill-Level Formula (Precise)
+
+When a comparator faces the back of a container block (chest, barrel, hopper, dispenser, dropper, furnace, brewing stand, shulker box, composter, chiseled bookshelf, etc.), it reads that container's fill level as a signal strength:
+
+- **Empty container → signal 0.** Otherwise: `signal = 1 + floor(14 × average_fullness)`, where `average_fullness` is computed by taking, for every slot in the inventory, `(item count in that slot) / (that item's max stack size)`, summing across all slots, and dividing by the total number of slots (empty slots count as 0 toward the sum but still count toward the total slot count).
+- This means signal strength is **not** simply "items ÷ some fixed number" — it depends on how full each occupied slot is relative to that item's own max stack size (64 for most items, 16 for e.g. eggs/signs, 1 for e.g. buckets/tools). A container holding a few non-stackable items (max stack 1) can already read close to full.
+- **Precise 1-item counters**: a hopper (5 slots) with 4 slots filled with a non-stackable item (max stack 1, permanently full) and only the 5th slot used to hold the item being counted will output signal 15 once that 5th slot has even 1 item, since the other 4 slots are always at 100% fullness — a common trick for exact single-item detection.
+- Composters use their layer count (0–8) directly as a simplified version of this fullness reading; chiseled bookshelves use "occupied slots ÷ 6" in the same formula (no per-item stack ratio, since each slot holds exactly one book-type item).
+- Jukeboxes and note blocks are special cases: they don't use the fullness formula — a jukebox outputs a fixed signal per inserted disc, and a note block outputs its current pitch (1–25), not a fullness ratio.

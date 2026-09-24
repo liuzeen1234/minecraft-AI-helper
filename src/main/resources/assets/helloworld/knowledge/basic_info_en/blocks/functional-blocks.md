@@ -2,7 +2,7 @@
 title: Functional Blocks (Crafting Table, Furnace, Chest, Brewing, Enchanting, Beacon, Hopper, Note Block, etc.)
 version: 1.20.4
 category: Blocks
-keywords: [crafting table, furnace, chest, shulker box, enchanting table, beacon, hopper, dispenser, note block, composter]
+keywords: [crafting table, furnace, chest, shulker box, enchanting table, beacon, hopper, dispenser, note block, composter, note block instrument]
 summary: Appearance and traits of the core functional blocks used in survival gameplay - crafting, smelting, storage, enchanting, brewing, redstone, and note blocks.
 ---
 
@@ -104,7 +104,26 @@ summary: Appearance and traits of the core functional blocks used in survival ga
 
 ### Note Block
 - Appearance: a wooden resonance box with a sound hole on top.
-- Traits: hardness 0.8, fastest with an axe; plays a note when activated by redstone or right-clicked; pitch (2+ octaves) is determined by the block placed above it, which also determines the instrument; can be tuned (right-click cycles through 25 pitches); produces no sound if a solid/opaque block sits above it.
+- Traits: hardness 0.8, fastest with an axe; plays a note when activated by redstone, right-clicked, or hit; the **instrument sound is determined by the block placed directly below it** (not above); pitch is determined by the block placed directly above it only in the sense that there must be an air block above for any sound to play at all — right-clicking the note block itself cycles its pitch (25 settings total, 2 octaves, F#–F#); produces no sound if a solid/opaque block sits directly above it.
+- Instrument-by-block-below reference (partial list, most common builder blocks):
+  - Harp (default piano tone): dirt, grass block, stone, or no block below (air).
+  - Bass drum: stone, cobblestone, stone-type blocks, netherrack, stone pressure plate.
+  - Snare drum: sand, gravel, concrete powder.
+  - Clicks and sticks: glass, sea lantern.
+  - Bass guitar: any wood planks, logs, wooden slabs, wooden doors.
+  - Bell: block of gold.
+  - Chime: packed ice.
+  - Flute: clay block.
+  - Guitar: any color of wool.
+  - Xylophone: bone block.
+  - Vibraphone (iron xylophone): block of iron.
+  - Cow bell: soul sand.
+  - Didgeridoo: pumpkin.
+  - Bit (8-bit tone): block of emerald.
+  - Banjo: hay bale.
+  - Pling (electric piano-like): glowstone.
+  - Mob head sounds: placing a mob head (zombie, skeleton, wither skeleton, creeper, piglin, dragon) directly on top of the note block (not below) makes it play that mob's sound instead of a musical note.
+- A comparator facing a note block reads its current pitch setting as a signal (1–25, clamped to the 0–15 output range per normal comparator rules).
 
 ### Jukebox
 - Appearance: a dark wooden box with a disc slot and orange trim on the front.

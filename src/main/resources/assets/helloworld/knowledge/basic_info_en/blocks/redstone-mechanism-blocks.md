@@ -53,10 +53,10 @@ summary: Appearance and traits of redstone power sources, transmission, and mech
 
 ### Hopper
 - Appearance: a metal funnel, wide at the top and narrow at the bottom, with an output spout on the side.
-- Traits: hardness 3, requires a pickaxe; **pulls one item per game tick (20 times per second) from a container/entity above it**, and transfers it downward/sideways into another container; can be locked by a redstone signal (stops while activated); the core mechanism for item transport and sorting; **hoppers are a significant performance cost** (see the tick performance section in `mechanics/tick.md`). Can be read by a comparator (signal = items in hopper / 5, scaled by slot count).
+- Traits: hardness 3, requires a pickaxe; **pulls one item per game tick (20 times per second) from a container/entity above it**, and transfers it downward/sideways into another container; can be locked by a redstone signal (stops while activated); the core mechanism for item transport and sorting; **hoppers are a significant performance cost** (see the tick performance section in `mechanics/tick.md`). A comparator facing a hopper reads its fill level using the standard container fullness formula (see `redstone-blocks-and-components.md` → "Container Fill-Level Formula") — **not** simply item-count-divided-by-5; with only 5 slots, a hopper is commonly used for precise single-item counters by padding 4 slots with non-stackable filler items.
 
 ### Dropper/Dispenser and Comparators
-- Dispensers/droppers can have their item count read by a comparator (signal 1–15 based on how full the slots are).
+- Dispensers/droppers (9 slots) can have their fill level read by a comparator using the same standard container fullness formula (see `redstone-blocks-and-components.md`), not a simple linear item count.
 
 ### Note Block
 - See `functional-blocks.md`; produces a note when activated by redstone; a comparator can read its pitch (1–25).

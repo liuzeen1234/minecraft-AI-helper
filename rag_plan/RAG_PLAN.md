@@ -34,6 +34,15 @@
 
 闲聊时 AI 不输出标签，不增加第二次请求。AI 未选择资料是该方案接受的风险；v1 不做自动关键词兜底。
 
+## 二点五、中文知识库不随 Mod 打包（重要说明）
+
+`rag_plan/rag_resources/basic_info/basic_info_ch/` 下的中文知识库文档（方块特性、命令、实体生物、游戏机制等）**仅作为规划/校对用资料**，不会被复制进 `src/main/resources/assets/helloworld/knowledge/`，也不会随 jar 包分发。
+
+- 原因：mod 打包体积。已实际打包的英文知识库（`basic_info_en/`）体量已不小，若同时内置一份内容对等的中文版会显著增加 jar 大小，对多数仅需单语言的下载/分发场景是不必要的开销。
+- 现状：`src/main/resources/assets/helloworld/knowledge/` 下目前只有 `basic_info_en/` 一套（英文），是唯一随 mod 实际发布、被 `KnowledgeBase.ensureDefaultDocsReleased()` 释放到运行目录的知识库。无论游戏内语言设置为中文还是英文，AI 通过 `[KNOWLEDGE]` 标签查阅到的都是这份英文资料（AI 自己用中文转述给玩家）。
+- 中文版 `rag_resources/basic_info_ch/` 的定位：作为编写/校对英文文档时的对照底稿与知识梳理场所，其内容更新后需要人工/AI 辅助翻译、核对、合并进英文版对应文件，而不是简单地并列存在两份资料库。
+- 如果未来要改为随 mod 内置中文知识库（例如按玩家语言动态释放对应语言目录），需要重新评估 jar 体积影响，并在 `ModConfig`/`KnowledgeBase` 层面设计按语言选择释放的逻辑；这属于范围外的新功能，未列入当前实施计划。
+
 ## 三、目标目录与文档格式（设计稿）
 
 运行目录拟为 `ai-helper/knowledge/`，打包源拟为 `src/main/resources/assets/helloworld/knowledge/`：
