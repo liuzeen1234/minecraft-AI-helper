@@ -110,12 +110,15 @@ public class HelloWorldMod implements ModInitializer {
 
     private final BlueprintRegistry blueprintRegistry = new BlueprintRegistry();
 
+    private final KnowledgeBase knowledgeBase = new KnowledgeBase();
+
     @Override
     public void onInitialize() {
         LOGGER.info("AI Builder 已加载!");
         CONFIG.load();
         I18n.load();
         blueprintRegistry.loadAll();
+        KnowledgeBase.ensureDefaultDocsReleased();
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayerEntity player = handler.getPlayer();
@@ -1512,6 +1515,30 @@ public class HelloWorldMod implements ModInitializer {
         return null;
     }
 
+    /**
+     * 从 AI 回复中提取 [KNOWLEDGE]文档A,文档B[/KNOWLEDGE] 标签内点名的知识库文档名列表。
+     * 文档名以英文逗号分隔，忽略空白项。仅取第一个 [KNOWLEDGE] 标签（与 SEARCH/FETCH 规则一致）。
+     */
+    private List<String> extractKnowledgeDocNames(String response) {
+        int start = response.indexOf("[KNOWLEDGE]");
+        int end = response.indexOf("[/KNOWLEDGE]");
+        if (start == -1 || end == -1 || end <= start) {
+            return java.util.Collections.emptyList();
+        }
+        String raw = response.substring(start + "[KNOWLEDGE]".length(), end).trim();
+        if (raw.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<String> names = new ArrayList<>();
+        for (String part : raw.split(",")) {
+            String name = part.trim();
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        return names;
+    }
+
     // ================= 多轮工具调用循环 =================
 
     /**
@@ -1629,9 +1656,11 @@ public class HelloWorldMod implements ModInitializer {
                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty();
             boolean hasGameAction = AICommandExecutor.containsGameActionTags(response);
             String regionQuerySpec = AICommandExecutor.extractQueryRegionSpec(response);
+            List<String> knowledgeDocNames = extractKnowledgeDocNames(response);
+            boolean knowledgeAvailable = !knowledgeDocNames.isEmpty() && CONFIG.isRagEnabled();
 
             boolean requestedTool = fetchUrl != null || webSearchAvailable || hasGameAction
-                    || regionQuerySpec != null;
+                    || regionQuerySpec != null || knowledgeAvailable;
 
             if (!requestedTool || !canDoMoreRounds) {
                 // 没有可执行的工具，或已达上限：先清理联网标签（FETCH/SEARCH/QUERY_REGION），
@@ -1900,6 +1929,23 @@ public class HelloWorldMod implements ModInitializer {
                 }
             }
 
+            // 5) 查阅知识库（[KNOWLEDGE]）：本地读取 Markdown 文档正文，只读操作，速度快，
+            // 不涉及网络或游戏世界状态，因此不走确认流程，直接在当前线程处理。
+            if (knowledgeAvailable) {
+                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.knowledge.querying"));
+                String knowledgeContent = knowledgeBase.retrieve(
+                        knowledgeDocNames, CONFIG.getRagMaxDocs(), CONFIG.getRagMaxChars());
+                if (knowledgeContent != null) {
+                    if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.knowledge.done") + "\n\n");
+                    feedback.append("以下是知识库中「").append(String.join(", ", knowledgeDocNames))
+                            .append("」的内容:\n\n").append(knowledgeContent).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge"), knowledgeContent);
+                } else {
+                    feedback.append(I18n.tr("server.knowledge.not_found")).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge"), I18n.tr("server.knowledge.not_found"));
+                }
+            }
+
             // 进入下一轮：把反馈回喂给 AI
             round++;
             boolean lastAllowedRound = !(maxRounds > 0 && round < maxRounds);
@@ -1982,12 +2028,13 @@ public class HelloWorldMod implements ModInitializer {
         });
     }
 
-    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION），保留 ACTION / BLUEPRINT 供最终展示。 */
+    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION / KNOWLEDGE），保留 ACTION / BLUEPRINT 供最终展示。 */
     private static String stripWebTags(String response) {
         if (response == null) return "";
         String r = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
         r = r.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
         r = r.replaceAll("(?s)\\[QUERY_REGION\\].*?\\[/QUERY_REGION\\]", "").trim();
+        r = r.replaceAll("\\[KNOWLEDGE\\].*?\\[/KNOWLEDGE\\]", "").trim();
         return r;
     }
 

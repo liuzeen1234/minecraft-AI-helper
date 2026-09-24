@@ -25,6 +25,9 @@ public class ModConfig {
     private boolean vanillaCommandsEnabled;
     private boolean confirmBeforeExecuteEnabled;
     private String apiFormat;
+    private boolean ragEnabled;
+    private int ragMaxDocs;
+    private int ragMaxChars;
 
     // 默认值
     private static final String DEFAULT_API_BASE_URL = "https://api.kimi.com/coding/v1/messages";
@@ -45,6 +48,12 @@ public class ModConfig {
     private static final boolean DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED = false;
     // API 格式：auto（自动检测）/ openai / anthropic
     private static final String DEFAULT_API_FORMAT = "auto";
+    // 是否启用 RAG 知识库检索（[KNOWLEDGE] 标签）：关闭时 system prompt 不包含知识库目录，AI 无法查阅知识库文档
+    private static final boolean DEFAULT_RAG_ENABLED = true;
+    // 单次 [KNOWLEDGE] 请求最多允许点名的文档数量，超出部分被忽略
+    private static final int DEFAULT_RAG_MAX_DOCS = 8;
+    // 回填给 AI 的知识库正文总字符数上限，超出部分按顺序截断
+    private static final int DEFAULT_RAG_MAX_CHARS = 20000;
 
     // API 格式常量
     public static final String FORMAT_OPENAI = "openai";
@@ -77,8 +86,21 @@ public class ModConfig {
         vanillaCommandsEnabled = Boolean.parseBoolean(props.getProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED)));
         confirmBeforeExecuteEnabled = Boolean.parseBoolean(props.getProperty("confirm_before_execute_enabled", String.valueOf(DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED)));
         apiFormat = props.getProperty("api_format", DEFAULT_API_FORMAT);
+        ragEnabled = Boolean.parseBoolean(props.getProperty("rag_enabled", String.valueOf(DEFAULT_RAG_ENABLED)));
+        ragMaxDocs = parsePositiveInt(props.getProperty("rag_max_docs", String.valueOf(DEFAULT_RAG_MAX_DOCS)), DEFAULT_RAG_MAX_DOCS);
+        ragMaxChars = parsePositiveInt(props.getProperty("rag_max_chars", String.valueOf(DEFAULT_RAG_MAX_CHARS)), DEFAULT_RAG_MAX_CHARS);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, confirmBeforeExecute={}, apiFormat={}(生效={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, confirmBeforeExecuteEnabled, apiFormat, getEffectiveApiFormat());
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, confirmBeforeExecute={}, apiFormat={}(生效={}), rag={}(maxDocs={}, maxChars={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, confirmBeforeExecuteEnabled, apiFormat, getEffectiveApiFormat(), ragEnabled, ragMaxDocs, ragMaxChars);
+    }
+
+    /** 解析正整数配置，非法值回退默认，并 clamp 到 >=1。 */
+    private static int parsePositiveInt(String raw, int defaultValue) {
+        try {
+            return Math.max(1, Integer.parseInt(raw.trim()));
+        } catch (NumberFormatException e) {
+            HelloWorldMod.LOGGER.warn("整数配置值非法: {}，回退默认 {}", raw, defaultValue);
+            return defaultValue;
+        }
     }
 
     /** 解析 max_tool_rounds，非法值回退默认，并 clamp 到 >=0。 */
@@ -107,6 +129,9 @@ public class ModConfig {
             props.setProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED));
             props.setProperty("confirm_before_execute_enabled", String.valueOf(DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED));
             props.setProperty("api_format", DEFAULT_API_FORMAT);
+            props.setProperty("rag_enabled", String.valueOf(DEFAULT_RAG_ENABLED));
+            props.setProperty("rag_max_docs", String.valueOf(DEFAULT_RAG_MAX_DOCS));
+            props.setProperty("rag_max_chars", String.valueOf(DEFAULT_RAG_MAX_CHARS));
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "HelloWorld Mod - AI API Configuration");
             }
@@ -233,6 +258,33 @@ public class ModConfig {
     }
 
     /**
+     * 是否启用 RAG 知识库检索。关闭时 system prompt 不会包含知识库目录，
+     * AI 也无法使用 [KNOWLEDGE] 标签查阅知识库文档。
+     */
+    public boolean isRagEnabled() { return ragEnabled; }
+
+    public void setRagEnabled(boolean ragEnabled) {
+        this.ragEnabled = ragEnabled;
+        save();
+    }
+
+    /** 单次 [KNOWLEDGE] 请求最多允许点名的文档数量，超出部分被忽略。 */
+    public int getRagMaxDocs() { return ragMaxDocs; }
+
+    public void setRagMaxDocs(int ragMaxDocs) {
+        this.ragMaxDocs = Math.max(1, ragMaxDocs);
+        save();
+    }
+
+    /** 回填给 AI 的知识库正文总字符数上限，超出部分按顺序截断。 */
+    public int getRagMaxChars() { return ragMaxChars; }
+
+    public void setRagMaxChars(int ragMaxChars) {
+        this.ragMaxChars = Math.max(1, ragMaxChars);
+        save();
+    }
+
+    /**
      * 返回用于发送请求的完整端点 URL。
      * OpenAI 格式下，如果用户仅配置到 /v1（或未含 completions 路径），自动补全 /chat/completions。
      */
@@ -264,6 +316,9 @@ public class ModConfig {
         props.setProperty("vanilla_commands_enabled", String.valueOf(vanillaCommandsEnabled));
         props.setProperty("confirm_before_execute_enabled", String.valueOf(confirmBeforeExecuteEnabled));
         props.setProperty("api_format", apiFormat);
+        props.setProperty("rag_enabled", String.valueOf(ragEnabled));
+        props.setProperty("rag_max_docs", String.valueOf(ragMaxDocs));
+        props.setProperty("rag_max_chars", String.valueOf(ragMaxChars));
         try (OutputStream out = Files.newOutputStream(configPath)) {
             props.store(out, "HelloWorld Mod - AI API Configuration");
         } catch (IOException e) {

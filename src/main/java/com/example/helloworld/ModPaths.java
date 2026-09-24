@@ -18,6 +18,7 @@ import java.nio.file.Path;
  *   │   ├── txts/        .txt 蓝图文件
  *   │   ├── nbts/        .nbt 结构文件
  *   │   └── litematic/   .litematic 结构文件（Litematica 格式）
+ *   ├── knowledge/       RAG 知识库文档（Markdown，首次启动从模组资源释放）
  *   ├── screenshots/     AI 截图临时文件
  *   └── ...              其他模组数据
  */
@@ -27,6 +28,9 @@ public class ModPaths {
 
     /** 结构文件根目录名，下含 txts/ 与 nbts/ 子目录。 */
     private static final String STRUCTURES_DIR_NAME = "structures";
+
+    /** 知识库目录名，下含知识库子目录（如 basic_info_en）。 */
+    private static final String KNOWLEDGE_DIR_NAME = "knowledge";
 
     /**
      * 获取模组根目录：gameDir/ai-helper/
@@ -69,6 +73,14 @@ public class ModPaths {
      */
     public static Path getConfigDir() {
         return getModDir().resolve("config");
+    }
+
+    /**
+     * 获取知识库根目录：gameDir/ai-helper/knowledge/
+     * 下含知识库子目录（如 basic_info_en/），用户可自行增删 Markdown 文档。
+     */
+    public static Path getKnowledgeDir() {
+        return getModDir().resolve(KNOWLEDGE_DIR_NAME);
     }
 
     /**
