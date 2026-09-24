@@ -3,7 +3,7 @@
     "key.helloworld.settings": "Open Settings Screen",
 
     "screen.language.title": "Mod Language",
-    "screen.language.hint": "Resets to the game language on restart",
+    "screen.language.hint": "Display language automatically follows the current game language",
 
     "debugmenu.log.toggle": "Chat Log Display",
     "debugmenu.log.level": "Log Min Level",
@@ -317,6 +317,10 @@
     "nbtcmd.place.placing": "§e[NBT] Placing structure: %s ...",
     "nbtcmd.place.done": "§a[NBT] %s placed! %s blocks (origin: %s, %s, %s)",
     "nbtcmd.place.failed": "§c[NBT] Place failed: %s",
+    "structure.summary.name": "§eStructure: §f%s",
+    "structure.summary.size": "§eSize: §f%s x %s x %s",
+    "structure.summary.block_count": "§eBlock count: §f%s",
+    "structure.summary.block_types": "§eBlock types (%s):",
 
     "server.welcome": "AI Builder loaded! Type /ai <question> to chat with AI",
     "server.first_join.welcome": "§e§l[AI Builder] §r§6Welcome to AI Builder mod for the first time!",
@@ -370,6 +374,7 @@
     "server.config.reloaded": "§a[Config] Configuration reloaded",
     "server.ai.new_topic": "§a[AI] Chat history cleared, new topic started",
     "server.pos.players_only": "§c[Pos] Only players can use this command",
+    "server.pos.result": "§e[Pos] §fX: §a%s §fY: §a%s §fZ: §a%s §f| Dimension: §b%s",
     "server.log.enabled": "§a[Log] Chat log display enabled",
     "server.log.disabled": "§c[Log] Chat log display disabled",
     "server.log.level.error": "§a[Log] Min level: §cERROR",

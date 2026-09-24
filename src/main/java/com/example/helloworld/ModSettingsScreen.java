@@ -59,7 +59,7 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
-        // Mod 语言设置按钮
+        // Mod 语言说明按钮（显示语言跟随游戏语言，此页面仅作说明，不提供切换）
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("screen.language.title")),
                 button -> this.client.setScreen(new LanguageSettingsScreen(this)))

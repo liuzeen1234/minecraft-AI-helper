@@ -2,9 +2,11 @@
     "category.helloworld": "AI Builder",
     "key.helloworld.settings": "打开设置页面",
 
-    "screen.language.title": "Mod 语言设置",
-    "screen.language.hint": "重启游戏后将重置为当前游戏语言",
+    "screen.language.title": "Mod 语言说明",
+    "screen.language.hint": "显示语言会自动跟随当前游戏语言，无需手动设置",
 
+    "debugmenu.log.toggle": "聊天框日志显示",
+    "debugmenu.log.level": "日志最低级别",
     "button.back": "返回",
 
     "confirm.yes_button": "§a[是]",
@@ -240,6 +242,7 @@
     "manual.load.error": "加载手册出错: %s",
     "client.ai.reply": "§a[AI 回复]",
     "client.ai.reply.hint": "§7(完整内容请打开 AI 聊天界面查看)",
+    "log.tag": "日志",
 
     "txtbrowser.title": "TXT 结构设计图浏览器",
     "txtbrowser.search": "搜索...",
@@ -314,6 +317,10 @@
     "nbtcmd.place.placing": "§e[NBT] 正在放置结构: %s ...",
     "nbtcmd.place.done": "§a[NBT] %s 放置完成! 共 %s 个方块 (原点: %s, %s, %s)",
     "nbtcmd.place.failed": "§c[NBT] 放置失败: %s",
+    "structure.summary.name": "§e结构: §f%s",
+    "structure.summary.size": "§e尺寸: §f%s x %s x %s",
+    "structure.summary.block_count": "§e方块数: §f%s",
+    "structure.summary.block_types": "§e方块类型 (%s):",
 
     "server.welcome": "AI Builder 已加载! 输入 /ai <问题> 来和 AI 对话",
     "server.first_join.welcome": "§e§l[AI Builder] §r§6欢迎首次使用 AI Builder 模组！",
@@ -367,6 +374,13 @@
     "server.config.reloaded": "§a[配置] 配置已重新加载",
     "server.ai.new_topic": "§a[AI] 对话历史已清空，开始新话题",
     "server.pos.players_only": "§c[坐标] 只有玩家才能使用此命令",
+    "server.pos.result": "§e[坐标] §fX: §a%s §fY: §a%s §fZ: §a%s §f| 维度: §b%s",
+    "server.log.enabled": "§a[日志] 聊天框日志显示已开启",
+    "server.log.disabled": "§c[日志] 聊天框日志显示已关闭",
+    "server.log.level.error": "§a[日志] 最低级别: §cERROR",
+    "server.log.level.warn": "§a[日志] 最低级别: §eWARN",
+    "server.log.level.info": "§a[日志] 最低级别: §fINFO",
+    "server.log.level.debug": "§a[日志] 最低级别: §7DEBUG",
     "server.ai.stopped": "§e[AI] 已终止 AI 回复",
     "server.ai.no_request": "§7[AI] 当前没有正在进行的 AI 请求",
     "server.build.players_only": "§c只有玩家可以执行此命令",

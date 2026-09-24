@@ -1,5 +1,6 @@
 package com.example.helloworld.nbt;
 
+import com.example.helloworld.I18n;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -276,10 +277,10 @@ public class NbtStructureParser {
      */
     public static String getSummary(StructureData data) {
         StringBuilder sb = new StringBuilder();
-        sb.append("§e结构: §f").append(data.fileName).append("\n");
-        sb.append("§e尺寸: §f").append(data.sizeX).append(" x ").append(data.sizeY).append(" x ").append(data.sizeZ).append("\n");
-        sb.append("§e方块数: §f").append(data.blocks.size()).append("\n");
-        sb.append("§e方块类型 (").append(data.palette.size()).append("):\n");
+        sb.append(I18n.tr("structure.summary.name", data.fileName)).append("\n");
+        sb.append(I18n.tr("structure.summary.size", data.sizeX, data.sizeY, data.sizeZ)).append("\n");
+        sb.append(I18n.tr("structure.summary.block_count", data.blocks.size())).append("\n");
+        sb.append(I18n.tr("structure.summary.block_types", data.palette.size())).append("\n");
 
         // 统计每种方块的数量
         Map<Integer, Integer> counts = new HashMap<>();

@@ -3,6 +3,7 @@ package com.example.helloworld;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.client.MinecraftClient;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -15,8 +16,12 @@ import java.util.Map;
  * 国际化工具类（方向一）。
  *
  * <p>文本内容放在 lang 文件中（assets/helloworld/lang/zh_cn.json、en_us.json），
- * 在 mod 启动时加载进内存。显示语言以 {@link ModConfig#getLanguage()} 字段为准
- * （不跟随 Minecraft 全局语言单例，因此支持在设置界面手动切换）。
+ * 在 mod 启动时加载进内存。显示语言完全跟随 Minecraft 当前游戏语言，不支持手动切换：
+ * <ul>
+ *   <li>客户端：实时读取 {@link MinecraftClient#getInstance()} 的
+ *       {@code getLanguageManager().getLanguage()}，随游戏语言设置变化立即生效。</li>
+ *   <li>服务端（专用服务器进程，没有 {@link MinecraftClient} 实例）：固定使用英文。</li>
+ * </ul>
  *
  * <p>调用方式：{@code I18n.tr("key.some.text")}，支持 {@code %s / %d} 等参数占位：
  * {@code I18n.tr("cmd.placed", blockName, pos)}。若键缺失则回退为键名本身，便于发现遗漏。
@@ -78,15 +83,42 @@ public class I18n {
     }
 
     /**
-     * 判断当前是否为英文模式（以 language 字段为准）。
+     * 判断当前是否为英文模式。
+     *
+     * <p>客户端：实时读取 Minecraft 当前游戏语言并归一化判断；
+     * 服务端（{@link MinecraftClient#getInstance()} 为 {@code null}，即专用服务器进程）：固定返回英文。
      */
     public static boolean isEnglish() {
-        ModConfig config = HelloWorldMod.getConfig();
-        return config != null && "en_us".equals(config.getLanguage());
+        MinecraftClient client = getClientInstanceSafely();
+        if (client == null) {
+            // 专用服务器没有客户端语言概念，固定使用英文
+            return true;
+        }
+        if (client.getLanguageManager() == null) {
+            return true;
+        }
+        String mcLanguage = client.getLanguageManager().getLanguage();
+        return "en_us".equals(normalizeLanguage(mcLanguage));
     }
 
     /**
-     * 按当前语言（language 字段）解析翻译键，支持参数格式化。
+     * 安全获取 {@link MinecraftClient} 实例。
+     *
+     * <p>专用服务器（dedicated server）进程虽然会加载本类，但 {@code MinecraftClient} 相关的类
+     * 只有在客户端环境下才会被初始化；直接调用 {@code MinecraftClient.getInstance()} 在服务端环境
+     * 也是安全的（返回 {@code null}），这里额外包一层 try/catch 防御，避免任何环境差异导致的异常
+     * 影响到聊天反馈等核心功能。
+     */
+    private static MinecraftClient getClientInstanceSafely() {
+        try {
+            return MinecraftClient.getInstance();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 按当前语言解析翻译键，支持参数格式化。
      *
      * @param key  翻译键，如 "cmd.block.placed"
      * @param args 可选的格式化参数（对应文本中的 %s/%d 等）

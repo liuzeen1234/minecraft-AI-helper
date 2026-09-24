@@ -29,22 +29,19 @@ public class HelloWorldClientMod implements ClientModInitializer {
     private String pendingMessage = null;
     private int delayTicks = 0;
 
-    // 启动时是否已根据游戏语言重置过 language 字段（每次运行重置一次）
-    private boolean languageReset = false;
-
     // 按键绑定：打开设置页面
     private static KeyBinding openSettingsKey;
 
     @Override
     public void onInitializeClient() {
-        // 软依赖 debug_menu：若已安装，则把语言切换注册进其调试菜单。
-        // 未安装时跳过，AI-helper 照常运行（仍可用自带的 LanguageSettingsScreen 切换）。
+        // 软依赖 debug_menu：若已安装，则把调试开关注册进其调试菜单
+        // （语言切换开关已随“显示语言完全跟随游戏语言”的改动一并移除）。
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("debug-menu")) {
             try {
                 DebugMenuIntegration.register();
             } catch (Throwable t) {
                 // 防御：debug-menu 版本不兼容等意外情况不应影响 AI-helper 启动
-                HelloWorldMod.LOGGER.warn("[debug-menu] 注册语言切换选项失败，已跳过", t);
+                HelloWorldMod.LOGGER.warn("[debug-menu] 注册调试开关失败，已跳过", t);
             }
         }
 
@@ -159,16 +156,8 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
         // 每个客户端 tick 检查是否需要截图 & 刷新日志到聊天框
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            // 启动后首次可用时，将 language 字段重置为当前游戏语言（每次运行重置一次）
-            if (!languageReset && client.getLanguageManager() != null) {
-                String mcLang = client.getLanguageManager().getLanguage();
-                String normalized = I18n.normalizeLanguage(mcLang);
-                if (!normalized.equals(HelloWorldMod.getConfig().getLanguage())) {
-                    HelloWorldMod.getConfig().setLanguage(normalized);
-                }
-                languageReset = true;
-                HelloWorldMod.LOGGER.info("已根据游戏语言重置显示语言: {} -> {}", mcLang, normalized);
-            }
+            // 注：显示语言现在完全由 I18n.isEnglish() 实时读取当前游戏语言决定，
+            // 不再需要在此处做“启动时重置一次”的逻辑（见 I18n.java 的说明）。
 
             // 按键打开设置页面
             while (openSettingsKey.wasPressed()) {

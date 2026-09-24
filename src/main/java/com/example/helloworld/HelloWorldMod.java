@@ -800,7 +800,7 @@ public class HelloWorldMod implements ModInitializer {
                     double z = Math.round(p.getZ() * 100.0) / 100.0;
                     String dim = p.getWorld().getRegistryKey().getValue().toString();
                     ctx.getSource().sendFeedback(() -> Text.literal(
-                        "§e[坐标] §fX: §a" + x + " §fY: §a" + y + " §fZ: §a" + z + " §f| 维度: §b" + dim
+                        I18n.tr("server.pos.result", x, y, z, dim)
                     ), false);
                     return 1;
                 })

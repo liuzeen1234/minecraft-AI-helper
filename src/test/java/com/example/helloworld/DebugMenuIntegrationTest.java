@@ -1,107 +1,20 @@
 package com.example.helloworld;
 
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
- * 测试 {@link DebugMenuIntegration} 的语言码 ↔ 菜单显示名映射逻辑。
+ * 说明：AI-helper 的显示语言现在完全跟随 Minecraft 当前游戏语言（见 {@link I18n#isEnglish()}），
+ * 不再支持通过 debug_menu 手动切换。原本用于测试语言码 ↔ 菜单显示名映射逻辑
+ * （{@code languageCodeToOption}/{@code optionToLanguageCode}/{@code OPTION_ZH}/
+ * {@code OPTION_EN}/{@code OPTIONS}）的测试已随该功能一并移除。
  *
- * <p>这两个方法是 debug_menu 语言开关的核心：getter 把配置里的语言码映射为菜单里显示的
- * 选项名，setter 把玩家在菜单里选中的选项名映射回语言码写入配置。映射错误会导致菜单显示
- * 的当前语言与实际配置不一致，或切换后写入错误的语言码。
+ * <p>{@link DebugMenuIntegration} 里仍保留的“强制多轮工具调用”“打印工具返回值到聊天框”
+ * 两个调试开关与语言无关，未在此文件中覆盖（当前无对应单测）。
  *
- * <p>这些方法不依赖 Minecraft / debug-menu 运行时类，可在纯 JVM 下单测。
+ * <p>说明：日志级别 ↔ 显示名的映射逻辑已随“日志转发到聊天框”功能迁移到 debug-menu 模组
+ * （见 debug_menu 的 DebugMenuClient / com.debugmenu.log.InGameLogAppender），对应测试
+ * 也随之移除，不再由 AI-helper 维护。
+ *
+ * <p>说明：“生成测试日志”按钮（原 /aitest）已整体内置到 debug_menu 模组（见其 DebugMenuClient），
+ * 不再由 AI-helper 注册，对应门控逻辑与测试也随之移除。
  */
 class DebugMenuIntegrationTest {
-
-    // ========== 语言码 -> 显示名 ==========
-
-    @Test
-    void testZhCodeMapsToChineseOption() {
-        assertEquals(DebugMenuIntegration.OPTION_ZH,
-                DebugMenuIntegration.languageCodeToOption("zh_cn"));
-    }
-
-    @Test
-    void testEnCodeMapsToEnglishOption() {
-        assertEquals(DebugMenuIntegration.OPTION_EN,
-                DebugMenuIntegration.languageCodeToOption("en_us"));
-    }
-
-    @Test
-    void testEnPrefixVariantsMapToEnglish() {
-        // 只要以 en 开头都视为英文（大小写不敏感）
-        assertEquals(DebugMenuIntegration.OPTION_EN,
-                DebugMenuIntegration.languageCodeToOption("en_gb"));
-        assertEquals(DebugMenuIntegration.OPTION_EN,
-                DebugMenuIntegration.languageCodeToOption("EN_US"));
-    }
-
-    @Test
-    void testNullCodeFallsBackToChinese() {
-        assertEquals(DebugMenuIntegration.OPTION_ZH,
-                DebugMenuIntegration.languageCodeToOption(null));
-    }
-
-    @Test
-    void testUnknownCodeFallsBackToChinese() {
-        // 未知/其他语言码（如日文）在 AI-helper 只支持中英双语的现状下按中文处理
-        assertEquals(DebugMenuIntegration.OPTION_ZH,
-                DebugMenuIntegration.languageCodeToOption("ja_jp"));
-    }
-
-    // ========== 显示名 -> 语言码 ==========
-
-    @Test
-    void testChineseOptionMapsToZhCode() {
-        assertEquals("zh_cn",
-                DebugMenuIntegration.optionToLanguageCode(DebugMenuIntegration.OPTION_ZH));
-    }
-
-    @Test
-    void testEnglishOptionMapsToEnCode() {
-        assertEquals("en_us",
-                DebugMenuIntegration.optionToLanguageCode(DebugMenuIntegration.OPTION_EN));
-    }
-
-    @Test
-    void testUnknownOptionFallsBackToZhCode() {
-        assertEquals("zh_cn",
-                DebugMenuIntegration.optionToLanguageCode("Français"));
-        assertEquals("zh_cn",
-                DebugMenuIntegration.optionToLanguageCode(null));
-    }
-
-    // ========== 往返一致性 ==========
-
-    @Test
-    void testRoundTripZh() {
-        String code = "zh_cn";
-        String option = DebugMenuIntegration.languageCodeToOption(code);
-        assertEquals(code, DebugMenuIntegration.optionToLanguageCode(option));
-    }
-
-    @Test
-    void testRoundTripEn() {
-        String code = "en_us";
-        String option = DebugMenuIntegration.languageCodeToOption(code);
-        assertEquals(code, DebugMenuIntegration.optionToLanguageCode(option));
-    }
-
-    // ========== 选项列表 ==========
-
-    @Test
-    void testOptionsContainBothLanguages() {
-        assertTrue(DebugMenuIntegration.OPTIONS.contains(DebugMenuIntegration.OPTION_ZH));
-        assertTrue(DebugMenuIntegration.OPTIONS.contains(DebugMenuIntegration.OPTION_EN));
-        assertEquals(2, DebugMenuIntegration.OPTIONS.size());
-    }
-
-    // 说明：日志级别 ↔ 显示名的映射逻辑已随“日志转发到聊天框”功能迁移到 debug-menu 模组
-    //（见 debug_menu 的 DebugMenuClient / com.debugmenu.log.InGameLogAppender），对应测试
-    // 也随之移除，不再由 AI-helper 维护。
-    //
-    // 说明：“生成测试日志”按钮（原 /aitest）已整体内置到 debug_menu 模组（见其 DebugMenuClient），
-    // 不再由 AI-helper 注册，对应门控逻辑与测试也随之移除。
 }
