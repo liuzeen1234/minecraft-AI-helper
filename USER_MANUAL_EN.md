@@ -109,6 +109,8 @@ Press `K` → **Load Structure** to browse, search, delete, and place the follow
 
 NBT/Litematica placement skips `air` and `structure_void`, and preserves block states, block entity data, and structure entities; legacy sign data is converted to the 1.20+ format. AI-generated TXT blueprints are saved to `ai-helper/structures/txts/ai-generated/`.
 
+Click **Convert** at the top of the structure browser to batch-convert `.nbt` / `.litematic` files into V2 `.txt` blueprints: pick one or more source files and a target folder, and each output file keeps the source's base name with a `.txt` extension. The conversion fully preserves block states, container items (chests, barrels, etc.), and sign front/back text (including the legacy pre-1.20 `Text1`~`Text4` format), so the result can be placed directly through the TXT blueprint pipeline or handed to the AI for editing.
+
 ### Selection Tool
 
 Press `K` → **Selection Tool**. Set two opposite corner coordinates (or use the current position) and confirm; the game then displays a highlight box. The draft is preserved when you close the screen. The analyze/export screen can count blocks and export on the server side:

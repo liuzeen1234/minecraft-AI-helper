@@ -85,6 +85,20 @@ public class BlueprintParser {
             String lineNoR = rawLine.replace("\r", "");
             String line = lineNoR.trim();
 
+            // sign_text 的 front/back 内容行即使文字为空，原始行也带 6 空格缩进
+            // （如 "      \n"），trim 后会变成空字符串。必须在"空行结束段"判断之前
+            // 优先按缩进识别为内容行，否则告示牌中间的空行会被误判为段结束，
+            // 导致该行之后的文字（如 back 段）被截断丢失。
+            if (inSignTextSection && (inSignFront || inSignBack) && lineNoR.startsWith("      ") && line.isEmpty()) {
+                String textContent = lineNoR.substring(6);
+                if (inSignFront) {
+                    pendingSignFrontLines.add(textContent);
+                } else {
+                    pendingSignBackLines.add(textContent);
+                }
+                continue;
+            }
+
             // 跳过空行（结束 items/sign_text 段）
             if (line.isEmpty()) {
                 if (inItemsSection) {
