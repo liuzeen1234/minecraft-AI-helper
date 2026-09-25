@@ -92,12 +92,22 @@ public class StructureBrowserScreen extends Screen {
         detailWidth = this.width - detailLeft - margin;
         detailHeight = listHeight;
 
-        // 搜索框
-        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, listWidth - 2, 18, Text.literal(com.example.helloworld.I18n.tr("structurebrowser.search")));
+        // 搜索框（右侧让出空间放"结构格式转换"按钮）
+        int convertBtnWidth = 100;
+        int searchFieldWidth = listWidth - 2 - convertBtnWidth - margin;
+        searchField = new TextFieldWidget(this.textRenderer, listLeft, margin + 6, searchFieldWidth, 18, Text.literal(com.example.helloworld.I18n.tr("structurebrowser.search")));
         searchField.setPlaceholder(Text.literal(com.example.helloworld.I18n.tr("structurebrowser.search.placeholder")));
         searchField.setMaxLength(100);
         searchField.setChangedListener(this::onSearchChanged);
         this.addDrawableChild(searchField);
+
+        // 结构格式转换按钮（搜索框右侧）
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal(com.example.helloworld.I18n.tr("structurebrowser.button.convert")),
+                button -> this.client.setScreen(new StructureConvertScreen(this)))
+                .dimensions(listLeft + searchFieldWidth + margin, margin + 6, convertBtnWidth, 18)
+                .build()
+        );
 
         // 底部按钮
         int btnY = this.height - bottomBarHeight - margin + 5;
