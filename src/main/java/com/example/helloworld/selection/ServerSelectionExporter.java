@@ -109,7 +109,7 @@ public class ServerSelectionExporter {
             }
         }
 
-        String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".nbt";
+        String fileName = com.example.helloworld.ModPaths.sanitizeFileName(name, "structure") + ".nbt";
         File file = dir.resolve(fileName).toFile();
 
         try (FileOutputStream fos = new FileOutputStream(file)) {
@@ -152,7 +152,7 @@ public class ServerSelectionExporter {
         StructureTemplate template = new StructureTemplate();
         template.saveFromWorld(world, min, new Vec3i(sizeX, sizeY, sizeZ), includeEntities, Blocks.STRUCTURE_VOID);
 
-        String sanitizedName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        String sanitizedName = com.example.helloworld.ModPaths.sanitizeFileName(name, "structure");
         NbtCompound vanillaStructure = template.writeNbt(new NbtCompound());
         // 按方块种类过滤掉被忽略的方块（在解析为 Litematica 格式前处理）
         filterStructureNbt(vanillaStructure, ignoredBlocks);
@@ -388,7 +388,7 @@ public class ServerSelectionExporter {
             }
         }
 
-        String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".txt";
+        String fileName = com.example.helloworld.ModPaths.sanitizeFileName(name, "structure") + ".txt";
         Path filePath = dir.resolve(fileName);
         Files.writeString(filePath, sb.toString(), StandardCharsets.UTF_8);
 

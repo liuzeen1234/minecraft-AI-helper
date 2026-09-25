@@ -1,0 +1,1332 @@
+# MCBLUEPRINT v2
+# name: pillage_outpost
+# size: 15x21x15
+# origin: 0,0,0
+# 坐标原点在结构西北角最低层，x向东，y向上，z向南
+# 格式：x,y,z  block_id  [key=value ...]
+
+## BLOCKS
+
+# --- 第 1 层 (y=0) ---
+0,0,0   stone
+1,0,0   stone
+2,0,0   stone
+3,0,0   stone
+4,0,0   stone
+5,0,0   stone
+6,0,0   stone
+7,0,0   stone
+8,0,0   stone
+9,0,0   stone
+10,0,0   stone
+11,0,0   stone
+12,0,0   stone
+13,0,0   stone
+14,0,0   stone
+0,0,1   stone
+1,0,1   stone
+2,0,1   stone
+3,0,1   stone
+4,0,1   dark_oak_log   axis=y
+5,0,1   stone
+6,0,1   stone
+7,0,1   stone
+8,0,1   stone
+9,0,1   stone
+10,0,1   dark_oak_log   axis=y
+11,0,1   stone
+12,0,1   stone
+13,0,1   stone
+14,0,1   stone
+0,0,2   stone
+1,0,2   stone
+2,0,2   stone
+3,0,2   cobblestone
+4,0,2   cobblestone
+5,0,2   cobblestone
+6,0,2   cobblestone
+7,0,2   cobblestone
+8,0,2   cobblestone
+9,0,2   cobblestone
+10,0,2   cobblestone
+11,0,2   cobblestone
+12,0,2   stone
+13,0,2   stone
+14,0,2   stone
+0,0,3   stone
+1,0,3   stone
+2,0,3   cobblestone
+3,0,3   cobblestone
+4,0,3   birch_planks
+5,0,3   birch_planks
+6,0,3   birch_planks
+7,0,3   birch_planks
+8,0,3   birch_planks
+9,0,3   birch_planks
+10,0,3   birch_planks
+11,0,3   cobblestone
+12,0,3   cobblestone
+13,0,3   stone
+14,0,3   stone
+0,0,4   stone
+1,0,4   dark_oak_log   axis=y
+2,0,4   cobblestone
+3,0,4   birch_planks
+4,0,4   birch_planks
+5,0,4   birch_planks
+6,0,4   birch_planks
+7,0,4   birch_planks
+8,0,4   birch_planks
+9,0,4   birch_planks
+10,0,4   birch_planks
+11,0,4   birch_planks
+12,0,4   cobblestone
+13,0,4   dark_oak_log   axis=y
+14,0,4   coal_ore
+0,0,5   stone
+1,0,5   stone
+2,0,5   cobblestone
+3,0,5   birch_planks
+4,0,5   birch_planks
+5,0,5   birch_planks
+6,0,5   birch_planks
+7,0,5   birch_planks
+8,0,5   birch_planks
+9,0,5   birch_planks
+10,0,5   birch_planks
+11,0,5   birch_planks
+12,0,5   mossy_cobblestone
+13,0,5   stone
+14,0,5   stone
+0,0,6   stone
+1,0,6   stone
+2,0,6   cobblestone
+3,0,6   birch_planks
+4,0,6   birch_planks
+5,0,6   birch_planks
+6,0,6   birch_planks
+7,0,6   birch_planks
+8,0,6   birch_planks
+9,0,6   birch_planks
+10,0,6   birch_planks
+11,0,6   birch_planks
+12,0,6   mossy_cobblestone
+13,0,6   stone
+14,0,6   stone
+0,0,7   stone
+1,0,7   stone
+2,0,7   birch_planks
+3,0,7   birch_planks
+4,0,7   birch_planks
+5,0,7   birch_planks
+6,0,7   birch_planks
+7,0,7   birch_planks
+8,0,7   birch_planks
+9,0,7   birch_planks
+10,0,7   birch_planks
+11,0,7   birch_planks
+12,0,7   cobblestone
+13,0,7   stone
+14,0,7   stone
+0,0,8   calcite
+1,0,8   stone
+2,0,8   cobblestone
+3,0,8   birch_planks
+4,0,8   birch_planks
+5,0,8   birch_planks
+6,0,8   birch_planks
+7,0,8   birch_planks
+8,0,8   birch_planks
+9,0,8   birch_planks
+10,0,8   birch_planks
+11,0,8   birch_planks
+12,0,8   cobblestone
+13,0,8   stone
+14,0,8   stone
+0,0,9   calcite
+1,0,9   calcite
+2,0,9   mossy_cobblestone
+3,0,9   birch_planks
+4,0,9   birch_planks
+5,0,9   birch_planks
+6,0,9   birch_planks
+7,0,9   birch_planks
+8,0,9   birch_planks
+9,0,9   birch_planks
+10,0,9   birch_planks
+11,0,9   birch_planks
+12,0,9   cobblestone
+13,0,9   vine   east=false   north=false   south=false   up=false   west=true
+14,0,9   stone
+0,0,10   calcite
+1,0,10   dark_oak_log   axis=y
+2,0,10   mossy_cobblestone
+3,0,10   birch_planks
+4,0,10   birch_planks
+5,0,10   birch_planks
+6,0,10   birch_planks
+7,0,10   birch_planks
+8,0,10   birch_planks
+9,0,10   birch_planks
+10,0,10   birch_planks
+11,0,10   birch_planks
+12,0,10   cobblestone
+13,0,10   dark_oak_log   axis=y
+14,0,10   stone
+0,0,11   calcite
+1,0,11   calcite
+2,0,11   cobblestone
+3,0,11   cobblestone
+4,0,11   birch_planks
+5,0,11   birch_planks
+6,0,11   birch_planks
+7,0,11   birch_planks
+8,0,11   birch_planks
+9,0,11   birch_planks
+10,0,11   birch_planks
+11,0,11   birch_planks
+12,0,11   cobblestone
+13,0,11   stone
+14,0,11   stone
+0,0,12   calcite
+1,0,12   calcite
+2,0,12   calcite
+3,0,12   cobblestone
+4,0,12   cobblestone
+5,0,12   cobblestone
+6,0,12   cobblestone
+7,0,12   cobblestone
+8,0,12   cobblestone
+9,0,12   cobblestone
+10,0,12   cobblestone
+11,0,12   cobblestone
+12,0,12   stone
+13,0,12   stone
+14,0,12   stone
+0,0,13   calcite
+1,0,13   calcite
+2,0,13   calcite
+3,0,13   calcite
+4,0,13   dark_oak_log   axis=y
+5,0,13   calcite
+6,0,13   calcite
+7,0,13   calcite
+8,0,13   calcite
+9,0,13   calcite
+10,0,13   dark_oak_log   axis=y
+11,0,13   stone
+12,0,13   stone
+13,0,13   stone
+14,0,13   stone
+0,0,14   calcite
+1,0,14   calcite
+2,0,14   calcite
+3,0,14   calcite
+4,0,14   calcite
+5,0,14   calcite
+6,0,14   calcite
+7,0,14   calcite
+8,0,14   calcite
+9,0,14   calcite
+10,0,14   calcite
+11,0,14   calcite
+12,0,14   stone
+13,0,14   stone
+14,0,14   stone
+
+# --- 第 2 层 (y=1) ---
+4,1,1   dark_oak_log   axis=y
+10,1,1   dark_oak_log   axis=y
+3,1,2   cobblestone
+4,1,2   cobblestone
+5,1,2   cobblestone
+6,1,2   cobblestone
+7,1,2   cobblestone
+8,1,2   cobblestone
+9,1,2   cobblestone
+10,1,2   cobblestone
+11,1,2   cobblestone
+2,1,3   cobblestone
+3,1,3   cobblestone
+5,1,3   dark_oak_slab   type=top   waterlogged=false
+6,1,3   dark_oak_slab   type=top   waterlogged=false
+7,1,3   dark_oak_slab   type=top   waterlogged=false
+8,1,3   dark_oak_slab   type=top   waterlogged=false
+9,1,3   dark_oak_slab   type=top   waterlogged=false
+11,1,3   cobblestone
+12,1,3   cobblestone
+1,1,4   dark_oak_log   axis=y
+2,1,4   cobblestone
+12,1,4   cobblestone
+13,1,4   dark_oak_log   axis=y
+2,1,5   cobblestone
+12,1,5   cobblestone
+2,1,6   cobblestone
+12,1,6   cobblestone
+12,1,7   cobblestone
+1,1,8   vine   east=true   north=false   south=false   up=false   west=false
+2,1,8   cobblestone
+12,1,8   cobblestone
+2,1,9   cobblestone
+10,1,9   cobblestone_stairs   facing=south   half=bottom   shape=straight   waterlogged=false
+12,1,9   cobblestone
+1,1,10   dark_oak_log   axis=y
+2,1,10   cobblestone
+9,1,10   cobblestone
+10,1,10   birch_planks
+12,1,10   cobblestone
+13,1,10   dark_oak_log   axis=y
+2,1,11   cobblestone
+3,1,11   cobblestone
+11,1,11   cobblestone
+12,1,11   cobblestone
+3,1,12   cobblestone
+4,1,12   cobblestone
+5,1,12   cobblestone
+6,1,12   cobblestone
+7,1,12   cobblestone
+8,1,12   cobblestone
+9,1,12   cobblestone
+10,1,12   cobblestone
+11,1,12   mossy_cobblestone
+4,1,13   dark_oak_log   axis=y
+10,1,13   dark_oak_log   axis=y
+
+# --- 第 3 层 (y=2) ---
+4,2,1   dark_oak_log   axis=y
+10,2,1   dark_oak_log   axis=y
+11,2,1   vine   east=false   north=false   south=true   up=false   west=false
+3,2,2   cobblestone
+4,2,2   cobblestone
+5,2,2   cobblestone
+7,2,2   cobblestone
+9,2,2   cobblestone
+10,2,2   cobblestone
+11,2,2   cobblestone
+1,2,3   vine   east=true   north=false   south=false   up=false   west=false
+2,2,3   cobblestone
+3,2,3   cobblestone
+11,2,3   cobblestone
+12,2,3   cobblestone
+1,2,4   dark_oak_log   axis=y
+2,2,4   cobblestone
+12,2,4   cobblestone
+13,2,4   dark_oak_log   axis=y
+2,2,5   cobblestone
+12,2,5   cobblestone
+2,2,6   mossy_cobblestone
+12,2,7   cobblestone
+1,2,8   vine   east=true   north=false   south=false   up=false   west=false
+2,2,8   cobblestone
+2,2,9   cobblestone
+12,2,9   cobblestone
+1,2,10   dark_oak_log   axis=y
+2,2,10   cobblestone
+8,2,10   cobblestone
+9,2,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+12,2,10   cobblestone
+13,2,10   dark_oak_log   axis=y
+2,2,11   cobblestone
+3,2,11   cobblestone
+11,2,11   cobblestone
+12,2,11   cobblestone
+3,2,12   cobblestone
+4,2,12   cobblestone
+5,2,12   cobblestone
+7,2,12   cobblestone
+9,2,12   cobblestone
+10,2,12   cobblestone
+11,2,12   cobblestone
+4,2,13   dark_oak_log   axis=y
+10,2,13   dark_oak_log   axis=y
+
+# --- 第 4 层 (y=3) ---
+4,3,1   dark_oak_slab   type=bottom   waterlogged=false
+5,3,1   vine   east=false   north=false   south=true   up=false   west=false
+10,3,1   dark_oak_slab   type=bottom   waterlogged=false
+3,3,2   dark_oak_fence   east=true   north=false   south=true   waterlogged=false   west=false
+4,3,2   cobblestone
+5,3,2   cobblestone
+6,3,2   cobblestone
+7,3,2   cobblestone
+8,3,2   cobblestone
+9,3,2   cobblestone
+10,3,2   cobblestone
+11,3,2   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=true
+2,3,3   dark_oak_fence   east=true   north=false   south=true   waterlogged=false   west=false
+3,3,3   cobblestone
+4,3,3   dark_oak_stairs   facing=west   half=top   shape=straight   waterlogged=false
+10,3,3   dark_oak_stairs   facing=east   half=top   shape=straight   waterlogged=false
+11,3,3   cobblestone
+12,3,3   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=true
+1,3,4   dark_oak_slab   type=bottom   waterlogged=false
+2,3,4   cobblestone
+3,3,4   dark_oak_stairs   facing=north   half=top   shape=straight   waterlogged=false
+11,3,4   dark_oak_stairs   facing=north   half=top   shape=straight   waterlogged=false
+12,3,4   cobblestone
+13,3,4   dark_oak_slab   type=bottom   waterlogged=false
+2,3,5   cobblestone
+12,3,5   cobblestone
+2,3,6   cobblestone
+12,3,6   cobblestone
+2,3,7   cobblestone
+12,3,7   cobblestone
+2,3,8   cobblestone
+12,3,8   cobblestone
+2,3,9   cobblestone
+12,3,9   cobblestone
+1,3,10   dark_oak_slab   type=bottom   waterlogged=false
+2,3,10   cobblestone
+3,3,10   dark_oak_stairs   facing=south   half=top   shape=straight   waterlogged=false
+7,3,10   cobblestone
+8,3,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+11,3,10   dark_oak_stairs   facing=south   half=top   shape=straight   waterlogged=false
+12,3,10   cobblestone
+13,3,10   dark_oak_slab   type=bottom   waterlogged=false
+2,3,11   dark_oak_fence   east=true   north=true   south=false   waterlogged=false   west=false
+3,3,11   cobblestone
+4,3,11   dark_oak_stairs   facing=west   half=top   shape=straight   waterlogged=false
+10,3,11   dark_oak_stairs   facing=east   half=top   shape=straight   waterlogged=false
+11,3,11   cobblestone
+12,3,11   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=true
+3,3,12   dark_oak_fence   east=true   north=true   south=false   waterlogged=false   west=false
+4,3,12   cobblestone
+5,3,12   cobblestone
+6,3,12   cobblestone
+7,3,12   cobblestone
+8,3,12   cobblestone
+9,3,12   cobblestone
+10,3,12   cobblestone
+11,3,12   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=true
+4,3,13   dark_oak_slab   type=bottom   waterlogged=false
+10,3,13   dark_oak_slab   type=bottom   waterlogged=false
+
+# --- 第 5 层 (y=4) ---
+5,4,2   dark_oak_slab   type=bottom   waterlogged=false
+6,4,2   dark_oak_slab   type=bottom   waterlogged=false
+7,4,2   dark_oak_slab   type=bottom   waterlogged=false
+8,4,2   dark_oak_slab   type=bottom   waterlogged=false
+9,4,2   dark_oak_slab   type=bottom   waterlogged=false
+4,4,3   cobblestone
+5,4,3   dark_oak_planks
+6,4,3   dark_oak_planks
+7,4,3   dark_oak_planks
+8,4,3   dark_oak_planks
+9,4,3   dark_oak_planks
+10,4,3   cobblestone
+3,4,4   mossy_cobblestone
+11,4,4   cobblestone
+2,4,5   dark_oak_slab   type=bottom   waterlogged=false
+3,4,5   dark_oak_planks
+11,4,5   dark_oak_planks
+12,4,5   dark_oak_slab   type=bottom   waterlogged=false
+2,4,6   dark_oak_slab   type=bottom   waterlogged=false
+3,4,6   dark_oak_planks
+11,4,6   dark_oak_planks
+12,4,6   dark_oak_slab   type=bottom   waterlogged=false
+2,4,7   dark_oak_slab   type=bottom   waterlogged=false
+3,4,7   dark_oak_planks
+11,4,7   dark_oak_planks
+12,4,7   dark_oak_slab   type=bottom   waterlogged=false
+2,4,8   dark_oak_slab   type=bottom   waterlogged=false
+3,4,8   dark_oak_planks
+11,4,8   dark_oak_planks
+12,4,8   dark_oak_slab   type=bottom   waterlogged=false
+2,4,9   dark_oak_slab   type=bottom   waterlogged=false
+3,4,9   dark_oak_planks
+11,4,9   dark_oak_planks
+12,4,9   dark_oak_slab   type=bottom   waterlogged=false
+3,4,10   cobblestone
+6,4,10   cobblestone
+7,4,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+11,4,10   cobblestone
+4,4,11   cobblestone
+5,4,11   dark_oak_planks
+6,4,11   dark_oak_planks
+7,4,11   dark_oak_planks
+8,4,11   dark_oak_planks
+9,4,11   dark_oak_planks
+10,4,11   cobblestone
+5,4,12   dark_oak_slab   type=bottom   waterlogged=false
+6,4,12   dark_oak_slab   type=bottom   waterlogged=false
+7,4,12   dark_oak_slab   type=bottom   waterlogged=false
+8,4,12   dark_oak_slab   type=bottom   waterlogged=false
+9,4,12   dark_oak_slab   type=bottom   waterlogged=false
+
+# --- 第 6 层 (y=5) ---
+6,5,2   cobblestone_stairs   facing=south   half=top   shape=straight   waterlogged=false
+7,5,2   cobblestone_slab   type=top   waterlogged=false
+8,5,2   cobblestone_stairs   facing=south   half=top   shape=straight   waterlogged=false
+4,5,3   dark_oak_log   axis=y
+5,5,3   dark_oak_planks
+6,5,3   birch_planks
+7,5,3   dark_oak_log   axis=z
+8,5,3   birch_planks
+9,5,3   dark_oak_planks
+10,5,3   dark_oak_log   axis=y
+3,5,4   dark_oak_log   axis=y
+4,5,4   birch_planks
+5,5,4   birch_planks
+6,5,4   birch_planks
+7,5,4   birch_planks
+8,5,4   birch_planks
+9,5,4   birch_planks
+10,5,4   birch_planks
+11,5,4   dark_oak_log   axis=y
+3,5,5   dark_oak_planks
+4,5,5   birch_planks
+5,5,5   birch_planks
+6,5,5   birch_planks
+7,5,5   birch_planks
+8,5,5   birch_planks
+9,5,5   birch_planks
+10,5,5   birch_planks
+11,5,5   dark_oak_planks
+2,5,6   cobblestone_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,5,6   birch_planks
+4,5,6   birch_planks
+5,5,6   birch_planks
+6,5,6   birch_planks
+7,5,6   birch_planks
+8,5,6   birch_planks
+9,5,6   birch_planks
+10,5,6   birch_planks
+11,5,6   birch_planks
+12,5,6   cobblestone_stairs   facing=west   half=top   shape=straight   waterlogged=false
+2,5,7   cobblestone_slab   type=top   waterlogged=false
+3,5,7   dark_oak_log   axis=x
+4,5,7   birch_planks
+5,5,7   birch_planks
+6,5,7   birch_planks
+7,5,7   birch_planks
+8,5,7   birch_planks
+9,5,7   birch_planks
+10,5,7   birch_planks
+11,5,7   dark_oak_log   axis=x
+12,5,7   cobblestone_slab   type=top   waterlogged=false
+2,5,8   cobblestone_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,5,8   birch_planks
+4,5,8   birch_planks
+5,5,8   birch_planks
+6,5,8   birch_planks
+7,5,8   birch_planks
+8,5,8   birch_planks
+9,5,8   birch_planks
+10,5,8   birch_planks
+11,5,8   birch_planks
+12,5,8   cobblestone_stairs   facing=west   half=top   shape=straight   waterlogged=false
+3,5,9   dark_oak_planks
+4,5,9   birch_planks
+5,5,9   birch_planks
+6,5,9   birch_planks
+7,5,9   birch_planks
+8,5,9   birch_planks
+10,5,9   birch_planks
+11,5,9   dark_oak_planks
+3,5,10   dark_oak_log   axis=y
+4,5,10   birch_planks
+5,5,10   birch_planks
+6,5,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+10,5,10   birch_planks
+11,5,10   dark_oak_log   axis=y
+4,5,11   dark_oak_log   axis=y
+5,5,11   dark_oak_planks
+6,5,11   birch_planks
+7,5,11   dark_oak_log   axis=z
+8,5,11   birch_planks
+9,5,11   dark_oak_planks
+10,5,11   dark_oak_log   axis=y
+6,5,12   cobblestone_stairs   facing=north   half=top   shape=straight   waterlogged=false
+7,5,12   cobblestone_slab   type=top   waterlogged=false
+8,5,12   cobblestone_stairs   facing=north   half=top   shape=straight   waterlogged=false
+
+# --- 第 7 层 (y=6) ---
+4,6,3   dark_oak_log   axis=y
+5,6,3   dark_oak_planks
+9,6,3   dark_oak_planks
+10,6,3   dark_oak_log   axis=y
+3,6,4   dark_oak_log   axis=y
+4,6,4   birch_planks
+5,6,4   cobblestone
+11,6,4   dark_oak_log   axis=y
+3,6,5   dark_oak_planks
+4,6,5   cobblestone_stairs   facing=north   half=bottom   shape=straight   waterlogged=false
+11,6,5   dark_oak_planks
+3,6,9   dark_oak_planks
+11,6,9   dark_oak_planks
+3,6,10   dark_oak_log   axis=y
+11,6,10   dark_oak_log   axis=y
+4,6,11   dark_oak_log   axis=y
+5,6,11   dark_oak_planks
+9,6,11   dark_oak_planks
+10,6,11   dark_oak_log   axis=y
+
+# --- 第 8 层 (y=7) ---
+4,7,3   dark_oak_log   axis=y
+5,7,3   dark_oak_planks
+9,7,3   dark_oak_planks
+10,7,3   dark_oak_log   axis=y
+3,7,4   dark_oak_log   axis=y
+5,7,4   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+11,7,4   dark_oak_log   axis=y
+3,7,5   dark_oak_planks
+11,7,5   dark_oak_planks
+3,7,9   dark_oak_planks
+11,7,9   dark_oak_planks
+3,7,10   dark_oak_log   axis=y
+11,7,10   dark_oak_log   axis=y
+4,7,11   dark_oak_log   axis=y
+5,7,11   dark_oak_planks
+9,7,11   dark_oak_planks
+10,7,11   dark_oak_log   axis=y
+
+# --- 第 9 层 (y=8) ---
+4,8,3   dark_oak_log   axis=y
+5,8,3   dark_oak_planks
+6,8,3   dark_oak_planks
+7,8,3   dark_oak_slab   type=top   waterlogged=false
+8,8,3   dark_oak_planks
+9,8,3   dark_oak_planks
+10,8,3   dark_oak_log   axis=y
+3,8,4   dark_oak_log   axis=y
+6,8,4   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+11,8,4   dark_oak_log   axis=y
+3,8,5   dark_oak_planks
+11,8,5   dark_oak_planks
+3,8,6   dark_oak_planks
+11,8,6   dark_oak_planks
+3,8,7   dark_oak_slab   type=top   waterlogged=false
+11,8,7   dark_oak_slab   type=top   waterlogged=false
+3,8,8   dark_oak_planks
+11,8,8   dark_oak_planks
+3,8,9   dark_oak_planks
+11,8,9   dark_oak_planks
+3,8,10   dark_oak_log   axis=y
+11,8,10   dark_oak_log   axis=y
+4,8,11   dark_oak_log   axis=y
+5,8,11   dark_oak_planks
+6,8,11   dark_oak_planks
+7,8,11   dark_oak_slab   type=top   waterlogged=false
+8,8,11   dark_oak_planks
+9,8,11   dark_oak_planks
+10,8,11   dark_oak_log   axis=y
+
+# --- 第 10 层 (y=9) ---
+4,9,3   dark_oak_log   axis=y
+5,9,3   dark_oak_planks
+6,9,3   dark_oak_planks
+7,9,3   dark_oak_log   axis=z
+8,9,3   dark_oak_planks
+9,9,3   dark_oak_planks
+10,9,3   dark_oak_log   axis=y
+3,9,4   dark_oak_log   axis=y
+7,9,4   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+8,9,4   birch_planks
+9,9,4   birch_planks
+10,9,4   birch_planks
+11,9,4   dark_oak_log   axis=y
+3,9,5   dark_oak_planks
+5,9,5   birch_planks
+6,9,5   birch_planks
+7,9,5   birch_planks
+8,9,5   birch_planks
+9,9,5   birch_planks
+10,9,5   birch_planks
+11,9,5   dark_oak_planks
+3,9,6   dark_oak_planks
+4,9,6   birch_planks
+5,9,6   birch_planks
+6,9,6   birch_planks
+7,9,6   birch_planks
+8,9,6   birch_planks
+9,9,6   birch_planks
+10,9,6   birch_planks
+11,9,6   dark_oak_planks
+3,9,7   dark_oak_log   axis=x
+4,9,7   birch_planks
+5,9,7   birch_planks
+6,9,7   birch_planks
+7,9,7   birch_planks
+8,9,7   birch_planks
+9,9,7   birch_planks
+10,9,7   birch_planks
+11,9,7   dark_oak_log   axis=x
+3,9,8   dark_oak_planks
+4,9,8   birch_planks
+5,9,8   birch_planks
+6,9,8   birch_planks
+7,9,8   birch_planks
+8,9,8   birch_planks
+9,9,8   birch_planks
+10,9,8   birch_planks
+11,9,8   dark_oak_planks
+3,9,9   dark_oak_planks
+4,9,9   birch_planks
+5,9,9   birch_planks
+6,9,9   birch_planks
+7,9,9   birch_planks
+8,9,9   birch_planks
+9,9,9   birch_planks
+10,9,9   birch_planks
+11,9,9   dark_oak_planks
+3,9,10   dark_oak_log   axis=y
+4,9,10   birch_planks
+5,9,10   birch_planks
+6,9,10   birch_planks
+7,9,10   birch_planks
+8,9,10   birch_planks
+9,9,10   birch_planks
+10,9,10   birch_planks
+11,9,10   dark_oak_log   axis=y
+4,9,11   dark_oak_log   axis=y
+5,9,11   dark_oak_planks
+6,9,11   dark_oak_planks
+7,9,11   dark_oak_log   axis=z
+8,9,11   dark_oak_planks
+9,9,11   dark_oak_planks
+10,9,11   dark_oak_log   axis=y
+
+# --- 第 11 层 (y=10) ---
+4,10,3   dark_oak_log   axis=y
+5,10,3   dark_oak_planks
+6,10,3   dark_oak_log   axis=z
+7,10,3   dark_oak_planks
+8,10,3   dark_oak_log   axis=z
+9,10,3   dark_oak_planks
+10,10,3   dark_oak_log   axis=y
+3,10,4   dark_oak_log   axis=y
+11,10,4   dark_oak_log   axis=y
+3,10,5   dark_oak_planks
+11,10,5   dark_oak_planks
+3,10,6   dark_oak_log   axis=x
+11,10,6   dark_oak_log   axis=x
+3,10,7   dark_oak_planks
+11,10,7   dark_oak_planks
+3,10,8   dark_oak_log   axis=x
+11,10,8   dark_oak_log   axis=x
+3,10,9   dark_oak_planks
+9,10,9   cobblestone_stairs   facing=south   half=bottom   shape=straight   waterlogged=false
+11,10,9   dark_oak_planks
+3,10,10   dark_oak_log   axis=y
+9,10,10   birch_planks
+11,10,10   dark_oak_log   axis=y
+4,10,11   dark_oak_log   axis=y
+5,10,11   dark_oak_planks
+6,10,11   dark_oak_log   axis=z
+7,10,11   dark_oak_planks
+8,10,11   dark_oak_log   axis=z
+9,10,11   dark_oak_planks
+10,10,11   dark_oak_log   axis=y
+
+# --- 第 12 层 (y=11) ---
+4,11,3   cobblestone
+5,11,3   dark_oak_planks
+6,11,3   dark_oak_planks
+7,11,3   dark_oak_log   axis=z
+8,11,3   dark_oak_planks
+9,11,3   dark_oak_planks
+10,11,3   cobblestone
+3,11,4   cobblestone
+11,11,4   cobblestone
+3,11,5   dark_oak_planks
+11,11,5   dark_oak_planks
+3,11,6   dark_oak_planks
+11,11,6   dark_oak_planks
+3,11,7   dark_oak_log   axis=x
+11,11,7   dark_oak_log   axis=x
+3,11,8   dark_oak_planks
+11,11,8   dark_oak_planks
+3,11,9   dark_oak_planks
+11,11,9   dark_oak_planks
+3,11,10   cobblestone
+8,11,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+11,11,10   cobblestone
+3,11,11   vine   east=true   north=true   south=false   up=false   west=false
+4,11,11   cobblestone
+5,11,11   dark_oak_planks
+6,11,11   dark_oak_planks
+7,11,11   dark_oak_log   axis=z
+8,11,11   dark_oak_planks
+9,11,11   dark_oak_planks
+10,11,11   cobblestone
+
+# --- 第 13 层 (y=12) ---
+3,12,2   dark_oak_slab   type=top   waterlogged=false
+4,12,2   cobblestone
+5,12,2   dark_oak_stairs   facing=south   half=top   shape=straight   waterlogged=false
+6,12,2   cobblestone_stairs   facing=south   half=top   shape=straight   waterlogged=false
+7,12,2   cobblestone_stairs   facing=south   half=top   shape=straight   waterlogged=false
+8,12,2   mossy_cobblestone_stairs   facing=south   half=top   shape=straight   waterlogged=false
+9,12,2   dark_oak_stairs   facing=south   half=top   shape=straight   waterlogged=false
+10,12,2   cobblestone
+11,12,2   dark_oak_slab   type=top   waterlogged=false
+2,12,3   dark_oak_slab   type=top   waterlogged=false
+3,12,3   cobblestone
+4,12,3   cobblestone
+5,12,3   cobblestone
+6,12,3   cobblestone
+7,12,3   mossy_cobblestone
+8,12,3   cobblestone
+9,12,3   cobblestone
+10,12,3   cobblestone
+11,12,3   cobblestone
+12,12,3   dark_oak_slab   type=top   waterlogged=false
+2,12,4   cobblestone
+3,12,4   cobblestone
+11,12,4   cobblestone
+12,12,4   mossy_cobblestone
+2,12,5   dark_oak_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,12,5   cobblestone
+11,12,5   cobblestone
+12,12,5   dark_oak_stairs   facing=west   half=top   shape=straight   waterlogged=false
+2,12,6   cobblestone_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,12,6   cobblestone
+11,12,6   cobblestone
+12,12,6   mossy_cobblestone_stairs   facing=west   half=top   shape=straight   waterlogged=false
+2,12,7   cobblestone_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,12,7   cobblestone
+11,12,7   cobblestone
+12,12,7   cobblestone_stairs   facing=west   half=top   shape=straight   waterlogged=false
+2,12,8   cobblestone_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,12,8   cobblestone
+11,12,8   cobblestone
+12,12,8   cobblestone_stairs   facing=west   half=top   shape=straight   waterlogged=false
+2,12,9   dark_oak_stairs   facing=east   half=top   shape=straight   waterlogged=false
+3,12,9   cobblestone
+11,12,9   cobblestone
+12,12,9   dark_oak_stairs   facing=west   half=top   shape=straight   waterlogged=false
+2,12,10   cobblestone
+3,12,10   cobblestone
+7,12,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+11,12,10   cobblestone
+12,12,10   cobblestone
+2,12,11   dark_oak_slab   type=top   waterlogged=false
+3,12,11   cobblestone
+4,12,11   cobblestone
+5,12,11   cobblestone
+6,12,11   cobblestone
+7,12,11   cobblestone
+8,12,11   cobblestone
+9,12,11   cobblestone
+10,12,11   cobblestone
+11,12,11   cobblestone
+12,12,11   dark_oak_slab   type=top   waterlogged=false
+3,12,12   dark_oak_slab   type=top   waterlogged=false
+4,12,12   cobblestone
+5,12,12   dark_oak_stairs   facing=north   half=top   shape=straight   waterlogged=false
+6,12,12   cobblestone_stairs   facing=north   half=top   shape=straight   waterlogged=false
+7,12,12   cobblestone_stairs   facing=north   half=top   shape=straight   waterlogged=false
+8,12,12   cobblestone_stairs   facing=north   half=top   shape=straight   waterlogged=false
+9,12,12   dark_oak_stairs   facing=north   half=top   shape=straight   waterlogged=false
+10,12,12   cobblestone
+11,12,12   dark_oak_slab   type=top   waterlogged=false
+
+# --- 第 14 层 (y=13) ---
+4,13,0   white_wall_banner   facing=north
+10,13,0   white_wall_banner   facing=north
+3,13,1   dark_oak_log   axis=z
+4,13,1   dark_oak_log   axis=x
+5,13,1   dark_oak_log   axis=x
+6,13,1   dark_oak_log   axis=x
+7,13,1   dark_oak_log   axis=x
+8,13,1   dark_oak_log   axis=x
+9,13,1   dark_oak_log   axis=x
+10,13,1   dark_oak_log   axis=x
+11,13,1   dark_oak_log   axis=z
+2,13,2   cobblestone
+3,13,2   birch_planks
+4,13,2   birch_planks
+5,13,2   birch_planks
+6,13,2   birch_planks
+7,13,2   birch_planks
+8,13,2   birch_planks
+9,13,2   birch_planks
+10,13,2   birch_planks
+11,13,2   birch_planks
+12,13,2   cobblestone
+1,13,3   dark_oak_log   axis=x
+2,13,3   birch_planks
+3,13,3   birch_planks
+4,13,3   birch_planks
+5,13,3   birch_planks
+6,13,3   birch_planks
+7,13,3   birch_planks
+8,13,3   birch_planks
+9,13,3   birch_planks
+10,13,3   birch_planks
+11,13,3   birch_planks
+12,13,3   birch_planks
+13,13,3   dark_oak_log   axis=x
+0,13,4   white_wall_banner   facing=west
+1,13,4   dark_oak_log   axis=z
+2,13,4   birch_planks
+3,13,4   birch_planks
+4,13,4   birch_planks
+5,13,4   birch_planks
+6,13,4   birch_planks
+7,13,4   birch_planks
+8,13,4   birch_planks
+9,13,4   birch_planks
+10,13,4   birch_planks
+11,13,4   birch_planks
+12,13,4   birch_planks
+13,13,4   dark_oak_log   axis=z
+14,13,4   white_wall_banner   facing=east
+1,13,5   dark_oak_log   axis=z
+2,13,5   birch_planks
+3,13,5   birch_planks
+4,13,5   birch_planks
+5,13,5   birch_planks
+6,13,5   birch_planks
+7,13,5   birch_planks
+8,13,5   birch_planks
+9,13,5   birch_planks
+10,13,5   birch_planks
+11,13,5   birch_planks
+12,13,5   birch_planks
+13,13,5   dark_oak_log   axis=z
+1,13,6   dark_oak_log   axis=z
+2,13,6   birch_planks
+3,13,6   birch_planks
+4,13,6   birch_planks
+5,13,6   birch_planks
+6,13,6   birch_planks
+7,13,6   birch_planks
+8,13,6   birch_planks
+9,13,6   birch_planks
+10,13,6   birch_planks
+11,13,6   birch_planks
+12,13,6   birch_planks
+13,13,6   dark_oak_log   axis=z
+1,13,7   dark_oak_log   axis=z
+2,13,7   birch_planks
+3,13,7   birch_planks
+4,13,7   birch_planks
+5,13,7   birch_planks
+6,13,7   birch_planks
+7,13,7   birch_planks
+8,13,7   birch_planks
+9,13,7   birch_planks
+10,13,7   birch_planks
+11,13,7   birch_planks
+12,13,7   birch_planks
+13,13,7   dark_oak_log   axis=z
+1,13,8   dark_oak_log   axis=z
+2,13,8   birch_planks
+3,13,8   birch_planks
+4,13,8   birch_planks
+5,13,8   birch_planks
+6,13,8   birch_planks
+7,13,8   birch_planks
+8,13,8   birch_planks
+9,13,8   birch_planks
+10,13,8   birch_planks
+11,13,8   birch_planks
+12,13,8   birch_planks
+13,13,8   dark_oak_log   axis=z
+1,13,9   dark_oak_log   axis=z
+2,13,9   birch_planks
+3,13,9   birch_planks
+4,13,9   birch_planks
+5,13,9   birch_planks
+6,13,9   birch_planks
+7,13,9   birch_planks
+8,13,9   birch_planks
+10,13,9   birch_planks
+11,13,9   birch_planks
+12,13,9   birch_planks
+13,13,9   dark_oak_log   axis=z
+0,13,10   white_wall_banner   facing=west
+1,13,10   dark_oak_log   axis=z
+2,13,10   birch_planks
+3,13,10   birch_planks
+4,13,10   birch_planks
+5,13,10   birch_planks
+6,13,10   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+10,13,10   birch_planks
+11,13,10   birch_planks
+12,13,10   birch_planks
+13,13,10   dark_oak_log   axis=z
+14,13,10   white_wall_banner   facing=east
+1,13,11   dark_oak_log   axis=x
+2,13,11   birch_planks
+3,13,11   birch_planks
+4,13,11   birch_planks
+5,13,11   birch_planks
+6,13,11   birch_planks
+7,13,11   birch_planks
+8,13,11   birch_planks
+9,13,11   birch_planks
+10,13,11   birch_planks
+11,13,11   birch_planks
+12,13,11   birch_planks
+13,13,11   dark_oak_log   axis=x
+2,13,12   cobblestone
+3,13,12   birch_planks
+4,13,12   birch_planks
+5,13,12   birch_planks
+6,13,12   birch_planks
+7,13,12   birch_planks
+8,13,12   birch_planks
+9,13,12   birch_planks
+10,13,12   birch_planks
+11,13,12   birch_planks
+12,13,12   cobblestone
+13,13,12   vine   east=false   north=false   south=false   up=false   west=true
+3,13,13   dark_oak_log   axis=z
+4,13,13   dark_oak_log   axis=x
+5,13,13   dark_oak_log   axis=x
+6,13,13   dark_oak_log   axis=x
+7,13,13   dark_oak_log   axis=x
+8,13,13   dark_oak_log   axis=x
+9,13,13   dark_oak_log   axis=x
+10,13,13   dark_oak_log   axis=x
+11,13,13   dark_oak_log   axis=z
+12,13,13   vine   east=false   north=true   south=false   up=false   west=false
+4,13,14   white_wall_banner   facing=south
+10,13,14   white_wall_banner   facing=south
+
+# --- 第 15 层 (y=14) ---
+3,14,1   dark_oak_fence   east=true   north=false   south=true   waterlogged=false   west=false
+4,14,1   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+5,14,1   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+6,14,1   dark_oak_fence   east=false   north=false   south=false   waterlogged=false   west=true
+8,14,1   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=false
+9,14,1   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+10,14,1   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+11,14,1   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=true
+2,14,2   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+3,14,2   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=false
+11,14,2   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=false
+12,14,2   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+1,14,3   dark_oak_fence   east=true   north=false   south=true   waterlogged=false   west=false
+2,14,3   dark_oak_fence   east=false   north=false   south=false   waterlogged=false   west=true
+12,14,3   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=false
+13,14,3   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=true
+1,14,4   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+4,14,4   dark_oak_log   axis=y
+10,14,4   dark_oak_log   axis=y
+13,14,4   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+1,14,5   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+13,14,5   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+1,14,6   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=false
+13,14,6   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=false
+1,14,8   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=false
+13,14,8   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=false
+1,14,9   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+4,14,9   chest   facing=north   type=single   waterlogged=false
+  items:
+    slot=1  carrot  count=1
+    slot=2  carrot  count=1
+    slot=5  dark_oak_log  count=1
+    slot=7  dark_oak_log  count=1
+    slot=8  potato  count=1
+    slot=9  dark_oak_log  count=1
+    slot=12  dark_oak_log  count=1
+    slot=13  potato  count=1
+    slot=14  string  count=1
+    slot=15  potato  count=1
+    slot=17  experience_bottle  count=1
+    slot=19  string  count=1
+    slot=20  carrot  count=1
+    slot=22  carrot  count=1
+    slot=23  carrot  count=4
+    slot=24  carrot  count=1
+    slot=26  carrot  count=1
+13,14,9   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+1,14,10   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+4,14,10   dark_oak_log   axis=y
+10,14,10   dark_oak_log   axis=y
+13,14,10   dark_oak_fence   east=false   north=true   south=true   waterlogged=false   west=false
+1,14,11   dark_oak_fence   east=true   north=true   south=false   waterlogged=false   west=false
+2,14,11   dark_oak_fence   east=false   north=false   south=false   waterlogged=false   west=true
+12,14,11   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=false
+13,14,11   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=true
+2,14,12   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+3,14,12   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=false
+11,14,12   dark_oak_fence   east=false   north=false   south=true   waterlogged=false   west=false
+12,14,12   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+3,14,13   dark_oak_fence   east=true   north=true   south=false   waterlogged=false   west=false
+4,14,13   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+5,14,13   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+6,14,13   dark_oak_fence   east=false   north=false   south=false   waterlogged=false   west=true
+8,14,13   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=false
+9,14,13   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+10,14,13   dark_oak_fence   east=true   north=false   south=false   waterlogged=false   west=true
+11,14,13   dark_oak_fence   east=false   north=true   south=false   waterlogged=false   west=true
+
+# --- 第 16 层 (y=15) ---
+2,15,2   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+12,15,2   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+4,15,4   dark_oak_log   axis=y
+10,15,4   dark_oak_log   axis=y
+4,15,10   dark_oak_log   axis=y
+10,15,10   dark_oak_log   axis=y
+2,15,12   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+12,15,12   cobblestone_wall   east=none   north=none   south=none   up=true   waterlogged=false   west=none
+
+# --- 第 17 层 (y=16) ---
+2,16,2   dark_oak_planks
+12,16,2   dark_oak_planks
+4,16,4   dark_oak_log   axis=y
+10,16,4   dark_oak_log   axis=y
+4,16,10   dark_oak_log   axis=y
+10,16,10   dark_oak_log   axis=y
+2,16,12   dark_oak_planks
+12,16,12   dark_oak_planks
+
+# --- 第 18 层 (y=17) ---
+2,17,2   dark_oak_planks
+11,17,2   dark_oak_planks
+12,17,2   dark_oak_planks
+3,17,3   dark_oak_planks
+11,17,3   dark_oak_planks
+12,17,3   dark_oak_planks
+4,17,4   dark_oak_log   axis=y
+10,17,4   dark_oak_log   axis=y
+4,17,10   dark_oak_log   axis=y
+10,17,10   dark_oak_log   axis=y
+2,17,11   dark_oak_planks
+3,17,11   dark_oak_planks
+11,17,11   dark_oak_planks
+12,17,11   dark_oak_planks
+2,17,12   dark_oak_planks
+3,17,12   dark_oak_planks
+11,17,12   dark_oak_planks
+12,17,12   dark_oak_planks
+
+# --- 第 19 层 (y=18) ---
+2,18,2   torch
+3,18,2   dark_oak_planks
+4,18,2   dark_oak_planks
+5,18,2   dark_oak_planks
+9,18,2   dark_oak_planks
+10,18,2   dark_oak_planks
+11,18,2   dark_oak_planks
+12,18,2   torch
+2,18,3   dark_oak_planks
+3,18,3   dark_oak_planks
+4,18,3   dark_oak_planks
+5,18,3   dark_oak_planks
+9,18,3   dark_oak_planks
+10,18,3   dark_oak_planks
+11,18,3   dark_oak_planks
+12,18,3   dark_oak_planks
+2,18,4   dark_oak_planks
+3,18,4   dark_oak_planks
+4,18,4   dark_oak_planks
+5,18,4   dark_oak_planks
+9,18,4   dark_oak_planks
+10,18,4   dark_oak_planks
+11,18,4   dark_oak_planks
+12,18,4   dark_oak_planks
+2,18,5   dark_oak_planks
+3,18,5   dark_oak_planks
+4,18,5   dark_oak_planks
+5,18,5   dark_oak_planks
+9,18,5   dark_oak_planks
+10,18,5   dark_oak_planks
+11,18,5   dark_oak_planks
+12,18,5   dark_oak_planks
+2,18,9   dark_oak_planks
+3,18,9   dark_oak_planks
+4,18,9   dark_oak_planks
+5,18,9   dark_oak_planks
+9,18,9   dark_oak_planks
+10,18,9   dark_oak_planks
+11,18,9   dark_oak_planks
+12,18,9   dark_oak_planks
+2,18,10   dark_oak_planks
+3,18,10   dark_oak_planks
+4,18,10   dark_oak_planks
+5,18,10   dark_oak_planks
+9,18,10   dark_oak_planks
+10,18,10   dark_oak_planks
+11,18,10   dark_oak_planks
+12,18,10   dark_oak_planks
+2,18,11   dark_oak_planks
+3,18,11   dark_oak_planks
+4,18,11   dark_oak_planks
+5,18,11   dark_oak_planks
+9,18,11   dark_oak_planks
+10,18,11   dark_oak_planks
+11,18,11   dark_oak_planks
+12,18,11   dark_oak_planks
+2,18,12   torch
+3,18,12   dark_oak_planks
+4,18,12   dark_oak_planks
+5,18,12   dark_oak_planks
+9,18,12   dark_oak_planks
+10,18,12   dark_oak_planks
+11,18,12   dark_oak_planks
+12,18,12   torch
+
+# --- 第 20 层 (y=19) ---
+4,19,2   dark_oak_planks
+5,19,2   dark_oak_planks
+6,19,2   dark_oak_planks
+7,19,2   dark_oak_planks
+8,19,2   dark_oak_planks
+9,19,2   dark_oak_planks
+10,19,2   dark_oak_planks
+3,19,3   dark_oak_planks
+4,19,3   dark_oak_planks
+5,19,3   dark_oak_planks
+6,19,3   dark_oak_planks
+7,19,3   dark_oak_planks
+8,19,3   dark_oak_planks
+9,19,3   dark_oak_planks
+10,19,3   dark_oak_planks
+11,19,3   dark_oak_planks
+2,19,4   dark_oak_planks
+3,19,4   dark_oak_planks
+4,19,4   dark_oak_planks
+5,19,4   dark_oak_planks
+6,19,4   dark_oak_planks
+7,19,4   dark_oak_planks
+8,19,4   dark_oak_planks
+9,19,4   dark_oak_planks
+10,19,4   dark_oak_planks
+11,19,4   dark_oak_planks
+12,19,4   dark_oak_planks
+2,19,5   dark_oak_planks
+3,19,5   dark_oak_planks
+4,19,5   dark_oak_planks
+5,19,5   dark_oak_planks
+6,19,5   dark_oak_planks
+8,19,5   dark_oak_planks
+9,19,5   dark_oak_planks
+10,19,5   dark_oak_planks
+11,19,5   dark_oak_planks
+12,19,5   dark_oak_planks
+2,19,6   dark_oak_planks
+3,19,6   dark_oak_planks
+4,19,6   dark_oak_planks
+5,19,6   dark_oak_planks
+9,19,6   dark_oak_planks
+10,19,6   dark_oak_planks
+11,19,6   dark_oak_planks
+12,19,6   dark_oak_planks
+2,19,7   dark_oak_planks
+3,19,7   dark_oak_planks
+4,19,7   dark_oak_planks
+10,19,7   dark_oak_planks
+11,19,7   dark_oak_planks
+12,19,7   dark_oak_planks
+2,19,8   dark_oak_planks
+3,19,8   dark_oak_planks
+4,19,8   dark_oak_planks
+5,19,8   dark_oak_planks
+9,19,8   dark_oak_planks
+10,19,8   dark_oak_planks
+11,19,8   dark_oak_planks
+12,19,8   dark_oak_planks
+2,19,9   dark_oak_planks
+3,19,9   dark_oak_planks
+4,19,9   dark_oak_planks
+5,19,9   dark_oak_planks
+6,19,9   dark_oak_planks
+8,19,9   dark_oak_planks
+9,19,9   dark_oak_planks
+10,19,9   dark_oak_planks
+11,19,9   dark_oak_planks
+12,19,9   dark_oak_planks
+2,19,10   dark_oak_planks
+3,19,10   dark_oak_planks
+4,19,10   dark_oak_planks
+5,19,10   dark_oak_planks
+6,19,10   dark_oak_planks
+7,19,10   dark_oak_planks
+8,19,10   dark_oak_planks
+9,19,10   dark_oak_planks
+10,19,10   dark_oak_planks
+11,19,10   dark_oak_planks
+12,19,10   dark_oak_planks
+3,19,11   dark_oak_planks
+4,19,11   dark_oak_planks
+5,19,11   dark_oak_planks
+6,19,11   dark_oak_planks
+7,19,11   dark_oak_planks
+8,19,11   dark_oak_planks
+9,19,11   dark_oak_planks
+10,19,11   dark_oak_planks
+11,19,11   dark_oak_planks
+4,19,12   dark_oak_planks
+5,19,12   dark_oak_planks
+6,19,12   dark_oak_planks
+7,19,12   dark_oak_planks
+8,19,12   dark_oak_planks
+9,19,12   dark_oak_planks
+10,19,12   dark_oak_planks
+
+# --- 第 21 层 (y=20) ---
+5,20,3   dark_oak_planks
+6,20,3   dark_oak_planks
+7,20,3   dark_oak_planks
+8,20,3   dark_oak_planks
+9,20,3   dark_oak_planks
+4,20,4   dark_oak_planks
+5,20,4   dark_oak_planks
+6,20,4   dark_oak_planks
+7,20,4   dark_oak_planks
+8,20,4   dark_oak_planks
+9,20,4   dark_oak_planks
+10,20,4   dark_oak_planks
+3,20,5   dark_oak_planks
+4,20,5   dark_oak_planks
+5,20,5   dark_oak_planks
+6,20,5   dark_oak_planks
+7,20,5   dark_oak_planks
+8,20,5   dark_oak_planks
+9,20,5   dark_oak_planks
+10,20,5   dark_oak_planks
+11,20,5   dark_oak_planks
+3,20,6   dark_oak_planks
+4,20,6   dark_oak_planks
+5,20,6   dark_oak_planks
+6,20,6   dark_oak_planks
+7,20,6   dark_oak_planks
+8,20,6   dark_oak_planks
+9,20,6   dark_oak_planks
+10,20,6   dark_oak_planks
+11,20,6   dark_oak_planks
+3,20,7   dark_oak_planks
+4,20,7   dark_oak_planks
+5,20,7   dark_oak_planks
+6,20,7   dark_oak_planks
+7,20,7   dark_oak_planks
+8,20,7   dark_oak_planks
+9,20,7   dark_oak_planks
+10,20,7   dark_oak_planks
+11,20,7   dark_oak_planks
+3,20,8   dark_oak_planks
+4,20,8   dark_oak_planks
+5,20,8   dark_oak_planks
+6,20,8   dark_oak_planks
+7,20,8   dark_oak_planks
+8,20,8   dark_oak_planks
+9,20,8   dark_oak_planks
+10,20,8   dark_oak_planks
+11,20,8   dark_oak_planks
+3,20,9   dark_oak_planks
+4,20,9   dark_oak_planks
+5,20,9   dark_oak_planks
+6,20,9   dark_oak_planks
+7,20,9   dark_oak_planks
+8,20,9   dark_oak_planks
+9,20,9   dark_oak_planks
+10,20,9   dark_oak_planks
+11,20,9   dark_oak_planks
+4,20,10   dark_oak_planks
+5,20,10   dark_oak_planks
+6,20,10   dark_oak_planks
+7,20,10   dark_oak_planks
+8,20,10   dark_oak_planks
+9,20,10   dark_oak_planks
+10,20,10   dark_oak_planks
+5,20,11   dark_oak_planks
+6,20,11   dark_oak_planks
+7,20,11   dark_oak_planks
+8,20,11   dark_oak_planks
+9,20,11   dark_oak_planks
+

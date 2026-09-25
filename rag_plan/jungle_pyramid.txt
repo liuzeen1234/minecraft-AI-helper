@@ -1,0 +1,2203 @@
+# MCBLUEPRINT v2
+# name: jungle_pyramid
+# size: 17x16x15
+# origin: 0,0,0
+# 坐标原点在结构西北角最低层，x向东，y向上，z向南
+# 格式：x,y,z  block_id  [key=value ...]
+
+## BLOCKS
+
+# --- 第 1 层 (y=0) ---
+0,0,0   stone
+1,0,0   dirt
+2,0,0   dirt
+3,0,0   grass_block   snowy=false
+4,0,0   grass_block   snowy=false
+5,0,0   grass_block   snowy=false
+6,0,0   grass_block   snowy=false
+7,0,0   grass_block   snowy=false
+8,0,0   dirt
+9,0,0   dirt
+10,0,0   dirt
+11,0,0   stone
+0,0,1   stone
+1,0,1   dirt
+2,0,1   dirt
+3,0,1   dirt
+4,0,1   dirt
+5,0,1   dirt
+6,0,1   grass_block   snowy=false
+7,0,1   dirt
+8,0,1   dirt
+9,0,1   dirt
+10,0,1   stone
+11,0,1   stone
+0,0,2   dirt
+1,0,2   dirt
+2,0,2   dirt
+3,0,2   dirt
+4,0,2   dirt
+5,0,2   dirt
+6,0,2   dirt
+7,0,2   dirt
+8,0,2   dirt
+9,0,2   stone
+10,0,2   stone
+11,0,2   stone
+12,0,2   stone
+0,0,3   dirt
+1,0,3   dirt
+2,0,3   dirt
+3,0,3   dirt
+4,0,3   dirt
+5,0,3   dirt
+6,0,3   dirt
+7,0,3   dirt
+8,0,3   stone
+9,0,3   stone
+10,0,3   stone
+11,0,3   stone
+12,0,3   stone
+13,0,3   stone
+16,0,3   stone
+0,0,4   dirt
+1,0,4   dirt
+2,0,4   dirt
+3,0,4   dirt
+4,0,4   dirt
+5,0,4   dirt
+6,0,4   dirt
+7,0,4   dirt
+8,0,4   stone
+9,0,4   stone
+10,0,4   stone
+11,0,4   stone
+12,0,4   stone
+13,0,4   stone
+14,0,4   stone
+15,0,4   stone
+16,0,4   stone
+0,0,5   dirt
+1,0,5   dirt
+2,0,5   dirt
+3,0,5   dirt
+4,0,5   dirt
+5,0,5   dirt
+6,0,5   dirt
+7,0,5   stone
+8,0,5   stone
+9,0,5   stone
+10,0,5   stone
+11,0,5   stone
+12,0,5   stone
+13,0,5   stone
+14,0,5   stone
+15,0,5   stone
+16,0,5   stone
+0,0,6   stone
+1,0,6   dirt
+2,0,6   dirt
+3,0,6   dirt
+4,0,6   dirt
+5,0,6   dirt
+6,0,6   dirt
+7,0,6   stone
+8,0,6   stone
+9,0,6   stone
+10,0,6   stone
+11,0,6   stone
+12,0,6   stone
+13,0,6   stone
+14,0,6   stone
+15,0,6   stone
+16,0,6   stone
+0,0,7   dirt
+1,0,7   dirt
+2,0,7   dirt
+3,0,7   dirt
+4,0,7   dirt
+5,0,7   grass_block   snowy=false
+6,0,7   dirt
+7,0,7   dirt
+8,0,7   stone
+9,0,7   stone
+10,0,7   stone
+11,0,7   stone
+12,0,7   stone
+13,0,7   stone
+14,0,7   stone
+15,0,7   stone
+16,0,7   stone
+0,0,8   stone
+1,0,8   dirt
+2,0,8   dirt
+3,0,8   dirt
+4,0,8   dirt
+5,0,8   dirt
+6,0,8   dirt
+7,0,8   dirt
+8,0,8   stone
+9,0,8   stone
+10,0,8   stone
+11,0,8   stone
+12,0,8   stone
+13,0,8   stone
+14,0,8   stone
+15,0,8   stone
+16,0,8   stone
+0,0,9   gravel
+1,0,9   dirt
+2,0,9   dirt
+3,0,9   dirt
+4,0,9   dirt
+5,0,9   grass_block   snowy=false
+6,0,9   dirt
+7,0,9   dirt
+8,0,9   stone
+9,0,9   stone
+10,0,9   stone
+11,0,9   stone
+12,0,9   stone
+13,0,9   stone
+14,0,9   stone
+15,0,9   stone
+16,0,9   stone
+0,0,10   dirt
+1,0,10   dirt
+2,0,10   dirt
+3,0,10   gravel
+4,0,10   dirt
+5,0,10   dirt
+6,0,10   dirt
+7,0,10   stone
+8,0,10   stone
+9,0,10   stone
+10,0,10   stone
+11,0,10   stone
+12,0,10   stone
+13,0,10   stone
+14,0,10   stone
+15,0,10   stone
+16,0,10   stone
+0,0,11   gravel
+1,0,11   gravel
+2,0,11   gravel
+3,0,11   gravel
+4,0,11   gravel
+5,0,11   stone
+6,0,11   stone
+7,0,11   stone
+8,0,11   stone
+9,0,11   stone
+10,0,11   stone
+11,0,11   stone
+12,0,11   stone
+13,0,11   stone
+14,0,11   stone
+15,0,11   stone
+16,0,11   stone
+0,0,12   stone
+1,0,12   gravel
+2,0,12   gravel
+3,0,12   gravel
+4,0,12   gravel
+5,0,12   gravel
+6,0,12   stone
+7,0,12   stone
+8,0,12   stone
+9,0,12   stone
+10,0,12   stone
+11,0,12   stone
+12,0,12   stone
+13,0,12   stone
+14,0,12   stone
+15,0,12   stone
+16,0,12   stone
+0,0,13   stone
+1,0,13   gravel
+2,0,13   gravel
+3,0,13   gravel
+4,0,13   gravel
+5,0,13   gravel
+6,0,13   gravel
+7,0,13   stone
+8,0,13   stone
+9,0,13   stone
+10,0,13   stone
+11,0,13   stone
+12,0,13   stone
+13,0,13   stone
+14,0,13   stone
+15,0,13   stone
+16,0,13   stone
+0,0,14   coal_ore
+1,0,14   stone
+2,0,14   stone
+3,0,14   gravel
+4,0,14   gravel
+5,0,14   gravel
+6,0,14   gravel
+7,0,14   stone
+8,0,14   stone
+9,0,14   stone
+10,0,14   stone
+11,0,14   stone
+12,0,14   stone
+13,0,14   stone
+14,0,14   stone
+15,0,14   stone
+16,0,14   stone
+
+# --- 第 2 层 (y=1) ---
+0,1,0   dirt
+1,1,0   dirt
+2,1,0   grass_block   snowy=false
+8,1,0   grass_block   snowy=false
+9,1,0   grass_block   snowy=false
+10,1,0   dirt
+11,1,0   dirt
+16,1,0   stone
+0,1,1   dirt
+1,1,1   mossy_cobblestone
+2,1,1   mossy_cobblestone
+3,1,1   mossy_cobblestone
+4,1,1   cobblestone
+5,1,1   mossy_cobblestone
+6,1,1   mossy_cobblestone
+7,1,1   cobblestone
+8,1,1   cobblestone
+9,1,1   mossy_cobblestone
+10,1,1   mossy_cobblestone
+11,1,1   mossy_cobblestone
+12,1,1   mossy_cobblestone
+13,1,1   cobblestone
+14,1,1   cobblestone
+15,1,1   mossy_cobblestone
+16,1,1   stone
+0,1,2   dirt
+1,1,2   mossy_cobblestone
+2,1,2   mossy_cobblestone
+3,1,2   mossy_cobblestone
+4,1,2   cobblestone
+5,1,2   mossy_cobblestone
+6,1,2   mossy_cobblestone
+7,1,2   mossy_cobblestone
+8,1,2   mossy_cobblestone
+9,1,2   cobblestone
+10,1,2   mossy_cobblestone
+11,1,2   mossy_cobblestone
+12,1,2   mossy_cobblestone
+13,1,2   mossy_cobblestone
+14,1,2   mossy_cobblestone
+15,1,2   mossy_cobblestone
+16,1,2   stone
+0,1,3   dirt
+1,1,3   mossy_cobblestone
+2,1,3   mossy_cobblestone
+3,1,3   mossy_cobblestone
+4,1,3   mossy_cobblestone
+5,1,3   mossy_cobblestone
+6,1,3   mossy_cobblestone
+7,1,3   cobblestone
+8,1,3   mossy_cobblestone
+9,1,3   cobblestone
+10,1,3   cobblestone
+11,1,3   mossy_cobblestone
+12,1,3   cobblestone
+13,1,3   mossy_cobblestone
+14,1,3   mossy_cobblestone
+15,1,3   cobblestone
+16,1,3   stone
+0,1,4   dirt
+1,1,4   cobblestone
+2,1,4   cobblestone
+3,1,4   cobblestone
+4,1,4   cobblestone
+5,1,4   cobblestone
+6,1,4   cobblestone
+7,1,4   mossy_cobblestone
+8,1,4   mossy_cobblestone
+9,1,4   mossy_cobblestone
+10,1,4   cobblestone
+11,1,4   mossy_cobblestone
+12,1,4   mossy_cobblestone
+13,1,4   cobblestone
+14,1,4   cobblestone
+15,1,4   mossy_cobblestone
+16,1,4   stone
+0,1,5   dirt
+1,1,5   cobblestone
+2,1,5   mossy_cobblestone
+3,1,5   cobblestone
+4,1,5   cobblestone
+5,1,5   mossy_cobblestone
+6,1,5   cobblestone
+7,1,5   mossy_cobblestone
+8,1,5   mossy_cobblestone
+9,1,5   mossy_cobblestone
+10,1,5   cobblestone
+11,1,5   cobblestone
+12,1,5   mossy_cobblestone
+13,1,5   cobblestone
+14,1,5   mossy_cobblestone
+15,1,5   mossy_cobblestone
+16,1,5   stone
+0,1,6   dirt
+1,1,6   mossy_cobblestone
+2,1,6   cobblestone
+3,1,6   mossy_cobblestone
+4,1,6   mossy_cobblestone
+5,1,6   cobblestone
+6,1,6   mossy_cobblestone
+7,1,6   mossy_cobblestone
+8,1,6   cobblestone
+9,1,6   mossy_cobblestone
+10,1,6   cobblestone
+11,1,6   cobblestone
+12,1,6   mossy_cobblestone
+13,1,6   cobblestone
+14,1,6   mossy_cobblestone
+15,1,6   cobblestone
+16,1,6   stone
+0,1,7   dirt
+1,1,7   mossy_cobblestone
+2,1,7   cobblestone
+3,1,7   mossy_cobblestone
+4,1,7   mossy_cobblestone
+5,1,7   mossy_cobblestone
+6,1,7   mossy_cobblestone
+7,1,7   mossy_cobblestone
+8,1,7   mossy_cobblestone
+9,1,7   mossy_cobblestone
+10,1,7   mossy_cobblestone
+11,1,7   mossy_cobblestone
+12,1,7   mossy_cobblestone
+13,1,7   cobblestone
+14,1,7   cobblestone
+15,1,7   mossy_cobblestone
+16,1,7   stone
+0,1,8   dirt
+1,1,8   cobblestone
+2,1,8   cobblestone
+3,1,8   mossy_cobblestone
+4,1,8   cobblestone
+5,1,8   mossy_cobblestone
+6,1,8   mossy_cobblestone
+7,1,8   cobblestone
+8,1,8   mossy_cobblestone
+9,1,8   mossy_cobblestone
+10,1,8   mossy_cobblestone
+11,1,8   mossy_cobblestone
+12,1,8   cobblestone
+13,1,8   mossy_cobblestone
+14,1,8   mossy_cobblestone
+15,1,8   mossy_cobblestone
+16,1,8   stone
+0,1,9   dirt
+1,1,9   cobblestone
+2,1,9   cobblestone
+3,1,9   mossy_cobblestone
+4,1,9   mossy_cobblestone
+5,1,9   mossy_cobblestone
+6,1,9   mossy_cobblestone
+7,1,9   mossy_cobblestone
+8,1,9   mossy_cobblestone
+9,1,9   mossy_cobblestone
+10,1,9   cobblestone
+11,1,9   mossy_cobblestone
+12,1,9   mossy_cobblestone
+13,1,9   mossy_cobblestone
+14,1,9   mossy_cobblestone
+15,1,9   mossy_cobblestone
+16,1,9   stone
+0,1,10   dirt
+1,1,10   cobblestone
+2,1,10   cobblestone
+3,1,10   mossy_cobblestone
+4,1,10   mossy_cobblestone
+5,1,10   cobblestone
+6,1,10   mossy_cobblestone
+7,1,10   mossy_cobblestone
+8,1,10   mossy_cobblestone
+9,1,10   cobblestone
+10,1,10   mossy_cobblestone
+11,1,10   mossy_cobblestone
+12,1,10   mossy_cobblestone
+13,1,10   cobblestone
+14,1,10   mossy_cobblestone
+15,1,10   mossy_cobblestone
+16,1,10   stone
+0,1,11   dirt
+1,1,11   mossy_cobblestone
+2,1,11   mossy_cobblestone
+3,1,11   mossy_cobblestone
+4,1,11   cobblestone
+5,1,11   cobblestone
+6,1,11   mossy_cobblestone
+7,1,11   cobblestone
+8,1,11   mossy_cobblestone
+9,1,11   cobblestone
+10,1,11   mossy_cobblestone
+11,1,11   mossy_cobblestone
+12,1,11   cobblestone
+13,1,11   mossy_cobblestone
+14,1,11   cobblestone
+15,1,11   mossy_cobblestone
+16,1,11   stone
+0,1,12   dirt
+1,1,12   mossy_cobblestone
+2,1,12   mossy_cobblestone
+3,1,12   mossy_cobblestone
+4,1,12   mossy_cobblestone
+5,1,12   mossy_cobblestone
+6,1,12   cobblestone
+7,1,12   mossy_cobblestone
+8,1,12   mossy_cobblestone
+9,1,12   mossy_cobblestone
+10,1,12   cobblestone
+11,1,12   mossy_cobblestone
+12,1,12   mossy_cobblestone
+13,1,12   mossy_cobblestone
+14,1,12   cobblestone
+15,1,12   mossy_cobblestone
+16,1,12   stone
+0,1,13   dirt
+1,1,13   dirt
+2,1,13   dirt
+3,1,13   gravel
+4,1,13   gravel
+5,1,13   gravel
+6,1,13   stone
+7,1,13   stone
+8,1,13   stone
+9,1,13   stone
+10,1,13   stone
+11,1,13   stone
+12,1,13   stone
+13,1,13   stone
+14,1,13   stone
+15,1,13   stone
+16,1,13   stone
+0,1,14   dirt
+1,1,14   dirt
+2,1,14   stone
+3,1,14   stone
+4,1,14   gravel
+5,1,14   gravel
+6,1,14   stone
+7,1,14   stone
+8,1,14   stone
+9,1,14   stone
+10,1,14   stone
+11,1,14   stone
+12,1,14   stone
+13,1,14   stone
+14,1,14   stone
+15,1,14   stone
+16,1,14   stone
+
+# --- 第 3 层 (y=2) ---
+0,2,0   grass_block   snowy=false
+1,2,0   grass_block   snowy=false
+3,2,0   vine   east=false   north=false   south=true   up=false   west=false
+10,2,0   grass_block   snowy=false
+11,2,0   dirt
+12,2,0   dirt
+13,2,0   dirt
+14,2,0   dirt
+15,2,0   dirt
+16,2,0   dirt
+0,2,1   dirt
+1,2,1   mossy_cobblestone
+2,2,1   mossy_cobblestone
+3,2,1   mossy_cobblestone
+4,2,1   cobblestone
+5,2,1   mossy_cobblestone
+6,2,1   cobblestone
+7,2,1   cobblestone
+8,2,1   cobblestone
+9,2,1   mossy_cobblestone
+10,2,1   mossy_cobblestone
+11,2,1   mossy_cobblestone
+12,2,1   cobblestone
+13,2,1   cobblestone
+14,2,1   mossy_cobblestone
+15,2,1   mossy_cobblestone
+16,2,1   dirt
+0,2,2   grass_block   snowy=false
+1,2,2   mossy_cobblestone
+2,2,2   mossy_cobblestone
+4,2,2   mossy_cobblestone
+6,2,2   cobblestone
+7,2,2   tripwire_hook   attached=true   facing=south   powered=false
+8,2,2   mossy_cobblestone
+10,2,2   mossy_cobblestone
+12,2,2   mossy_cobblestone
+14,2,2   cobblestone
+15,2,2   cobblestone
+16,2,2   stone
+0,2,3   grass_block   snowy=false
+1,2,3   mossy_cobblestone
+7,2,3   tripwire   attached=true   disarmed=false   east=false   north=true   powered=false   south=true   west=false
+15,2,3   mossy_cobblestone
+16,2,3   stone
+0,2,4   grass_block   snowy=false
+1,2,4   cobblestone
+7,2,4   tripwire   attached=true   disarmed=false   east=false   north=true   powered=false   south=true   west=false
+14,2,4   mossy_cobblestone
+15,2,4   cobblestone
+16,2,4   stone
+0,2,5   grass_block   snowy=false
+1,2,5   mossy_cobblestone
+4,2,5   mossy_cobblestone
+5,2,5   cobblestone
+6,2,5   mossy_cobblestone
+7,2,5   tripwire_hook   attached=true   facing=north   powered=false
+8,2,5   cobblestone
+9,2,5   cobblestone
+10,2,5   mossy_cobblestone
+14,2,5   redstone_wire   east=none   north=side   power=0   south=side   west=none
+15,2,5   cobblestone
+16,2,5   stone
+0,2,6   grass_block   snowy=false
+1,2,6   cobblestone
+5,2,6   vine   east=false   north=true   south=false   up=false   west=false
+6,2,6   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+7,2,6   cobblestone
+8,2,6   redstone_wire   east=side   north=none   power=0   south=none   west=side
+9,2,6   redstone_wire   east=side   north=none   power=0   south=none   west=side
+10,2,6   redstone_wire   east=side   north=none   power=0   south=none   west=side
+11,2,6   redstone_wire   east=side   north=none   power=0   south=none   west=side
+12,2,6   redstone_wire   east=side   north=none   power=0   south=none   west=side
+13,2,6   redstone_wire   east=side   north=none   power=0   south=none   west=side
+14,2,6   redstone_wire   east=none   north=side   power=0   south=none   west=side
+15,2,6   cobblestone
+16,2,6   stone
+0,2,7   grass_block   snowy=false
+1,2,7   mossy_cobblestone
+6,2,7   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+7,2,7   mossy_cobblestone
+8,2,7   mossy_cobblestone
+9,2,7   mossy_cobblestone
+10,2,7   mossy_cobblestone
+14,2,7   mossy_cobblestone
+15,2,7   mossy_cobblestone
+16,2,7   stone
+0,2,8   grass_block   snowy=false
+1,2,8   mossy_cobblestone
+4,2,8   cobblestone
+5,2,8   cobblestone
+6,2,8   mossy_cobblestone
+7,2,8   cobblestone
+8,2,8   cobblestone
+9,2,8   mossy_cobblestone
+10,2,8   tripwire_hook   attached=true   facing=east   powered=false
+11,2,8   tripwire   attached=true   disarmed=false   east=true   north=false   powered=false   south=false   west=true
+12,2,8   tripwire   attached=true   disarmed=false   east=true   north=false   powered=false   south=false   west=true
+13,2,8   tripwire   attached=true   disarmed=false   east=true   north=false   powered=false   south=false   west=true
+14,2,8   tripwire_hook   attached=true   facing=west   powered=false
+15,2,8   cobblestone
+16,2,8   stone
+0,2,9   dirt
+1,2,9   mossy_cobblestone
+2,2,9   vine   east=false   north=false   south=false   up=false   west=true
+4,2,9   mossy_cobblestone
+5,2,9   mossy_cobblestone
+6,2,9   mossy_cobblestone
+7,2,9   mossy_cobblestone
+8,2,9   cobblestone
+9,2,9   redstone_wire   east=none   north=side   power=0   south=side   west=none
+10,2,9   mossy_cobblestone
+12,2,9   chest   facing=north   type=single   waterlogged=false
+  items:
+    slot=4  gold_ingot  count=1
+    slot=7  bone  count=1
+    slot=8  gold_ingot  count=3
+    slot=9  wild_armor_trim_smithing_template  count=1
+    slot=10  enchanted_book  count=1  nbt={StoredEnchantments:[{id:"minecraft:infinity",lvl:1s},{id:"minecraft:quick_charge",lvl:2s},{id:"minecraft:luck_of_the_sea",lvl:3s}]}
+    slot=11  wild_armor_trim_smithing_template  count=1
+    slot=12  gold_ingot  count=2
+    slot=13  gold_ingot  count=1
+    slot=14  bone  count=1
+    slot=16  gold_ingot  count=1
+    slot=17  gold_ingot  count=1
+    slot=23  bone  count=1
+    slot=25  bone  count=2
+14,2,9   mossy_cobblestone
+15,2,9   cobblestone
+16,2,9   stone
+0,2,10   grass_block   snowy=false
+1,2,10   cobblestone
+4,2,10   cobblestone
+5,2,10   chest   facing=east   type=single   waterlogged=false
+  items:
+    slot=0  emerald  count=1
+    slot=1  iron_ingot  count=1
+    slot=3  wild_armor_trim_smithing_template  count=1
+    slot=7  bamboo  count=1
+    slot=8  iron_ingot  count=1
+    slot=9  rotten_flesh  count=3
+    slot=10  rotten_flesh  count=1
+    slot=11  bamboo  count=1
+    slot=12  wild_armor_trim_smithing_template  count=1
+    slot=16  rotten_flesh  count=1
+    slot=17  rotten_flesh  count=1
+    slot=19  rotten_flesh  count=1
+    slot=20  bamboo  count=1
+    slot=21  iron_ingot  count=1
+    slot=22  emerald  count=1
+    slot=24  iron_ingot  count=1
+    slot=25  rotten_flesh  count=1
+    slot=26  rotten_flesh  count=4
+6,2,10   vine   east=false   north=true   south=false   up=false   west=false
+8,2,10   mossy_cobblestone
+9,2,10   redstone_wire   east=side   north=side   power=0   south=none   west=none
+10,2,10   redstone_wire   east=up   north=none   power=0   south=none   west=side
+11,2,10   mossy_cobblestone
+13,2,10   mossy_cobblestone
+15,2,10   cobblestone
+16,2,10   stone
+0,2,11   dirt
+1,2,11   mossy_cobblestone
+4,2,11   cobblestone
+5,2,11   mossy_cobblestone
+6,2,11   mossy_cobblestone
+7,2,11   mossy_cobblestone
+8,2,11   cobblestone
+9,2,11   mossy_cobblestone
+10,2,11   mossy_cobblestone
+11,2,11   cobblestone
+12,2,11   cobblestone
+13,2,11   mossy_cobblestone
+14,2,11   mossy_cobblestone
+15,2,11   mossy_cobblestone
+16,2,11   stone
+0,2,12   dirt
+1,2,12   cobblestone
+2,2,12   cobblestone
+3,2,12   mossy_cobblestone
+4,2,12   cobblestone
+5,2,12   cobblestone
+6,2,12   mossy_cobblestone
+7,2,12   cobblestone
+8,2,12   cobblestone
+9,2,12   mossy_cobblestone
+10,2,12   cobblestone
+11,2,12   mossy_cobblestone
+12,2,12   mossy_cobblestone
+13,2,12   mossy_cobblestone
+14,2,12   mossy_cobblestone
+15,2,12   mossy_cobblestone
+16,2,12   stone
+0,2,13   dirt
+1,2,13   dirt
+2,2,13   dirt
+3,2,13   stone
+4,2,13   stone
+5,2,13   dirt
+6,2,13   stone
+7,2,13   stone
+8,2,13   stone
+9,2,13   stone
+10,2,13   stone
+11,2,13   stone
+12,2,13   stone
+13,2,13   stone
+14,2,13   stone
+15,2,13   stone
+16,2,13   stone
+0,2,14   dirt
+1,2,14   dirt
+2,2,14   dirt
+3,2,14   dirt
+4,2,14   dirt
+5,2,14   dirt
+6,2,14   dirt
+7,2,14   stone
+8,2,14   stone
+9,2,14   stone
+10,2,14   stone
+11,2,14   stone
+12,2,14   stone
+13,2,14   stone
+14,2,14   stone
+15,2,14   stone
+16,2,14   stone
+
+# --- 第 4 层 (y=3) ---
+0,3,0   grass_block   snowy=false
+10,3,0   short_grass
+11,3,0   grass_block   snowy=false
+12,3,0   grass_block   snowy=false
+13,3,0   grass_block   snowy=false
+14,3,0   grass_block   snowy=false
+15,3,0   dirt
+16,3,0   dirt
+0,3,1   grass_block   snowy=false
+1,3,1   mossy_cobblestone
+2,3,1   mossy_cobblestone
+3,3,1   cobblestone
+4,3,1   cobblestone
+5,3,1   mossy_cobblestone
+6,3,1   cobblestone
+7,3,1   mossy_cobblestone
+8,3,1   cobblestone
+9,3,1   cobblestone
+10,3,1   cobblestone
+11,3,1   cobblestone
+12,3,1   mossy_cobblestone
+13,3,1   mossy_cobblestone
+14,3,1   cobblestone
+15,3,1   cobblestone
+16,3,1   dirt
+0,3,2   bamboo   age=1   leaves=none   stage=0
+1,3,2   cobblestone
+2,3,2   mossy_cobblestone
+4,3,2   mossy_cobblestone
+6,3,2   cobblestone
+8,3,2   mossy_cobblestone
+10,3,2   cobblestone
+12,3,2   mossy_cobblestone
+14,3,2   mossy_cobblestone
+15,3,2   mossy_cobblestone
+16,3,2   stone
+1,3,3   mossy_cobblestone
+14,3,3   cobblestone
+15,3,3   mossy_cobblestone
+16,3,3   stone
+0,3,4   short_grass
+1,3,4   mossy_cobblestone
+13,3,4   vine   east=true   north=false   south=false   up=false   west=false
+14,3,4   dispenser   facing=west   triggered=false
+  items:
+    slot=6  arrow  count=3
+    slot=7  arrow  count=3
+15,3,4   mossy_cobblestone
+16,3,4   stone
+1,3,5   mossy_cobblestone
+4,3,5   mossy_cobblestone
+5,3,5   mossy_cobblestone
+6,3,5   cobblestone
+7,3,5   mossy_cobblestone
+8,3,5   mossy_cobblestone
+9,3,5   mossy_cobblestone
+14,3,5   cobblestone
+15,3,5   mossy_cobblestone
+16,3,5   stone
+0,3,6   bamboo   age=1   leaves=none   stage=0
+1,3,6   cobblestone
+7,3,6   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+8,3,6   mossy_cobblestone
+9,3,6   mossy_cobblestone
+10,3,6   mossy_cobblestone
+14,3,6   mossy_cobblestone
+15,3,6   mossy_cobblestone
+16,3,6   stone
+0,3,7   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,3,7   cobblestone
+2,3,7   oak_leaves   distance=7   persistent=false   waterlogged=false
+7,3,7   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+8,3,7   cobblestone
+9,3,7   cobblestone
+15,3,7   mossy_cobblestone
+16,3,7   stone
+0,3,8   oak_leaves   distance=1   persistent=false   waterlogged=false
+1,3,8   mossy_cobblestone
+4,3,8   mossy_cobblestone
+5,3,8   cobblestone
+6,3,8   cobblestone
+7,3,8   cobblestone
+8,3,8   cobblestone
+9,3,8   mossy_cobblestone
+10,3,8   mossy_cobblestone
+14,3,8   mossy_cobblestone
+15,3,8   mossy_cobblestone
+16,3,8   stone
+0,3,9   jungle_log   axis=y
+1,3,9   cobblestone
+3,3,9   lever   face=wall   facing=west   powered=false
+4,3,9   chiseled_stone_bricks
+5,3,9   redstone_wire   east=side   north=none   power=0   south=none   west=side
+6,3,9   redstone_wire   east=side   north=none   power=0   south=none   west=side
+8,3,9   mossy_cobblestone
+9,3,9   cobblestone
+12,3,9   vine   east=false   north=false   south=true   up=false   west=false
+14,3,9   cobblestone
+15,3,9   mossy_cobblestone
+16,3,9   stone
+0,3,10   oak_leaves   distance=1   persistent=false   waterlogged=false
+1,3,10   mossy_cobblestone
+2,3,10   oak_leaves   distance=7   persistent=false   waterlogged=false
+3,3,10   lever   face=wall   facing=west   powered=false
+4,3,10   chiseled_stone_bricks
+7,3,10   sticky_piston   extended=false   facing=up
+8,3,10   mossy_cobblestone
+9,3,10   mossy_cobblestone
+11,3,10   redstone_wire   east=side   north=none   power=0   south=none   west=side
+12,3,10   dispenser   facing=north   triggered=false
+  items:
+    slot=2  arrow  count=1
+    slot=5  arrow  count=1
+14,3,10   cobblestone
+15,3,10   mossy_cobblestone
+16,3,10   stone
+0,3,11   grass_block   snowy=false
+1,3,11   mossy_cobblestone
+3,3,11   lever   face=wall   facing=west   powered=false
+4,3,11   chiseled_stone_bricks
+5,3,11   repeater   delay=1   facing=west   locked=false   powered=false
+6,3,11   mossy_cobblestone
+7,3,11   sticky_piston   extended=false   facing=north
+8,3,11   cobblestone
+9,3,11   mossy_cobblestone
+10,3,11   mossy_cobblestone
+11,3,11   cobblestone
+12,3,11   cobblestone
+13,3,11   cobblestone
+14,3,11   cobblestone
+15,3,11   mossy_cobblestone
+16,3,11   stone
+0,3,12   grass_block   snowy=false
+1,3,12   mossy_cobblestone
+2,3,12   mossy_cobblestone
+3,3,12   mossy_cobblestone
+4,3,12   mossy_cobblestone
+5,3,12   cobblestone
+6,3,12   mossy_cobblestone
+7,3,12   cobblestone
+8,3,12   cobblestone
+9,3,12   mossy_cobblestone
+10,3,12   cobblestone
+11,3,12   mossy_cobblestone
+12,3,12   mossy_cobblestone
+13,3,12   mossy_cobblestone
+14,3,12   mossy_cobblestone
+15,3,12   mossy_cobblestone
+16,3,12   stone
+0,3,13   grass_block   snowy=false
+1,3,13   grass_block   snowy=false
+2,3,13   grass_block   snowy=false
+3,3,13   dirt
+4,3,13   dirt
+5,3,13   dirt
+6,3,13   dirt
+7,3,13   dirt
+8,3,13   dirt
+9,3,13   stone
+10,3,13   stone
+11,3,13   stone
+12,3,13   stone
+13,3,13   stone
+14,3,13   stone
+15,3,13   stone
+16,3,13   stone
+0,3,14   grass_block   snowy=false
+1,3,14   grass_block   snowy=false
+2,3,14   grass_block   snowy=false
+3,3,14   dirt
+4,3,14   dirt
+5,3,14   dirt
+6,3,14   dirt
+7,3,14   dirt
+8,3,14   stone
+9,3,14   stone
+10,3,14   stone
+11,3,14   stone
+12,3,14   stone
+13,3,14   stone
+14,3,14   stone
+15,3,14   stone
+16,3,14   stone
+
+# --- 第 5 层 (y=4) ---
+9,4,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+10,4,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+11,4,0   oak_leaves   distance=1   persistent=false   waterlogged=false
+12,4,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+13,4,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+15,4,0   grass_block   snowy=false
+16,4,0   grass_block   snowy=false
+1,4,1   mossy_cobblestone
+2,4,1   mossy_cobblestone
+3,4,1   cobblestone
+4,4,1   mossy_cobblestone
+5,4,1   mossy_cobblestone
+6,4,1   mossy_cobblestone
+7,4,1   mossy_cobblestone
+8,4,1   cobblestone
+9,4,1   mossy_cobblestone
+10,4,1   mossy_cobblestone
+11,4,1   cobblestone
+12,4,1   mossy_cobblestone
+13,4,1   cobblestone
+14,4,1   mossy_cobblestone
+15,4,1   mossy_cobblestone
+16,4,1   grass_block   snowy=false
+0,4,2   bamboo   age=1   leaves=none   stage=0
+1,4,2   mossy_cobblestone
+3,4,2   mossy_cobblestone
+5,4,2   mossy_cobblestone
+7,4,2   cobblestone
+9,4,2   cobblestone
+11,4,2   mossy_cobblestone
+13,4,2   mossy_cobblestone
+15,4,2   cobblestone
+16,4,2   stone
+1,4,3   mossy_cobblestone
+3,4,3   mossy_cobblestone
+5,4,3   cobblestone
+7,4,3   cobblestone
+9,4,3   mossy_cobblestone
+11,4,3   cobblestone
+13,4,3   mossy_cobblestone
+15,4,3   cobblestone
+16,4,3   stone
+1,4,4   mossy_cobblestone
+3,4,4   cobblestone
+5,4,4   cobblestone
+6,4,4   vine   east=false   north=false   south=false   up=true   west=false
+7,4,4   mossy_cobblestone
+9,4,4   mossy_cobblestone
+11,4,4   mossy_cobblestone
+13,4,4   cobblestone
+15,4,4   mossy_cobblestone
+16,4,4   stone
+1,4,5   cobblestone
+4,4,5   cobblestone
+5,4,5   cobblestone
+6,4,5   cobblestone
+7,4,5   cobblestone
+8,4,5   cobblestone
+9,4,5   mossy_cobblestone
+15,4,5   cobblestone
+16,4,5   stone
+0,4,6   bamboo   age=1   leaves=none   stage=0
+1,4,6   cobblestone
+4,4,6   mossy_cobblestone
+8,4,6   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+9,4,6   mossy_cobblestone
+10,4,6   mossy_cobblestone
+15,4,6   mossy_cobblestone
+16,4,6   stone
+1,4,7   cobblestone
+4,4,7   cobblestone
+8,4,7   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+9,4,7   mossy_cobblestone
+14,4,7   cobblestone
+15,4,7   mossy_cobblestone
+16,4,7   stone
+0,4,8   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,4,8   cobblestone
+4,4,8   mossy_cobblestone
+5,4,8   mossy_cobblestone
+6,4,8   cobblestone
+7,4,8   mossy_cobblestone
+8,4,8   cobblestone
+9,4,8   mossy_cobblestone
+10,4,8   mossy_cobblestone
+15,4,8   mossy_cobblestone
+16,4,8   stone
+0,4,9   oak_leaves   distance=1   persistent=false   waterlogged=false
+1,4,9   cobblestone
+4,4,9   mossy_cobblestone
+8,4,9   cobblestone
+9,4,9   mossy_cobblestone
+12,4,9   vine   east=false   north=false   south=true   up=false   west=false
+15,4,9   cobblestone
+16,4,9   stone
+0,4,10   oak_leaves   distance=2   persistent=false   waterlogged=false
+1,4,10   cobblestone
+4,4,10   mossy_cobblestone
+8,4,10   cobblestone
+9,4,10   mossy_cobblestone
+10,4,10   cobblestone
+11,4,10   mossy_cobblestone
+12,4,10   mossy_cobblestone
+13,4,10   mossy_cobblestone
+14,4,10   cobblestone
+15,4,10   cobblestone
+16,4,10   stone
+1,4,11   cobblestone
+4,4,11   mossy_cobblestone
+6,4,11   redstone_wire   east=side   north=side   power=0   south=side   west=side
+7,4,11   sticky_piston   extended=false   facing=north
+8,4,11   cobblestone
+9,4,11   mossy_cobblestone
+10,4,11   cobblestone
+11,4,11   mossy_cobblestone
+12,4,11   mossy_cobblestone
+13,4,11   mossy_cobblestone
+14,4,11   cobblestone
+15,4,11   mossy_cobblestone
+16,4,11   stone
+0,4,12   short_grass
+1,4,12   mossy_cobblestone
+2,4,12   cobblestone
+3,4,12   mossy_cobblestone
+4,4,12   mossy_cobblestone
+5,4,12   mossy_cobblestone
+6,4,12   mossy_cobblestone
+7,4,12   cobblestone
+8,4,12   mossy_cobblestone
+9,4,12   mossy_cobblestone
+10,4,12   mossy_cobblestone
+11,4,12   mossy_cobblestone
+12,4,12   mossy_cobblestone
+13,4,12   cobblestone
+14,4,12   cobblestone
+15,4,12   mossy_cobblestone
+16,4,12   stone
+1,4,13   bamboo   age=1   leaves=none   stage=0
+3,4,13   grass_block   snowy=false
+4,4,13   grass_block   snowy=false
+5,4,13   grass_block   snowy=false
+6,4,13   grass_block   snowy=false
+7,4,13   grass_block   snowy=false
+8,4,13   dirt
+9,4,13   dirt
+10,4,13   stone
+11,4,13   stone
+12,4,13   stone
+13,4,13   stone
+14,4,13   stone
+15,4,13   stone
+16,4,13   stone
+0,4,14   short_grass
+1,4,14   short_grass
+2,4,14   fern
+3,4,14   grass_block   snowy=false
+4,4,14   grass_block   snowy=false
+5,4,14   grass_block   snowy=false
+6,4,14   grass_block   snowy=false
+7,4,14   dirt
+8,4,14   dirt
+9,4,14   stone
+10,4,14   stone
+11,4,14   stone
+12,4,14   stone
+13,4,14   stone
+14,4,14   stone
+15,4,14   stone
+16,4,14   stone
+
+# --- 第 6 层 (y=5) ---
+9,5,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+10,5,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+11,5,0   oak_leaves   distance=1   persistent=false   waterlogged=false
+12,5,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+13,5,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+15,5,0   short_grass
+1,5,1   mossy_cobblestone
+2,5,1   cobblestone
+3,5,1   mossy_cobblestone
+4,5,1   mossy_cobblestone
+5,5,1   cobblestone
+6,5,1   mossy_cobblestone
+7,5,1   mossy_cobblestone
+8,5,1   mossy_cobblestone
+9,5,1   cobblestone
+10,5,1   cobblestone
+11,5,1   mossy_cobblestone
+12,5,1   mossy_cobblestone
+13,5,1   mossy_cobblestone
+14,5,1   cobblestone
+15,5,1   cobblestone
+16,5,1   bamboo   age=1   leaves=none   stage=0
+0,5,2   bamboo   age=1   leaves=none   stage=0
+1,5,2   mossy_cobblestone
+2,5,2   cobblestone
+3,5,2   cobblestone
+4,5,2   mossy_cobblestone
+5,5,2   cobblestone
+6,5,2   mossy_cobblestone
+7,5,2   mossy_cobblestone
+8,5,2   cobblestone
+9,5,2   mossy_cobblestone
+10,5,2   mossy_cobblestone
+11,5,2   mossy_cobblestone
+12,5,2   mossy_cobblestone
+13,5,2   cobblestone
+14,5,2   mossy_cobblestone
+15,5,2   mossy_cobblestone
+16,5,2   dirt
+1,5,3   mossy_cobblestone
+2,5,3   mossy_cobblestone
+3,5,3   mossy_cobblestone
+4,5,3   mossy_cobblestone
+5,5,3   mossy_cobblestone
+6,5,3   mossy_cobblestone
+7,5,3   cobblestone
+8,5,3   mossy_cobblestone
+9,5,3   cobblestone
+10,5,3   mossy_cobblestone
+11,5,3   mossy_cobblestone
+12,5,3   mossy_cobblestone
+13,5,3   mossy_cobblestone
+14,5,3   mossy_cobblestone
+15,5,3   mossy_cobblestone
+16,5,3   stone
+1,5,4   cobblestone
+2,5,4   mossy_cobblestone
+3,5,4   mossy_cobblestone
+4,5,4   mossy_cobblestone
+5,5,4   mossy_cobblestone
+6,5,4   mossy_cobblestone
+7,5,4   mossy_cobblestone
+8,5,4   cobblestone
+9,5,4   mossy_cobblestone
+10,5,4   mossy_cobblestone
+11,5,4   mossy_cobblestone
+12,5,4   mossy_cobblestone
+13,5,4   mossy_cobblestone
+14,5,4   mossy_cobblestone
+15,5,4   cobblestone
+16,5,4   stone
+1,5,5   mossy_cobblestone
+2,5,5   mossy_cobblestone
+3,5,5   mossy_cobblestone
+4,5,5   mossy_cobblestone
+5,5,5   cobblestone
+6,5,5   mossy_cobblestone
+7,5,5   cobblestone
+8,5,5   mossy_cobblestone
+9,5,5   cobblestone
+10,5,5   mossy_cobblestone
+11,5,5   cobblestone
+12,5,5   mossy_cobblestone
+13,5,5   mossy_cobblestone
+14,5,5   mossy_cobblestone
+15,5,5   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+16,5,5   stone
+0,5,6   bamboo   age=1   leaves=none   stage=0
+1,5,6   cobblestone
+2,5,6   mossy_cobblestone
+3,5,6   mossy_cobblestone
+4,5,6   mossy_cobblestone
+5,5,6   mossy_cobblestone
+9,5,6   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+10,5,6   mossy_cobblestone
+11,5,6   mossy_cobblestone
+12,5,6   mossy_cobblestone
+13,5,6   cobblestone
+14,5,6   cobblestone
+15,5,6   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+16,5,6   stone
+1,5,7   cobblestone
+2,5,7   cobblestone
+3,5,7   cobblestone
+4,5,7   mossy_cobblestone
+5,5,7   cobblestone
+9,5,7   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+10,5,7   mossy_cobblestone
+11,5,7   mossy_cobblestone
+12,5,7   mossy_cobblestone
+13,5,7   mossy_cobblestone
+14,5,7   cobblestone
+15,5,7   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+16,5,7   stone
+1,5,8   mossy_cobblestone
+2,5,8   mossy_cobblestone
+3,5,8   cobblestone
+4,5,8   mossy_cobblestone
+5,5,8   cobblestone
+6,5,8   mossy_cobblestone
+7,5,8   mossy_cobblestone
+8,5,8   cobblestone
+9,5,8   mossy_cobblestone
+10,5,8   mossy_cobblestone
+11,5,8   cobblestone
+12,5,8   cobblestone
+13,5,8   mossy_cobblestone
+14,5,8   cobblestone
+15,5,8   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+16,5,8   stone
+1,5,9   mossy_cobblestone
+2,5,9   mossy_cobblestone
+3,5,9   cobblestone
+4,5,9   mossy_cobblestone
+5,5,9   mossy_cobblestone
+6,5,9   mossy_cobblestone
+7,5,9   mossy_cobblestone
+8,5,9   cobblestone
+9,5,9   cobblestone
+10,5,9   mossy_cobblestone
+11,5,9   mossy_cobblestone
+12,5,9   cobblestone
+13,5,9   mossy_cobblestone
+14,5,9   mossy_cobblestone
+15,5,9   cobblestone
+16,5,9   stone
+1,5,10   mossy_cobblestone
+2,5,10   mossy_cobblestone
+3,5,10   mossy_cobblestone
+4,5,10   cobblestone
+5,5,10   mossy_cobblestone
+6,5,10   mossy_cobblestone
+7,5,10   mossy_cobblestone
+8,5,10   mossy_cobblestone
+9,5,10   mossy_cobblestone
+10,5,10   cobblestone
+11,5,10   mossy_cobblestone
+12,5,10   mossy_cobblestone
+13,5,10   cobblestone
+14,5,10   mossy_cobblestone
+15,5,10   mossy_cobblestone
+16,5,10   stone
+1,5,11   mossy_cobblestone
+2,5,11   mossy_cobblestone
+3,5,11   cobblestone
+4,5,11   mossy_cobblestone
+5,5,11   mossy_cobblestone
+6,5,11   mossy_cobblestone
+7,5,11   cobblestone
+8,5,11   mossy_cobblestone
+9,5,11   cobblestone
+10,5,11   mossy_cobblestone
+11,5,11   mossy_cobblestone
+12,5,11   mossy_cobblestone
+13,5,11   mossy_cobblestone
+14,5,11   cobblestone
+15,5,11   cobblestone
+16,5,11   stone
+1,5,12   cobblestone
+2,5,12   cobblestone
+3,5,12   cobblestone
+4,5,12   mossy_cobblestone
+5,5,12   mossy_cobblestone
+6,5,12   mossy_cobblestone
+7,5,12   mossy_cobblestone
+8,5,12   mossy_cobblestone
+9,5,12   cobblestone
+10,5,12   mossy_cobblestone
+11,5,12   cobblestone
+12,5,12   mossy_cobblestone
+13,5,12   cobblestone
+14,5,12   cobblestone
+15,5,12   cobblestone
+16,5,12   stone
+1,5,13   bamboo   age=1   leaves=none   stage=0
+6,5,13   short_grass
+7,5,13   short_grass
+8,5,13   grass_block   snowy=false
+9,5,13   grass_block   snowy=false
+10,5,13   stone
+11,5,13   stone
+12,5,13   stone
+13,5,13   stone
+14,5,13   stone
+15,5,13   stone
+16,5,13   stone
+4,5,14   short_grass
+5,5,14   short_grass
+6,5,14   fern
+7,5,14   grass_block   snowy=false
+8,5,14   grass_block   snowy=false
+9,5,14   dirt
+10,5,14   stone
+11,5,14   stone
+12,5,14   stone
+13,5,14   stone
+14,5,14   stone
+15,5,14   stone
+16,5,14   stone
+
+# --- 第 7 层 (y=6) ---
+9,6,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+10,6,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+11,6,0   oak_leaves   distance=1   persistent=false   waterlogged=false
+12,6,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+13,6,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+16,6,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+10,6,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+11,6,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+12,6,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+16,6,1   bamboo   age=1   leaves=none   stage=0
+0,6,2   bamboo   age=1   leaves=none   stage=0
+13,6,2   grass_block   snowy=false
+14,6,2   grass_block   snowy=false
+15,6,2   grass_block   snowy=false
+16,6,2   dirt
+3,6,3   cobblestone
+4,6,3   cobblestone
+5,6,3   mossy_cobblestone
+6,6,3   cobblestone
+7,6,3   cobblestone
+8,6,3   mossy_cobblestone
+9,6,3   cobblestone
+10,6,3   mossy_cobblestone
+11,6,3   mossy_cobblestone
+12,6,3   cobblestone
+13,6,3   mossy_cobblestone
+14,6,3   dirt
+15,6,3   dirt
+16,6,3   stone
+3,6,4   mossy_cobblestone
+13,6,4   cobblestone
+14,6,4   stone
+15,6,4   stone
+16,6,4   stone
+3,6,5   cobblestone
+5,6,5   mossy_cobblestone
+6,6,5   cobblestone
+7,6,5   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+13,6,5   mossy_cobblestone
+14,6,5   stone
+15,6,5   stone
+16,6,5   stone
+0,6,6   bamboo   age=1   leaves=none   stage=0
+3,6,6   mossy_cobblestone
+5,6,6   mossy_cobblestone
+14,6,6   stone
+15,6,6   stone
+16,6,6   stone
+3,6,7   cobblestone
+5,6,7   cobblestone
+14,6,7   stone
+15,6,7   stone
+16,6,7   stone
+3,6,8   cobblestone
+5,6,8   mossy_cobblestone
+6,6,8   cobblestone
+7,6,8   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+13,6,8   cobblestone
+14,6,8   stone
+15,6,8   stone
+16,6,8   stone
+3,6,9   mossy_cobblestone
+13,6,9   cobblestone
+14,6,9   stone
+15,6,9   stone
+16,6,9   stone
+3,6,10   cobblestone
+4,6,10   mossy_cobblestone
+5,6,10   cobblestone
+6,6,10   cobblestone
+7,6,10   mossy_cobblestone
+8,6,10   mossy_cobblestone
+9,6,10   mossy_cobblestone
+10,6,10   mossy_cobblestone
+11,6,10   mossy_cobblestone
+12,6,10   cobblestone
+13,6,10   mossy_cobblestone
+14,6,10   stone
+15,6,10   stone
+16,6,10   stone
+10,6,11   grass_block   snowy=false
+11,6,11   dirt
+12,6,11   stone
+13,6,11   stone
+14,6,11   stone
+15,6,11   stone
+16,6,11   stone
+10,6,12   dirt
+11,6,12   dirt
+12,6,12   stone
+13,6,12   stone
+14,6,12   stone
+15,6,12   stone
+16,6,12   stone
+1,6,13   bamboo   age=1   leaves=none   stage=0
+10,6,13   stone
+11,6,13   stone
+12,6,13   stone
+13,6,13   stone
+14,6,13   stone
+15,6,13   stone
+16,6,13   stone
+7,6,14   short_grass
+9,6,14   grass_block   snowy=false
+10,6,14   dirt
+11,6,14   stone
+12,6,14   stone
+13,6,14   stone
+14,6,14   stone
+15,6,14   stone
+16,6,14   stone
+
+# --- 第 8 层 (y=7) ---
+11,7,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+14,7,0   oak_leaves   distance=1   persistent=false   waterlogged=false
+16,7,1   bamboo   age=1   leaves=none   stage=0
+0,7,2   bamboo   age=1   leaves=none   stage=0
+15,7,2   short_grass
+16,7,2   grass_block   snowy=false
+3,7,3   mossy_cobblestone
+4,7,3   cobblestone
+5,7,3   mossy_cobblestone
+6,7,3   mossy_cobblestone
+7,7,3   cobblestone
+8,7,3   mossy_cobblestone
+9,7,3   cobblestone
+10,7,3   mossy_cobblestone
+11,7,3   mossy_cobblestone
+12,7,3   mossy_cobblestone
+13,7,3   mossy_cobblestone
+14,7,3   dirt
+15,7,3   dirt
+16,7,3   dirt
+3,7,4   cobblestone
+13,7,4   mossy_cobblestone
+14,7,4   stone
+15,7,4   stone
+16,7,4   stone
+3,7,5   mossy_cobblestone
+5,7,5   mossy_cobblestone
+6,7,5   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+13,7,5   mossy_cobblestone
+14,7,5   stone
+15,7,5   stone
+16,7,5   stone
+0,7,6   bamboo   age=1   leaves=none   stage=0
+5,7,6   mossy_cobblestone
+14,7,6   stone
+15,7,6   stone
+16,7,6   stone
+5,7,7   mossy_cobblestone
+14,7,7   stone
+15,7,7   stone
+16,7,7   stone
+3,7,8   mossy_cobblestone
+5,7,8   cobblestone
+6,7,8   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+13,7,8   mossy_cobblestone
+14,7,8   stone
+15,7,8   stone
+16,7,8   stone
+3,7,9   cobblestone
+13,7,9   mossy_cobblestone
+14,7,9   dirt
+15,7,9   dirt
+16,7,9   stone
+3,7,10   cobblestone
+4,7,10   cobblestone
+5,7,10   mossy_cobblestone
+6,7,10   mossy_cobblestone
+7,7,10   cobblestone
+8,7,10   mossy_cobblestone
+9,7,10   mossy_cobblestone
+10,7,10   cobblestone
+11,7,10   mossy_cobblestone
+12,7,10   cobblestone
+13,7,10   cobblestone
+14,7,10   stone
+15,7,10   stone
+16,7,10   stone
+11,7,11   dirt
+12,7,11   dirt
+13,7,11   stone
+14,7,11   stone
+15,7,11   stone
+16,7,11   stone
+10,7,12   grass_block   snowy=false
+11,7,12   dirt
+12,7,12   dirt
+13,7,12   stone
+14,7,12   stone
+15,7,12   stone
+16,7,12   stone
+1,7,13   bamboo   age=1   leaves=none   stage=0
+10,7,13   dirt
+11,7,13   stone
+12,7,13   stone
+13,7,13   stone
+14,7,13   stone
+15,7,13   stone
+16,7,13   stone
+10,7,14   dirt
+11,7,14   dirt
+12,7,14   stone
+13,7,14   stone
+14,7,14   stone
+15,7,14   stone
+16,7,14   stone
+
+# --- 第 9 层 (y=8) ---
+12,8,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+13,8,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+14,8,0   oak_leaves   distance=1   persistent=false   waterlogged=false
+15,8,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+16,8,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+13,8,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+14,8,1   oak_leaves   distance=2   persistent=false   waterlogged=false
+15,8,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+16,8,1   bamboo   age=1   leaves=none   stage=0
+0,8,2   bamboo   age=1   leaves=small   stage=0
+2,8,2   mossy_cobblestone
+3,8,2   cobblestone
+4,8,2   mossy_cobblestone
+5,8,2   mossy_cobblestone
+6,8,2   mossy_cobblestone
+7,8,2   cobblestone
+8,8,2   mossy_cobblestone
+9,8,2   mossy_cobblestone
+10,8,2   cobblestone
+11,8,2   cobblestone
+12,8,2   mossy_cobblestone
+13,8,2   mossy_cobblestone
+14,8,2   cobblestone
+16,8,2   short_grass
+2,8,3   cobblestone
+3,8,3   cobblestone
+4,8,3   cobblestone
+5,8,3   mossy_cobblestone
+6,8,3   mossy_cobblestone
+7,8,3   cobblestone
+8,8,3   mossy_cobblestone
+9,8,3   mossy_cobblestone
+10,8,3   mossy_cobblestone
+11,8,3   mossy_cobblestone
+12,8,3   mossy_cobblestone
+13,8,3   mossy_cobblestone
+14,8,3   cobblestone
+15,8,3   dirt
+16,8,3   dirt
+2,8,4   mossy_cobblestone
+3,8,4   mossy_cobblestone
+4,8,4   mossy_cobblestone
+5,8,4   cobblestone
+6,8,4   cobblestone
+7,8,4   mossy_cobblestone
+8,8,4   mossy_cobblestone
+9,8,4   cobblestone
+10,8,4   mossy_cobblestone
+11,8,4   cobblestone
+12,8,4   cobblestone
+13,8,4   mossy_cobblestone
+14,8,4   cobblestone
+15,8,4   dirt
+16,8,4   dirt
+2,8,5   mossy_cobblestone
+3,8,5   cobblestone
+4,8,5   cobblestone
+5,8,5   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+10,8,5   mossy_cobblestone
+11,8,5   mossy_cobblestone
+12,8,5   mossy_cobblestone
+13,8,5   mossy_cobblestone
+14,8,5   mossy_cobblestone
+15,8,5   stone
+16,8,5   stone
+0,8,6   bamboo   age=1   leaves=none   stage=0
+2,8,6   mossy_cobblestone
+3,8,6   cobblestone
+4,8,6   cobblestone
+5,8,6   mossy_cobblestone
+10,8,6   cobblestone
+11,8,6   mossy_cobblestone
+12,8,6   cobblestone
+13,8,6   mossy_cobblestone
+14,8,6   mossy_cobblestone
+15,8,6   dirt
+16,8,6   dirt
+2,8,7   mossy_cobblestone
+3,8,7   cobblestone
+4,8,7   mossy_cobblestone
+5,8,7   mossy_cobblestone
+10,8,7   mossy_cobblestone
+11,8,7   cobblestone
+12,8,7   cobblestone
+13,8,7   cobblestone
+14,8,7   mossy_cobblestone
+15,8,7   dirt
+16,8,7   dirt
+2,8,8   mossy_cobblestone
+3,8,8   cobblestone
+4,8,8   mossy_cobblestone
+5,8,8   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+10,8,8   cobblestone
+11,8,8   cobblestone
+12,8,8   cobblestone
+13,8,8   cobblestone
+14,8,8   mossy_cobblestone
+15,8,8   dirt
+16,8,8   dirt
+2,8,9   mossy_cobblestone
+3,8,9   mossy_cobblestone
+4,8,9   mossy_cobblestone
+5,8,9   mossy_cobblestone
+6,8,9   cobblestone
+7,8,9   mossy_cobblestone
+8,8,9   cobblestone
+9,8,9   mossy_cobblestone
+10,8,9   mossy_cobblestone
+11,8,9   mossy_cobblestone
+12,8,9   cobblestone
+13,8,9   mossy_cobblestone
+14,8,9   mossy_cobblestone
+15,8,9   dirt
+16,8,9   dirt
+2,8,10   mossy_cobblestone
+3,8,10   mossy_cobblestone
+4,8,10   mossy_cobblestone
+5,8,10   mossy_cobblestone
+6,8,10   cobblestone
+7,8,10   cobblestone
+8,8,10   cobblestone
+9,8,10   mossy_cobblestone
+10,8,10   mossy_cobblestone
+11,8,10   mossy_cobblestone
+12,8,10   cobblestone
+13,8,10   mossy_cobblestone
+14,8,10   cobblestone
+15,8,10   dirt
+16,8,10   dirt
+2,8,11   cobblestone
+3,8,11   mossy_cobblestone
+4,8,11   mossy_cobblestone
+5,8,11   mossy_cobblestone
+6,8,11   mossy_cobblestone
+7,8,11   cobblestone
+8,8,11   mossy_cobblestone
+9,8,11   cobblestone
+10,8,11   mossy_cobblestone
+11,8,11   cobblestone
+12,8,11   cobblestone
+13,8,11   cobblestone
+14,8,11   cobblestone
+15,8,11   dirt
+16,8,11   dirt
+10,8,12   bamboo   age=1   leaves=none   stage=0
+11,8,12   grass_block   snowy=false
+12,8,12   dirt
+13,8,12   dirt
+14,8,12   dirt
+15,8,12   dirt
+16,8,12   stone
+1,8,13   bamboo   age=1   leaves=none   stage=0
+10,8,13   grass_block   snowy=false
+11,8,13   dirt
+12,8,13   dirt
+13,8,13   dirt
+14,8,13   stone
+15,8,13   stone
+16,8,13   stone
+10,8,14   grass_block   snowy=false
+11,8,14   dirt
+12,8,14   dirt
+13,8,14   stone
+14,8,14   stone
+15,8,14   stone
+16,8,14   stone
+
+# --- 第 10 层 (y=9) ---
+12,9,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+13,9,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+14,9,0   oak_leaves   distance=2   persistent=false   waterlogged=false
+15,9,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+16,9,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+3,9,1   mossy_cobblestone
+5,9,1   cobblestone
+7,9,1   mossy_cobblestone
+9,9,1   mossy_cobblestone
+11,9,1   mossy_cobblestone
+13,9,1   cobblestone
+14,9,1   oak_leaves   distance=3   persistent=false   waterlogged=false
+15,9,1   oak_leaves   distance=4   persistent=false   waterlogged=false
+16,9,1   bamboo   age=1   leaves=none   stage=0
+0,9,2   bamboo   age=1   leaves=large   stage=0
+2,9,2   mossy_cobblestone
+3,9,2   mossy_cobblestone
+4,9,2   mossy_cobblestone
+5,9,2   mossy_cobblestone
+6,9,2   cobblestone
+7,9,2   cobblestone
+8,9,2   mossy_cobblestone
+9,9,2   mossy_cobblestone
+10,9,2   mossy_cobblestone
+11,9,2   cobblestone
+12,9,2   mossy_cobblestone
+13,9,2   cobblestone
+14,9,2   cobblestone
+1,9,3   mossy_cobblestone
+2,9,3   mossy_cobblestone
+14,9,3   cobblestone
+15,9,3   mossy_cobblestone
+16,9,3   grass_block   snowy=false
+2,9,4   mossy_cobblestone
+14,9,4   mossy_cobblestone
+15,9,4   dirt
+16,9,4   dirt
+1,9,5   mossy_cobblestone
+2,9,5   mossy_cobblestone
+10,9,5   cobblestone_stairs   facing=south   half=bottom   shape=straight   waterlogged=false
+14,9,5   cobblestone
+15,9,5   mossy_cobblestone
+16,9,5   dirt
+0,9,6   bamboo   age=1   leaves=small   stage=0
+2,9,6   mossy_cobblestone
+10,9,6   cobblestone
+14,9,6   mossy_cobblestone
+15,9,6   dirt
+16,9,6   dirt
+2,9,7   cobblestone
+10,9,7   mossy_cobblestone
+14,9,7   mossy_cobblestone
+15,9,7   dirt
+16,9,7   dirt
+1,9,8   cobblestone
+2,9,8   mossy_cobblestone
+10,9,8   cobblestone_stairs   facing=north   half=bottom   shape=straight   waterlogged=false
+14,9,8   mossy_cobblestone
+15,9,8   cobblestone
+16,9,8   dirt
+2,9,9   mossy_cobblestone
+14,9,9   mossy_cobblestone
+15,9,9   grass_block   snowy=false
+16,9,9   dirt
+1,9,10   mossy_cobblestone
+2,9,10   mossy_cobblestone
+14,9,10   mossy_cobblestone
+15,9,10   cobblestone
+16,9,10   dirt
+2,9,11   mossy_cobblestone
+3,9,11   cobblestone
+4,9,11   mossy_cobblestone
+5,9,11   mossy_cobblestone
+6,9,11   cobblestone
+7,9,11   mossy_cobblestone
+8,9,11   mossy_cobblestone
+9,9,11   cobblestone
+10,9,11   mossy_cobblestone
+11,9,11   cobblestone
+12,9,11   mossy_cobblestone
+13,9,11   mossy_cobblestone
+14,9,11   mossy_cobblestone
+15,9,11   dirt
+16,9,11   dirt
+3,9,12   mossy_cobblestone
+5,9,12   cobblestone
+7,9,12   mossy_cobblestone
+9,9,12   mossy_cobblestone
+10,9,12   bamboo   age=1   leaves=small   stage=0
+11,9,12   mossy_cobblestone
+12,9,12   grass_block   snowy=false
+13,9,12   mossy_cobblestone
+14,9,12   dirt
+15,9,12   dirt
+16,9,12   dirt
+1,9,13   bamboo   age=1   leaves=none   stage=0
+10,9,13   short_grass
+11,9,13   grass_block   snowy=false
+12,9,13   dirt
+13,9,13   dirt
+14,9,13   dirt
+15,9,13   dirt
+16,9,13   dirt
+10,9,14   vine   east=false   north=false   south=true   up=false   west=false
+11,9,14   grass_block   snowy=false
+12,9,14   dirt
+13,9,14   dirt
+14,9,14   dirt
+15,9,14   dirt
+16,9,14   dirt
+
+# --- 第 11 层 (y=10) ---
+12,10,0   oak_leaves   distance=5   persistent=false   waterlogged=false
+13,10,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+14,10,0   oak_leaves   distance=3   persistent=false   waterlogged=false
+15,10,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+16,10,0   oak_leaves   distance=5   persistent=false   waterlogged=false
+2,10,1   vine   east=false   north=false   south=true   up=false   west=false
+3,10,1   mossy_cobblestone
+5,10,1   cobblestone
+7,10,1   cobblestone
+9,10,1   mossy_cobblestone
+11,10,1   cobblestone
+13,10,1   cobblestone
+14,10,1   oak_leaves   distance=4   persistent=false   waterlogged=false
+15,10,1   oak_leaves   distance=5   persistent=false   waterlogged=false
+16,10,1   bamboo   age=1   leaves=none   stage=0
+0,10,2   bamboo   age=1   leaves=large   stage=1
+2,10,2   mossy_cobblestone
+3,10,2   mossy_cobblestone
+4,10,2   cobblestone
+5,10,2   cobblestone
+7,10,2   mossy_cobblestone
+8,10,2   mossy_cobblestone
+9,10,2   cobblestone
+11,10,2   mossy_cobblestone
+12,10,2   cobblestone
+13,10,2   mossy_cobblestone
+14,10,2   cobblestone
+1,10,3   mossy_cobblestone
+2,10,3   mossy_cobblestone
+5,10,3   vine   east=false   north=false   south=false   up=true   west=false
+14,10,3   mossy_cobblestone
+15,10,3   mossy_cobblestone
+16,10,3   short_grass
+2,10,4   cobblestone
+12,10,4   vine   east=false   north=false   south=false   up=true   west=false
+14,10,4   cobblestone
+15,10,4   grass_block   snowy=false
+16,10,4   grass_block   snowy=false
+1,10,5   mossy_cobblestone
+2,10,5   mossy_cobblestone
+14,10,5   cobblestone
+15,10,5   cobblestone
+16,10,5   dirt
+0,10,6   bamboo   age=1   leaves=large   stage=0
+15,10,6   dirt
+16,10,6   grass_block   snowy=false
+15,10,7   dirt
+16,10,7   grass_block   snowy=false
+1,10,8   cobblestone
+2,10,8   cobblestone
+14,10,8   mossy_cobblestone
+15,10,8   cobblestone
+16,10,8   grass_block   snowy=false
+2,10,9   mossy_cobblestone
+14,10,9   cobblestone
+15,10,9   short_grass
+16,10,9   grass_block   snowy=false
+1,10,10   mossy_cobblestone
+2,10,10   cobblestone
+14,10,10   mossy_cobblestone
+15,10,10   cobblestone
+16,10,10   grass_block   snowy=false
+2,10,11   mossy_cobblestone
+3,10,11   mossy_cobblestone
+4,10,11   mossy_cobblestone
+5,10,11   cobblestone
+7,10,11   cobblestone
+8,10,11   mossy_cobblestone
+9,10,11   cobblestone
+11,10,11   cobblestone
+12,10,11   cobblestone
+13,10,11   cobblestone
+14,10,11   cobblestone
+15,10,11   grass_block   snowy=false
+16,10,11   grass_block   snowy=false
+3,10,12   cobblestone
+5,10,12   cobblestone
+7,10,12   cobblestone
+9,10,12   cobblestone
+10,10,12   bamboo   age=1   leaves=large   stage=0
+11,10,12   mossy_cobblestone
+12,10,12   short_grass
+13,10,12   mossy_cobblestone
+14,10,12   grass_block   snowy=false
+15,10,12   grass_block   snowy=false
+16,10,12   dirt
+1,10,13   bamboo   age=1   leaves=small   stage=0
+11,10,13   short_grass
+12,10,13   grass_block   snowy=false
+13,10,13   grass_block   snowy=false
+14,10,13   dirt
+15,10,13   dirt
+16,10,13   dirt
+10,10,14   vine   east=false   north=false   south=true   up=false   west=false
+11,10,14   short_grass
+12,10,14   grass_block   snowy=false
+13,10,14   dirt
+14,10,14   dirt
+15,10,14   dirt
+16,10,14   dirt
+
+# --- 第 12 层 (y=11) ---
+14,11,0   oak_leaves   distance=4   persistent=false   waterlogged=false
+6,11,1   cobblestone
+10,11,1   cobblestone
+16,11,1   bamboo   age=1   leaves=none   stage=0
+2,11,2   mossy_cobblestone
+3,11,2   mossy_cobblestone
+4,11,2   cobblestone
+5,11,2   mossy_cobblestone
+6,11,2   cobblestone
+7,11,2   mossy_cobblestone
+8,11,2   cobblestone
+9,11,2   cobblestone
+10,11,2   mossy_cobblestone
+11,11,2   mossy_cobblestone
+12,11,2   mossy_cobblestone
+13,11,2   mossy_cobblestone
+14,11,2   mossy_cobblestone
+2,11,3   cobblestone
+3,11,3   cobblestone
+4,11,3   mossy_cobblestone
+5,11,3   mossy_cobblestone
+6,11,3   mossy_cobblestone
+7,11,3   cobblestone
+8,11,3   mossy_cobblestone
+9,11,3   cobblestone
+10,11,3   cobblestone
+11,11,3   cobblestone
+12,11,3   mossy_cobblestone
+13,11,3   cobblestone
+14,11,3   mossy_cobblestone
+2,11,4   mossy_cobblestone
+3,11,4   mossy_cobblestone
+4,11,4   mossy_cobblestone
+5,11,4   cobblestone
+6,11,4   cobblestone
+7,11,4   mossy_cobblestone
+8,11,4   cobblestone
+9,11,4   mossy_cobblestone
+10,11,4   mossy_cobblestone
+11,11,4   cobblestone
+12,11,4   mossy_cobblestone
+13,11,4   cobblestone
+14,11,4   cobblestone
+15,11,4   fern
+2,11,5   mossy_cobblestone
+3,11,5   cobblestone
+4,11,5   mossy_cobblestone
+5,11,5   mossy_cobblestone
+11,11,5   mossy_cobblestone
+12,11,5   mossy_cobblestone
+13,11,5   mossy_cobblestone
+14,11,5   mossy_cobblestone
+15,11,5   grass_block   snowy=false
+16,11,5   grass_block   snowy=false
+0,11,6   bamboo   age=1   leaves=large   stage=1
+2,11,6   mossy_cobblestone
+3,11,6   mossy_cobblestone
+4,11,6   mossy_cobblestone
+5,11,6   mossy_cobblestone
+11,11,6   mossy_cobblestone
+12,11,6   mossy_cobblestone
+13,11,6   mossy_cobblestone
+14,11,6   mossy_cobblestone
+15,11,6   cobblestone
+16,11,6   short_grass
+2,11,7   cobblestone
+3,11,7   cobblestone
+4,11,7   cobblestone
+5,11,7   mossy_cobblestone
+11,11,7   mossy_cobblestone
+12,11,7   mossy_cobblestone
+13,11,7   mossy_cobblestone
+14,11,7   cobblestone
+15,11,7   cobblestone
+2,11,8   cobblestone
+3,11,8   cobblestone
+4,11,8   mossy_cobblestone
+5,11,8   cobblestone
+11,11,8   mossy_cobblestone
+12,11,8   mossy_cobblestone
+13,11,8   mossy_cobblestone
+14,11,8   mossy_cobblestone
+2,11,9   mossy_cobblestone
+3,11,9   cobblestone
+4,11,9   cobblestone
+5,11,9   mossy_cobblestone
+6,11,9   cobblestone
+7,11,9   cobblestone
+8,11,9   mossy_cobblestone
+9,11,9   cobblestone
+10,11,9   mossy_cobblestone
+11,11,9   mossy_cobblestone
+12,11,9   cobblestone
+13,11,9   mossy_cobblestone
+14,11,9   mossy_cobblestone
+2,11,10   mossy_cobblestone
+3,11,10   cobblestone
+4,11,10   mossy_cobblestone
+5,11,10   mossy_cobblestone
+6,11,10   mossy_cobblestone
+7,11,10   mossy_cobblestone
+8,11,10   mossy_cobblestone
+9,11,10   mossy_cobblestone
+10,11,10   mossy_cobblestone
+11,11,10   mossy_cobblestone
+12,11,10   cobblestone
+13,11,10   cobblestone
+14,11,10   cobblestone
+16,11,10   short_grass
+2,11,11   cobblestone
+3,11,11   mossy_cobblestone
+4,11,11   mossy_cobblestone
+5,11,11   cobblestone
+6,11,11   cobblestone
+7,11,11   cobblestone
+8,11,11   mossy_cobblestone
+9,11,11   mossy_cobblestone
+10,11,11   mossy_cobblestone
+11,11,11   cobblestone
+12,11,11   mossy_cobblestone
+13,11,11   cobblestone
+14,11,11   mossy_cobblestone
+16,11,11   short_grass
+6,11,12   cobblestone
+9,11,12   vine   east=false   north=false   south=true   up=false   west=false
+10,11,12   bamboo   age=1   leaves=large   stage=1
+11,11,12   vine   east=false   north=false   south=true   up=false   west=false
+14,11,12   short_grass
+15,11,12   fern
+16,11,12   grass_block   snowy=false
+1,11,13   bamboo   age=1   leaves=large   stage=0
+12,11,13   short_grass
+13,11,13   short_grass
+14,11,13   grass_block   snowy=false
+15,11,13   grass_block   snowy=false
+16,11,13   grass_block   snowy=false
+13,11,14   grass_block   snowy=false
+14,11,14   grass_block   snowy=false
+15,11,14   grass_block   snowy=false
+16,11,14   grass_block   snowy=false
+
+# --- 第 13 层 (y=12) ---
+16,12,1   bamboo   age=1   leaves=none   stage=0
+3,12,3   mossy_cobblestone
+13,12,3   cobblestone
+16,12,3   oak_leaves   distance=3   persistent=false   waterlogged=false
+4,12,4   mossy_cobblestone
+5,12,4   mossy_cobblestone
+6,12,4   mossy_cobblestone
+7,12,4   mossy_cobblestone
+8,12,4   mossy_cobblestone
+9,12,4   mossy_cobblestone
+10,12,4   cobblestone
+11,12,4   cobblestone
+12,12,4   cobblestone
+15,12,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+16,12,4   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,12,5   mossy_cobblestone
+5,12,5   cobblestone
+6,12,5   cobblestone
+7,12,5   cobblestone
+8,12,5   cobblestone
+9,12,5   cobblestone
+10,12,5   mossy_cobblestone
+11,12,5   mossy_cobblestone
+12,12,5   mossy_cobblestone
+15,12,5   oak_leaves   distance=2   persistent=false   waterlogged=false
+16,12,5   oak_leaves   distance=1   persistent=false   waterlogged=false
+4,12,6   cobblestone
+5,12,6   cobblestone
+6,12,6   cobblestone
+10,12,6   mossy_cobblestone
+11,12,6   mossy_cobblestone
+12,12,6   mossy_cobblestone
+15,12,6   oak_leaves   distance=3   persistent=false   waterlogged=false
+16,12,6   oak_leaves   distance=2   persistent=false   waterlogged=false
+4,12,7   cobblestone
+5,12,7   mossy_cobblestone
+6,12,7   mossy_cobblestone
+10,12,7   cobblestone
+11,12,7   mossy_cobblestone
+12,12,7   mossy_cobblestone
+16,12,7   oak_leaves   distance=3   persistent=false   waterlogged=false
+4,12,8   cobblestone
+5,12,8   cobblestone
+6,12,8   mossy_cobblestone
+7,12,8   cobblestone
+8,12,8   mossy_cobblestone
+9,12,8   cobblestone
+10,12,8   mossy_cobblestone
+11,12,8   mossy_cobblestone
+12,12,8   mossy_cobblestone
+4,12,9   mossy_cobblestone
+5,12,9   mossy_cobblestone
+6,12,9   mossy_cobblestone
+7,12,9   cobblestone
+8,12,9   cobblestone
+9,12,9   mossy_cobblestone
+10,12,9   mossy_cobblestone
+11,12,9   mossy_cobblestone
+12,12,9   mossy_cobblestone
+3,12,10   cobblestone
+13,12,10   cobblestone
+9,12,12   vine   east=false   north=false   south=true   up=false   west=false
+10,12,12   vine   east=false   north=false   south=true   up=false   west=false
+11,12,12   vine   east=false   north=false   south=true   up=false   west=false
+16,12,12   short_grass
+1,12,13   bamboo   age=1   leaves=large   stage=1
+14,12,13   short_grass
+16,12,13   short_grass
+10,12,14   vine   east=false   north=false   south=true   up=false   west=false
+13,12,14   oak_leaves   distance=4   persistent=false   waterlogged=false
+14,12,14   oak_leaves   distance=3   persistent=false   waterlogged=false
+15,12,14   oak_leaves   distance=2   persistent=false   waterlogged=false
+16,12,14   oak_leaves   distance=3   persistent=false   waterlogged=false
+
+# --- 第 14 层 (y=13) ---
+16,13,1   bamboo   age=1   leaves=none   stage=0
+3,13,3   cobblestone
+13,13,3   cobblestone
+3,13,4   vine   east=false   north=true   south=false   up=false   west=false
+16,13,4   oak_leaves   distance=3   persistent=false   waterlogged=false
+5,13,5   cobblestone
+6,13,5   cobblestone
+7,13,5   cobblestone
+8,13,5   mossy_cobblestone
+9,13,5   cobblestone
+10,13,5   mossy_cobblestone
+11,13,5   mossy_cobblestone
+16,13,5   oak_leaves   distance=2   persistent=false   waterlogged=false
+5,13,6   mossy_cobblestone
+6,13,6   cobblestone
+7,13,6   cobblestone
+8,13,6   cobblestone
+9,13,6   mossy_cobblestone
+10,13,6   cobblestone
+11,13,6   mossy_cobblestone
+5,13,7   mossy_cobblestone
+6,13,7   cobblestone
+7,13,7   cobblestone
+8,13,7   cobblestone
+9,13,7   mossy_cobblestone
+10,13,7   mossy_cobblestone
+11,13,7   mossy_cobblestone
+5,13,8   cobblestone
+6,13,8   cobblestone
+7,13,8   cobblestone
+8,13,8   cobblestone
+9,13,8   cobblestone
+10,13,8   mossy_cobblestone
+11,13,8   cobblestone
+3,13,10   cobblestone
+12,13,10   vine   east=true   north=false   south=false   up=false   west=false
+13,13,10   mossy_cobblestone
+9,13,12   vine   east=false   north=false   south=true   up=false   west=false
+10,13,12   vine   east=false   north=false   south=true   up=false   west=false
+11,13,12   vine   east=false   north=false   south=true   up=false   west=false
+10,13,14   vine   east=false   north=false   south=true   up=false   west=false
+13,13,14   vine   east=false   north=false   south=false   up=false   west=true
+
+# --- 第 15 层 (y=14) ---
+16,14,1   bamboo   age=1   leaves=small   stage=0
+3,14,3   mossy_cobblestone
+13,14,3   mossy_cobblestone
+5,14,5   mossy_cobblestone
+11,14,5   mossy_cobblestone
+7,14,6   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+8,14,6   mossy_cobblestone
+9,14,6   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+7,14,7   cobblestone_stairs   facing=east   half=bottom   shape=straight   waterlogged=false
+8,14,7   mossy_cobblestone
+9,14,7   cobblestone_stairs   facing=west   half=bottom   shape=straight   waterlogged=false
+5,14,8   mossy_cobblestone
+11,14,8   cobblestone
+3,14,10   cobblestone
+12,14,10   vine   east=true   north=false   south=false   up=false   west=false
+13,14,10   mossy_cobblestone
+9,14,12   vine   east=false   north=false   south=true   up=false   west=false
+10,14,12   vine   east=false   north=false   south=true   up=false   west=false
+11,14,12   vine   east=false   north=false   south=true   up=false   west=false
+9,14,13   jungle_leaves   distance=3   persistent=false   waterlogged=false
+10,14,13   jungle_leaves   distance=2   persistent=false   waterlogged=false
+11,14,13   jungle_leaves   distance=3   persistent=false   waterlogged=false
+12,14,13   jungle_leaves   distance=4   persistent=false   waterlogged=false
+8,14,14   jungle_leaves   distance=3   persistent=false   waterlogged=false
+9,14,14   jungle_leaves   distance=2   persistent=false   waterlogged=false
+10,14,14   jungle_leaves   distance=1   persistent=false   waterlogged=false
+11,14,14   jungle_leaves   distance=2   persistent=false   waterlogged=false
+12,14,14   jungle_leaves   distance=3   persistent=false   waterlogged=false
+13,14,14   vine   east=false   north=false   south=false   up=false   west=true
+
+# --- 第 16 层 (y=15) ---
+16,15,1   bamboo   age=1   leaves=large   stage=0
+10,15,12   vine   east=false   north=false   south=true   up=false   west=false
+11,15,12   vine   east=false   north=false   south=true   up=false   west=false
+8,15,13   jungle_leaves   distance=4   persistent=false   waterlogged=false
+9,15,13   jungle_leaves   distance=3   persistent=false   waterlogged=false
+10,15,13   jungle_leaves   distance=2   persistent=false   waterlogged=false
+11,15,13   jungle_leaves   distance=3   persistent=false   waterlogged=false
+12,15,13   vine   east=false   north=false   south=true   up=false   west=false
+8,15,14   jungle_leaves   distance=3   persistent=false   waterlogged=false
+9,15,14   jungle_leaves   distance=2   persistent=false   waterlogged=false
+10,15,14   jungle_leaves   distance=1   persistent=false   waterlogged=false
+11,15,14   jungle_leaves   distance=2   persistent=false   waterlogged=false
+12,15,14   jungle_leaves   distance=3   persistent=false   waterlogged=false
+13,15,14   vine   east=false   north=false   south=false   up=false   west=true
+

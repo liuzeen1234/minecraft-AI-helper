@@ -146,7 +146,7 @@ public class ExportTxtScreen extends Screen {
                 try { Files.createDirectories(dir); } catch (IOException ignored) {}
             }
 
-            String fileName = name.replaceAll("[^a-zA-Z0-9_\\-]", "_") + ".txt";
+            String fileName = com.example.helloworld.ModPaths.sanitizeFileName(name, "exported_blueprint") + ".txt";
             Path filePath = dir.resolve(fileName);
 
             try {

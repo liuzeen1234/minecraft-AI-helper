@@ -378,13 +378,8 @@ public class AICommandExecutor {
                 Files.createDirectories(txtsDir);
             }
 
-            // 清理文件名：移除非法字符，用下划线替代空格
-            String safeName = name.replaceAll("[^a-zA-Z0-9_\\-\\u4e00-\\u9fff]", "_")
-                    .replaceAll("_+", "_")
-                    .replaceAll("^_|_$", "");
-            if (safeName.isEmpty()) {
-                safeName = "blueprint";
-            }
+            // 清理文件名：只移除文件系统真正不允许的非法字符，保留中文等 Unicode 文字
+            String safeName = ModPaths.sanitizeFileName(name, "blueprint");
 
             // 如果文件已存在，追加数字后缀
             Path targetFile = txtsDir.resolve(safeName + ".txt");
