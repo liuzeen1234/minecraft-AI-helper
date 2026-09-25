@@ -2,7 +2,6 @@ package com.example.helloworld.structure;
 
 import com.example.helloworld.I18n;
 import com.example.helloworld.ModPaths;
-import com.example.helloworld.nbt.NbtToTxtConverter;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -21,15 +20,16 @@ import java.util.List;
 
 /**
  * 结构格式转换界面：
- *   左侧 - 源格式下拉（自动识别 / 仅 NBT / 仅 Litematic）+ 待转换文件列表（"+"添加文件，"-"移除单项）
- *   右侧 - 目标格式（目前仅 TXT）+ 输出目录 + 转换后文件名预览列表
+ *   左侧 - 源格式下拉（自动识别 / 仅 NBT / 仅 Litematic / 仅 TXT）+ 待转换文件列表（"+"添加文件，"-"移除单项）
+ *   右侧 - 目标格式下拉（NBT / Litematic / TXT）+ 输出目录 + 转换后文件名预览列表
  *   底部 - "开始转换" / "返回"
  *
- * 支持一次添加多个 .nbt/.litematic 文件，逐个转换为同名 .txt 输出到目标目录。
- * 源格式下拉仅影响"添加文件"对话框的扩展名过滤（自动识别=不过滤，两种都显示；
- * 仅 NBT/仅 Litematic=只显示对应扩展名）；实际转换始终通过
- * {@code NbtStructureParser#parseAny} 按文件真实扩展名分派解析器，
+ * 支持一次添加多个 .nbt/.litematic/.txt 文件，逐个转换为目标格式同名文件输出到目标目录。
+ * 源格式下拉仅影响"添加文件"对话框的扩展名过滤（自动识别=不过滤，三种都显示；
+ * 仅 NBT/仅 Litematic/仅 TXT=只显示对应扩展名）；实际转换始终由
+ * {@link StructureFormatConverter} 按文件真实扩展名分派解析器，
  * 已添加到列表中的文件不受后续切换下拉影响。
+ * 三种格式支持任意方向互转（NBT↔Litematic↔TXT），源格式与目标格式相同时直接复制文件。
  */
 public class StructureConvertScreen extends Screen {
 
@@ -37,16 +37,34 @@ public class StructureConvertScreen extends Screen {
     private enum SourceFormat {
         AUTO("structureconvert.source_format.auto", null, null),
         NBT_ONLY("structureconvert.source_format.nbt", new String[]{"*.nbt"}, "structureconvert.filter_desc.nbt"),
-        LITEMATIC_ONLY("structureconvert.source_format.litematic", new String[]{"*.litematic"}, "structureconvert.filter_desc.litematic");
+        LITEMATIC_ONLY("structureconvert.source_format.litematic", new String[]{"*.litematic"}, "structureconvert.filter_desc.litematic"),
+        TXT_ONLY("structureconvert.source_format.txt", new String[]{"*.txt"}, "structureconvert.filter_desc.txt");
 
         final String labelKey;
-        final String[] filters; // null 表示不过滤（nbt + litematic 都显示）
+        final String[] filters; // null 表示不过滤（nbt + litematic + txt 都显示）
         final String filterDescKey;
 
         SourceFormat(String labelKey, String[] filters, String filterDescKey) {
             this.labelKey = labelKey;
             this.filters = filters;
             this.filterDescKey = filterDescKey;
+        }
+
+        String label() { return I18n.tr(labelKey); }
+    }
+
+    /** 目标格式下拉选项：决定转换后写出的文件格式。 */
+    private enum TargetFormat {
+        NBT("structureconvert.target_format.nbt", StructureFormatConverter.Format.NBT),
+        LITEMATIC("structureconvert.target_format.litematic", StructureFormatConverter.Format.LITEMATIC),
+        TXT("structureconvert.target_format.txt", StructureFormatConverter.Format.TXT);
+
+        final String labelKey;
+        final StructureFormatConverter.Format format;
+
+        TargetFormat(String labelKey, StructureFormatConverter.Format format) {
+            this.labelKey = labelKey;
+            this.format = format;
         }
 
         String label() { return I18n.tr(labelKey); }
@@ -64,10 +82,14 @@ public class StructureConvertScreen extends Screen {
     private SourceFormat sourceFormat = SourceFormat.AUTO;
     private boolean sourceFormatDropdownOpen = false;
 
+    private TargetFormat targetFormat = TargetFormat.TXT;
+    private boolean targetFormatDropdownOpen = false;
+
     // 布局区域
     private int listLeft, listTop, listWidth, listHeight;
     private int previewLeft, previewTop, previewWidth, previewHeight;
     private int sourceFormatBoxLeft, sourceFormatBoxTop, sourceFormatBoxWidth, sourceFormatBoxHeight;
+    private int targetFormatBoxLeft, targetFormatBoxTop, targetFormatBoxWidth, targetFormatBoxHeight;
     private static final int ITEM_HEIGHT = 14;
     private static final int MINUS_BTN_SIZE = 14;
 
@@ -100,9 +122,15 @@ public class StructureConvertScreen extends Screen {
         listHeight = bottom - listTop - 20; // 底部留给"+"按钮
 
         previewLeft = rightX;
-        previewTop = top + 60; // 让出"目标格式"行 + 目录选择行
+        previewTop = top + 60; // 让出"目标格式"下拉行 + 目录选择行
         previewWidth = panelWidth;
         previewHeight = bottom - previewTop;
+
+        // 目标格式下拉框：紧跟在"目标格式:"标签右侧
+        targetFormatBoxLeft = rightX + 70;
+        targetFormatBoxTop = top - 2;
+        targetFormatBoxWidth = Math.min(110, panelWidth - 70);
+        targetFormatBoxHeight = 16;
 
         // ---- 右侧：目标目录选择 ----
         int dirY = top + 20;
@@ -114,9 +142,10 @@ public class StructureConvertScreen extends Screen {
         );
         targetDirField = new TextFieldWidget(this.textRenderer, rightX + 22, dirY, panelWidth - 22, 18,
                 Text.literal(I18n.tr("structureconvert.target_dir")));
+        // 目标格式下拉展开时会挡住这一行，此时临时隐藏输入框，避免文字从遮罩下露出来
         targetDirField.setMaxLength(512);
         targetDirField.setPlaceholder(Text.literal(I18n.tr("structureconvert.target_dir.placeholder")));
-        targetDirField.setText(ModPaths.getTxtsDir().toAbsolutePath().toString());
+        targetDirField.setText(defaultDirForTargetFormat(targetFormat).toAbsolutePath().toString());
         this.addDrawableChild(targetDirField);
 
         // ---- 底部按钮 ----
@@ -138,11 +167,11 @@ public class StructureConvertScreen extends Screen {
     /**
      * 打开原生文件选择对话框（支持多选），选中后追加到列表。
      * 显示哪些扩展名由当前选中的 {@link #sourceFormat} 决定：
-     * 自动识别 = .nbt + .litematic 都显示；仅 NBT / 仅 Litematic = 只显示对应一种。
+     * 自动识别 = .nbt + .litematic + .txt 都显示；仅 NBT / 仅 Litematic / 仅 TXT = 只显示对应一种。
      */
     private void openAddFileDialog() {
         String[] extFilters = sourceFormat.filters != null
-                ? sourceFormat.filters : new String[]{"*.nbt", "*.litematic"};
+                ? sourceFormat.filters : new String[]{"*.nbt", "*.litematic", "*.txt"};
         String filterDesc = sourceFormat.filterDescKey != null
                 ? I18n.tr(sourceFormat.filterDescKey) : I18n.tr("structureconvert.filter_desc");
 
@@ -184,15 +213,49 @@ public class StructureConvertScreen extends Screen {
 
     /**
      * 添加文件对话框的默认打开目录：
-     *   自动识别 → structures/ 根目录（同时能看到 nbts/、litematic/ 子文件夹）；
-     *   仅 NBT → structures/nbts/；仅 Litematic → structures/litematic/。
+     *   自动识别 → structures/ 根目录（同时能看到 nbts/、litematic/、txts/ 子文件夹）；
+     *   仅 NBT → structures/nbts/；仅 Litematic → structures/litematic/；仅 TXT → structures/txts/。
      */
     private Path defaultDirForSourceFormat() {
         return switch (sourceFormat) {
             case NBT_ONLY -> ModPaths.getNbtsDir();
             case LITEMATIC_ONLY -> ModPaths.getLitematicDir();
+            case TXT_ONLY -> ModPaths.getTxtsDir();
             default -> ModPaths.getStructuresDir();
         };
+    }
+
+    /**
+     * 目标格式对应的默认输出目录，切换目标格式下拉时若目录字段仍是某格式的默认目录
+     * （用户未手动改过），联动更新为新格式的默认目录，方便直接转换。
+     */
+    private Path defaultDirForTargetFormat(TargetFormat format) {
+        return switch (format) {
+            case NBT -> ModPaths.getNbtsDir();
+            case LITEMATIC -> ModPaths.getLitematicDir();
+            case TXT -> ModPaths.getTxtsDir();
+        };
+    }
+
+    /**
+     * 切换目标格式。若输出目录当前仍是某种格式的默认目录（用户未手动改过），
+     * 联动更新为新格式的默认目录；若用户已自定义目录，则保持不变。
+     */
+    private void selectTargetFormat(TargetFormat newFormat) {
+        String currentDirText = targetDirField.getText().trim();
+        boolean isDefaultDir = currentDirText.isEmpty();
+        for (TargetFormat f : TargetFormat.values()) {
+            if (currentDirText.equals(defaultDirForTargetFormat(f).toAbsolutePath().toString())) {
+                isDefaultDir = true;
+                break;
+            }
+        }
+
+        targetFormat = newFormat;
+        if (isDefaultDir) {
+            targetDirField.setText(defaultDirForTargetFormat(newFormat).toAbsolutePath().toString());
+        }
+        statusMessage = "";
     }
 
     private void removeSourceFile(int index) {
@@ -204,7 +267,7 @@ public class StructureConvertScreen extends Screen {
 
     /** 打开原生文件夹选择对话框，用于选择输出目录。 */
     private void chooseTargetFolder() {
-        Path defaultDir = ModPaths.getTxtsDir().toAbsolutePath().normalize();
+        Path defaultDir = defaultDirForTargetFormat(targetFormat).toAbsolutePath().normalize();
         if (!Files.isDirectory(defaultDir)) {
             defaultDir = Path.of(System.getProperty("user.home"));
         }
@@ -229,13 +292,13 @@ public class StructureConvertScreen extends Screen {
         }
 
         String targetDirText = targetDirField.getText().trim();
-        Path targetDir = targetDirText.isEmpty() ? ModPaths.getTxtsDir() : Path.of(targetDirText);
+        Path targetDir = targetDirText.isEmpty() ? defaultDirForTargetFormat(targetFormat) : Path.of(targetDirText);
 
         int success = 0;
         String lastError = null;
         for (File file : sourceFiles) {
             try {
-                NbtToTxtConverter.convertToFile(file, targetDir);
+                StructureFormatConverter.convert(file, targetFormat.format, targetDir);
                 success++;
             } catch (Exception e) {
                 lastError = e.getMessage();
@@ -253,6 +316,10 @@ public class StructureConvertScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        // 目标格式下拉展开时会挡住目录输入框所在行，临时隐藏输入框本身（📁按钮保持可见），
+        // 避免因渲染层顺序问题导致输入框文字从遮罩下透出来
+        targetDirField.visible = !targetFormatDropdownOpen;
+
         this.renderBackground(context, mouseX, mouseY, delta);
 
         int cx = this.width / 2;
@@ -297,9 +364,9 @@ public class StructureConvertScreen extends Screen {
         context.drawTextWithShadow(this.textRenderer, Text.literal(plusHovered ? "§a§l+" : "§a+"),
                 listLeft + 2, plusY, 0xFFFFFF);
 
-        // ---- 右侧：目标格式 ----
+        // ---- 右侧：目标格式下拉 ----
         context.drawTextWithShadow(this.textRenderer, Text.literal(I18n.tr("structureconvert.target_label")), previewLeft, top, 0xFFE080);
-        context.drawTextWithShadow(this.textRenderer, Text.literal("§aTXT"), previewLeft + 70, top, 0xFFFFFF);
+        renderTargetFormatDropdown(context, mouseX, mouseY);
 
         // 预览标签 + 列表
         context.drawTextWithShadow(this.textRenderer, Text.literal(I18n.tr("structureconvert.preview_label")), previewLeft, previewTop - 12, 0xFFE080);
@@ -310,7 +377,7 @@ public class StructureConvertScreen extends Screen {
         for (int i = 0; i < sourceFiles.size(); i++) {
             int itemY = previewTop + i * ITEM_HEIGHT;
             if (itemY + ITEM_HEIGHT > previewTop + previewHeight) break;
-            String previewName = stripExtension(sourceFiles.get(i).getName()) + ".txt";
+            String previewName = stripExtension(sourceFiles.get(i).getName()) + "." + targetFormat.format.extension;
             drawTruncated(context, previewName, previewLeft + 3, itemY + 3, previewWidth - 6, 0x55FF55);
         }
         if (sourceFiles.isEmpty()) {
@@ -329,6 +396,9 @@ public class StructureConvertScreen extends Screen {
         // 下拉展开的选项列表要盖在其它元素之上，放在最后渲染
         if (sourceFormatDropdownOpen) {
             renderSourceFormatOptions(context, mouseX, mouseY);
+        }
+        if (targetFormatDropdownOpen) {
+            renderTargetFormatOptions(context, mouseX, mouseY);
         }
     }
 
@@ -375,6 +445,48 @@ public class StructureConvertScreen extends Screen {
         }
     }
 
+    /** 渲染目标格式下拉框本体（收起状态下显示的当前选中值 + 边框 + 展开箭头）。 */
+    private void renderTargetFormatDropdown(DrawContext context, int mouseX, int mouseY) {
+        boolean hovered = isInBox(mouseX, mouseY, targetFormatBoxLeft, targetFormatBoxTop, targetFormatBoxWidth, targetFormatBoxHeight);
+
+        int borderColor = (hovered || targetFormatDropdownOpen) ? 0xFFFFFFFF : 0xFFA0A0A0;
+        context.fill(targetFormatBoxLeft - 1, targetFormatBoxTop - 1,
+                targetFormatBoxLeft + targetFormatBoxWidth + 1, targetFormatBoxTop + targetFormatBoxHeight + 1, borderColor);
+        context.fill(targetFormatBoxLeft, targetFormatBoxTop,
+                targetFormatBoxLeft + targetFormatBoxWidth, targetFormatBoxTop + targetFormatBoxHeight, 0xFF202020);
+
+        drawTruncated(context, targetFormat.label(), targetFormatBoxLeft + 4, targetFormatBoxTop + 4,
+                targetFormatBoxWidth - 16, 0xFFFFFF);
+
+        String arrow = targetFormatDropdownOpen ? "▲" : "▼";
+        context.drawTextWithShadow(this.textRenderer, Text.literal(arrow),
+                targetFormatBoxLeft + targetFormatBoxWidth - 10, targetFormatBoxTop + 4, 0xFFC0C0C0);
+    }
+
+    /** 渲染展开状态下悬浮在目标格式下拉框下方的选项列表。 */
+    private void renderTargetFormatOptions(DrawContext context, int mouseX, int mouseY) {
+        TargetFormat[] options = TargetFormat.values();
+        int optionsTop = targetFormatBoxTop + targetFormatBoxHeight + 1;
+        int optionsHeight = options.length * ITEM_HEIGHT;
+
+        context.fill(targetFormatBoxLeft - 1, optionsTop - 1,
+                targetFormatBoxLeft + targetFormatBoxWidth + 1, optionsTop + optionsHeight + 1, 0xFFFFFFFF);
+        context.fill(targetFormatBoxLeft, optionsTop,
+                targetFormatBoxLeft + targetFormatBoxWidth, optionsTop + optionsHeight, 0xFF101010);
+
+        for (int i = 0; i < options.length; i++) {
+            int optionY = optionsTop + i * ITEM_HEIGHT;
+            boolean optHovered = isInBox(mouseX, mouseY, targetFormatBoxLeft, optionY, targetFormatBoxWidth, ITEM_HEIGHT);
+            boolean isSelected = options[i] == targetFormat;
+
+            if (optHovered) {
+                context.fill(targetFormatBoxLeft, optionY, targetFormatBoxLeft + targetFormatBoxWidth, optionY + ITEM_HEIGHT, 0xFF404070);
+            }
+            int textColor = isSelected ? 0xFFFF00 : 0xFFFFFF;
+            drawTruncated(context, options[i].label(), targetFormatBoxLeft + 4, optionY + 3, targetFormatBoxWidth - 8, textColor);
+        }
+    }
+
     private boolean isInBox(double mouseX, double mouseY, int x, int y, int w, int h) {
         return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
     }
@@ -406,9 +518,30 @@ public class StructureConvertScreen extends Screen {
             return true;
         }
 
+        if (targetFormatDropdownOpen) {
+            TargetFormat[] options = TargetFormat.values();
+            int optionsTop = targetFormatBoxTop + targetFormatBoxHeight + 1;
+            for (int i = 0; i < options.length; i++) {
+                int optionY = optionsTop + i * ITEM_HEIGHT;
+                if (isInBox(mouseX, mouseY, targetFormatBoxLeft, optionY, targetFormatBoxWidth, ITEM_HEIGHT)) {
+                    selectTargetFormat(options[i]);
+                    targetFormatDropdownOpen = false;
+                    return true;
+                }
+            }
+            targetFormatDropdownOpen = false;
+            return true;
+        }
+
         // 点击源格式下拉框本体：展开选项列表
         if (isInBox(mouseX, mouseY, sourceFormatBoxLeft, sourceFormatBoxTop, sourceFormatBoxWidth, sourceFormatBoxHeight)) {
             sourceFormatDropdownOpen = true;
+            return true;
+        }
+
+        // 点击目标格式下拉框本体：展开选项列表
+        if (isInBox(mouseX, mouseY, targetFormatBoxLeft, targetFormatBoxTop, targetFormatBoxWidth, targetFormatBoxHeight)) {
+            targetFormatDropdownOpen = true;
             return true;
         }
 
