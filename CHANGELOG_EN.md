@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.5.0
+
+### New Features
+
+- **RAG knowledge base retrieval (`[KNOWLEDGE]` tag)** — The AI can now proactively consult the mod's built-in Minecraft knowledge base (blocks, mobs, commands, game mechanics, etc.). When precise information is needed, it names documents via a `[KNOWLEDGE]doc name[/KNOWLEDGE]` tag to read their body text, instead of relying solely on fixed content hardcoded into the system prompt. Added three new config options: `rag_enabled` (on by default), `rag_max_docs` (default 8), and `rag_max_chars` (default 20000), controlling whether retrieval is enabled and the per-request document count/character limits. Knowledge base docs are released to `ai-helper/knowledge/` on first launch (English only, to keep jar size down; the AI can read English docs and still answer in the player's language).
+- **Structure format conversion (NBT / Litematic / TXT, any direction)** — The unified structure browser now has a "Convert" entry point that can batch-convert `.nbt`, `.litematic`, and `.txt` (MCBLUEPRINT v2) files into any target format. Supports selecting multiple source files and a target directory; conversion fully preserves block states, container items (chests, barrels, etc.), and sign front/back text (including legacy pre-1.20 `Text1`–`Text4` compatibility).
+
+### Improvements
+
+- **Trimmed the system prompt; redstone knowledge now comes from the knowledge base** — Removed roughly 500 lines of hardcoded redstone block/circuit reference material from `AICommandExecutor`, replaced with a pointer telling the AI to consult the knowledge base instead. Also added missing 1.20.4 blocks (TNT, daylight detector, sculk sensor) and a new redstone circuit/logic gate design doc to the knowledge base.
+- **Display language now automatically follows the game language** — Removed the `language` config option and its manual-switch entry point: the client reads Minecraft's current game language in real time and applies it immediately, while dedicated servers always use English. The "Mod Language Settings" screen is now a static page that only explains this behavior, with no switch buttons.
+- **Fixed filename sanitization logic** — Added `ModPaths.sanitizeFileName`, which only filters characters truly disallowed by the filesystem (`\ / : * ? " < > |` and control characters), instead of replacing Chinese, Japanese, and other Unicode characters or spaces with underscores. Applied consistently across AI-generated files, selection exports, and TXT exports.
+
+### Fixes
+
+- **Knowledge base content corrections** — Fixed the comparator/hopper/dropper container signal strength formula (the previous simplified `items/5` approximation was replaced with the standard `1+floor(14×average fill ratio)` formula), and fixed an incorrect direction rule for note block instruments (determined by the block below, not above).
+- **Lost sign text during conversion** — Fixed an issue where blank lines in the middle of sign text were mistakenly treated as the end of a section during NBT/Litematic-to-TXT conversion, causing subsequent lines to be lost. The conversion logic also gained support for extracting and writing container items and sign front/back text (including legacy formats).
+- **Remaining hardcoded Chinese text** — Fixed leftover hardcoded Chinese strings in the `/aipos` command echo and the NBT structure summary; filled in missing keys in `zh_cn.json` so it fully matches `en_us.json`.
+
+### Tests
+
+- Added `KnowledgeBaseTest`, `NbtToTxtConverterTest`, `StructureFormatConverterTest`, and `LitematicParserTest` unit tests, covering knowledge base retrieval, structure format conversion, and Litematic parsing.
+
+---
+
 ## v1.4.2
 
 ### Security & Permission Model Changes

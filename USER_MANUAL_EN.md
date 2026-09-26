@@ -1,6 +1,6 @@
 # AI Builder User Manual
 
-> Version 1.4.2 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.5.0 | Minecraft 1.20.4 | Fabric Mod
 
 ## Installation & Requirements
 
@@ -12,7 +12,7 @@
 | Prerequisite mod | Fabric API (required) |
 
 1. Install Fabric Loader and Fabric API.
-2. Drop `ai-builder-1.4.2.jar` into `.minecraft/mods/`.
+2. Drop `ai-builder-1.5.0.jar` into `.minecraft/mods/`.
 3. Launch the game and press `K` to open the AI Builder settings.
 
 ## First-Time Setup
@@ -66,7 +66,7 @@ You can also press `K` → **AI Chat Settings** for a visual configuration. The 
 | `/aiconfig tavily_api_key <value>` | Set the Tavily API key |
 | `/aiconfig reload` | Reload the config file after manual edits |
 
-`/aiconfig` is not a general "arbitrary key-value" command. Set `screenshot_enabled`, `context_enabled`, `stream_output_enabled`, and `language` in the settings screen, and set `api_format` by editing the config file directly and then reloading.
+`/aiconfig` is not a general "arbitrary key-value" command. Set `screenshot_enabled`, `context_enabled`, and `stream_output_enabled` in the settings screen, and set `api_format` and `rag_*` options by editing the config file directly and then reloading. The UI display language is not configurable; it automatically follows the current Minecraft game language.
 
 ### Structure Commands
 
@@ -91,6 +91,10 @@ The AI can place, fill, or clear blocks, give items, spawn entities, set time/we
 
 Blueprint coordinates are relative: X is east, Y is up, Z is south, and the origin is at the player's feet. Both V1 and MCBLUEPRINT v2 TXT formats can be loaded, and blueprints support a custom placement origin (relative to the player's facing direction, or an absolute coordinate); a confirmation screen lets you edit the origin before placement.
 
+### RAG Knowledge Base
+
+The mod ships a built-in Minecraft knowledge base (Markdown docs covering blocks, mobs, commands, game mechanics, etc.), released to `ai-helper/knowledge/` on first launch (English only, to keep the install size down). When the AI needs precise details (e.g. a redstone circuit's signal-strength formula, or a specific mob mechanic), it names documents in its reply using a `[KNOWLEDGE]doc name[/KNOWLEDGE]` tag to read their body text, instead of relying only on fixed content baked into the prompt. This is a local file read with no network request involved. You can add, remove, or edit Markdown docs in the knowledge base directory to extend or replace the built-in content.
+
 ### AI Permission Settings
 
 Press `K` → **AI Permission Settings** (split out from the AI Chat Settings screen into its own page) to control:
@@ -109,7 +113,7 @@ Press `K` → **Load Structure** to browse, search, delete, and place the follow
 
 NBT/Litematica placement skips `air` and `structure_void`, and preserves block states, block entity data, and structure entities; legacy sign data is converted to the 1.20+ format. AI-generated TXT blueprints are saved to `ai-helper/structures/txts/ai-generated/`.
 
-Click **Convert** at the top of the structure browser to batch-convert `.nbt` / `.litematic` files into V2 `.txt` blueprints: pick one or more source files and a target folder, and each output file keeps the source's base name with a `.txt` extension. The conversion fully preserves block states, container items (chests, barrels, etc.), and sign front/back text (including the legacy pre-1.20 `Text1`~`Text4` format), so the result can be placed directly through the TXT blueprint pipeline or handed to the AI for editing.
+Click **Convert** at the top of the structure browser to batch-convert `.nbt`, `.litematic`, and `.txt` files into any target format (all six directions between NBT/Litematic/TXT are supported): pick one or more source files, a target format, and a target folder. Each output file keeps the source's base name with the target format's extension. The conversion fully preserves block states, container items (chests, barrels, etc.), and sign front/back text (including the legacy pre-1.20 `Text1`~`Text4` format), so the result can be placed directly through the matching placement pipeline or handed to the AI for editing.
 
 ### Selection Tool
 
@@ -142,10 +146,12 @@ Config file: `ai-helper/config/ai-builder.properties`
 | `max_tool_rounds` | `3` | Max rounds for the multi-round tool-call loop; 0 disables multi-round tool calls |
 | `vanilla_commands_enabled` | `true` | Whether the AI is allowed to use vanilla commands (`execute_command`) |
 | `confirm_before_execute_enabled` | `false` | Whether the player must confirm in chat before the AI executes a mod-specific action |
-| `language` | `en_us` | UI language: `zh_cn` or `en_us` |
 | `api_format` | `auto` | `auto`, `openai`, or `anthropic` |
+| `rag_enabled` | `true` | Whether knowledge base retrieval (`[KNOWLEDGE]` tag) is enabled |
+| `rag_max_docs` | `8` | Max number of documents that can be named in a single `[KNOWLEDGE]` request |
+| `rag_max_chars` | `20000` | Total character limit for knowledge base content returned to the AI |
 
-Press `K` → **AI Chat Settings** to change the screenshot, context, web search, and streaming toggles; `K` → **AI Permission Settings** to change the vanilla-commands toggle, the confirm-before-execute toggle, and the max tool-call rounds; the API settings screen can change the API URL, key, model, and Tavily key. After editing any config manually, use `/aiconfig reload` to apply. Language can be switched under `K` → **Mod Language Settings**, but on the next client launch it will follow the current Minecraft game language again.
+Press `K` → **AI Chat Settings** to change the screenshot, context, web search, and streaming toggles; `K` → **AI Permission Settings** to change the vanilla-commands toggle, the confirm-before-execute toggle, and the max tool-call rounds; the API settings screen can change the API URL, key, model, and Tavily key. After editing any config manually, use `/aiconfig reload` to apply. The UI display language has no config option; it automatically follows the current Minecraft game language, and `K` → **Mod Language Settings** is now just an informational page.
 
 ## Blueprint Format
 
@@ -253,7 +259,7 @@ A V2 block line has the format `x,y,z   block_id   [key=value ...]`. `# name:`, 
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.4.2.jar
+└── mods/ai-builder-1.5.0.jar
 ```
 
 All structure directories support subfolders at any depth.
@@ -262,7 +268,7 @@ All structure directories support subfolders at any depth.
 
 **The AI doesn't respond:** Use `/aiconfig show` to check the key and API URL; confirm your network is available. The optional debug-menu can provide chat logs to help troubleshoot.
 
-**How to switch language or streaming output:** Use `K` → **Mod Language Settings** and `K` → **AI Chat Settings** respectively; there is no corresponding `/aiconfig language` or `/aiconfig stream_output_enabled` command.
+**How to switch streaming output:** Use `K` → **AI Chat Settings**; there is no corresponding `/aiconfig stream_output_enabled` command. The UI display language cannot be switched manually; it automatically follows the current Minecraft game language.
 
 **After manually editing the config:** Run `/aiconfig reload`; no restart needed.
 

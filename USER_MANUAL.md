@@ -1,6 +1,6 @@
 # AI Builder 用户手册
 
-> 版本 1.4.2 | Minecraft 1.20.4 | Fabric Mod
+> 版本 1.5.0 | Minecraft 1.20.4 | Fabric Mod
 
 ## 安装与环境要求
 
@@ -12,7 +12,7 @@
 | 前置 Mod | Fabric API（必须） |
 
 1. 安装 Fabric Loader 和 Fabric API。
-2. 将 `ai-builder-1.4.2.jar` 放入 `.minecraft/mods/`。
+2. 将 `ai-builder-1.5.0.jar` 放入 `.minecraft/mods/`。
 3. 启动游戏，按 `K` 打开 AI Builder 设置。
 
 ## 首次配置
@@ -66,7 +66,7 @@
 | `/aiconfig tavily_api_key <值>` | 设置 Tavily API 密钥 |
 | `/aiconfig reload` | 重新加载手动编辑后的配置文件 |
 
-`/aiconfig` 不是通用的“任意键值”命令；`screenshot_enabled`、`context_enabled`、`stream_output_enabled` 和 `language` 请在设置界面调整，`api_format` 请直接编辑配置文件后重载。
+`/aiconfig` 不是通用的“任意键值”命令；`screenshot_enabled`、`context_enabled`、`stream_output_enabled` 请在设置界面调整，`api_format`、`rag_*` 请直接编辑配置文件后重载。界面显示语言不可配置，自动跟随当前 Minecraft 游戏语言。
 
 ### 结构命令
 
@@ -91,6 +91,10 @@ AI 可放置、填充或清除方块，给予物品，生成实体，设置时�
 
 蓝图坐标为相对坐标：X 向东、Y 向上、Z 向南，原点在玩家脚下。V1 与 MCBLUEPRINT v2 TXT 格式均可加载，且支持自定义放置原点（相对玩家朝向偏移，或绝对坐标），放置前会弹出确认界面供你编辑原点坐标。
 
+### RAG 知识库
+
+Mod 内置一套 Minecraft 知识库（方块、生物、指令、游戏机制等分类的 Markdown 文档），首次启动时释放到 `ai-helper/knowledge/` 目录（仅内置英文版以控制安装包体积）。当 AI 需要查阅精确细节（如红石电路信号强度公式、特定生物机制）时，会在回复中用 `[KNOWLEDGE]文档名[/KNOWLEDGE]` 标签点名读取文档正文，而不再依赖写死在提示词里的固定内容。此过程为本地文件读取，不涉及网络请求。你可以在知识库目录中自行增删 Markdown 文档来扩展或替换内置内容。
+
 ### AI 权限设置
 
 按 `K` → **AI 权限设置**（从原 AI 聊天设置中拆分出的独立页面）可控制：
@@ -109,7 +113,7 @@ AI 可放置、填充或清除方块，给予物品，生成实体，设置时�
 
 NBT/Litematica 放置会跳过 `air` 与 `structure_void`，并保留方块状态、方块实体数据和结构实体；旧告示牌数据会转换为 1.20+ 格式。AI 生成的 TXT 蓝图保存到 `ai-helper/structures/txts/ai-generated/`。
 
-在结构浏览器顶部点击**转换**，可批量将 `.nbt` / `.litematic` 文件转换为 V2 格式的 `.txt` 蓝图：选择若干源文件和目标文件夹后即可转换，输出文件与源文件同名（扩展名换成 `.txt`）。转换会完整保留方块状态、容器物品（箱子、桶等）以及告示牌正反面文字（含旧版 1.19 及以前的 `Text1`~`Text4` 格式），转换结果可直接用 TXT 蓝图管线放置或交给 AI 编辑。
+在结构浏览器顶部点击**转换**，可批量将 `.nbt`、`.litematic`、`.txt` 文件互相转换为任意目标格式（NBT/Litematic/TXT 六个方向均支持）：选择若干源文件、目标格式和目标文件夹后即可转换，输出文件与源文件同名（扩展名按目标格式替换）。转换会完整保留方块状态、容器物品（箱子、桶等）以及告示牌正反面文字（含旧版 1.19 及以前的 `Text1`~`Text4` 格式），转换结果可直接用对应格式的放置管线使用或交给 AI 编辑。
 
 ### 选区工具
 
@@ -142,10 +146,12 @@ NBT/Litematica 放置会跳过 `air` 与 `structure_void`，并保留方块状�
 | `max_tool_rounds` | `3` | 多轮工具调用循环的最大轮数，0=禁用多轮 |
 | `vanilla_commands_enabled` | `true` | 是否允许 AI 使用原版命令（`execute_command`） |
 | `confirm_before_execute_enabled` | `false` | 是否要求玩家在 AI 执行 mod 自定义功能前先在聊天框确认 |
-| `language` | `en_us` | 界面语言：`zh_cn` 或 `en_us` |
 | `api_format` | `auto` | `auto`、`openai` 或 `anthropic` |
+| `rag_enabled` | `true` | 是否启用知识库检索（`[KNOWLEDGE]` 标签） |
+| `rag_max_docs` | `8` | 单次 `[KNOWLEDGE]` 请求最多允许点名的文档数量 |
+| `rag_max_chars` | `20000` | 回填给 AI 的知识库正文总字符数上限 |
 
-按 `K` → **AI 聊天设置**可修改截图、上下文、联网搜索、流式输出等布尔开关；`K` → **AI 权限设置**可修改原版命令开关、执行前确认开关和最大工具调用轮数；API 设置界面可修改 API 地址、密钥、模型和 Tavily 密钥。手动编辑任何配置后使用 `/aiconfig reload` 生效。语言可在 `K` → **Mod 语言设置**中切换，但下次客户端启动会重新跟随当前 Minecraft 游戏语言。
+按 `K` → **AI 聊天设置**可修改截图、上下文、联网搜索、流式输出等布尔开关；`K` → **AI 权限设置**可修改原版命令开关、执行前确认开关和最大工具调用轮数；API 设置界面可修改 API 地址、密钥、模型和 Tavily 密钥。手动编辑任何配置后使用 `/aiconfig reload` 生效。界面显示语言无配置项，自动跟随当前 Minecraft 游戏语言，`K` → **Mod 语言设置**仅展示该说明。
 
 ## 蓝图格式
 
@@ -253,7 +259,7 @@ V2 的方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# 
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.4.2.jar
+└── mods/ai-builder-1.5.0.jar
 ```
 
 所有结构目录均支持任意深度的子文件夹。
@@ -262,7 +268,7 @@ V2 的方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# 
 
 **AI 没有回复：** 使用 `/aiconfig show` 检查密钥和 API 地址；确认网络可用。可选 debug-menu 能提供聊天日志辅助排查。
 
-**如何切换语言或流式输出：** 分别使用 `K` → **Mod 语言设置**和 `K` → **AI 聊天设置**；没有对应的 `/aiconfig language` 或 `/aiconfig stream_output_enabled` 命令。
+**如何切换流式输出：** 使用 `K` → **AI 聊天设置**；没有对应的 `/aiconfig stream_output_enabled` 命令。界面显示语言不可手动切换，会自动跟随当前 Minecraft 游戏语言。
 
 **手动修改配置后：** 执行 `/aiconfig reload`，无需重启。
 

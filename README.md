@@ -2,7 +2,7 @@
 
 > 一款把 AI 对话能力集成进 Minecraft 的 Fabric Mod。用自然语言与 AI 聊天，让它帮你建造结构、管理 NBT / 蓝图文件、导出选区，还能联网搜索信息 —— 全部在游戏内完成。
 
-[![Version](https://img.shields.io/badge/Version-1.4.2-blueviolet)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.5.0-blueviolet)](CHANGELOG.md)
 [![Minecraft](https://img.shields.io/badge/Minecraft-1.20.4-brightgreen)](https://www.minecraft.net/)
 [![Fabric](https://img.shields.io/badge/Loader-Fabric-blue)](https://fabricmc.net/)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://adoptium.net/)
@@ -19,7 +19,9 @@
 - **TXT 蓝图系统** — 支持 V1（字符网格 + 图例）与 V2（MCBLUEPRINT v2，精确坐标 + 完整方块状态）两种蓝图格式。
 - **选区工具** — 两点式图形化选区，实时高亮渲染，可统计方块、导出为 `.nbt`、`.litematic` 或 V2 蓝图文本（含容器内容物与告示牌文字）。
 - **联网搜索** — 通过 Tavily API 让 AI 搜索最新信息、抓取网页内容，并据此生成建造指令。
-- **游戏内设置界面** — 按 `K` 打开可视化配置，也可用 `/aiconfig` 命令配置 API 地址、密钥和模型。
+- **RAG 知识库** — 内置 Minecraft 方块/生物/指令/机制知识库，AI 可按需查阅（`[KNOWLEDGE]` 标签），无需把所有细节堆进 system prompt。
+- **结构格式互转** — 结构浏览器支持 `.nbt`、`.litematic`、`.txt` 三种格式任意方向批量互转，完整保留方块状态、容器物品与告示牌文字。
+- **游戏内设置界面** — 按 `K` 打开可视化配置，也可用 `/aiconfig` 命令配置 API 地址、密钥和模型；界面显示语言自动跟随当前 Minecraft 游戏语言。
 
 ---
 
@@ -38,7 +40,7 @@
 
 1. 安装 [Fabric Loader](https://fabricmc.net/)（≥ 0.15.0）
 2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `ai-builder-1.4.2.jar` 放入 `.minecraft/mods/` 目录
+3. 将 `ai-builder-1.5.0.jar` 放入 `.minecraft/mods/` 目录
 4. 启动游戏，按 `K` 打开设置或使用 `/aiconfig` 配置你的 API 密钥
 
 ---
