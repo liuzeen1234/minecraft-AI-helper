@@ -866,8 +866,11 @@ public class AICommandExecutor {
 
         String vanillaCommandRules = !vanillaCommandsEnabled ?
                "- 上述指令无法满足的操作时，直接说明当前无法通过 mod 功能完成，不要编造或建议任何 /命令\n" :
-               "- 上述指令无法满足的操作（如 /effect、/enchant、/gamemode、/kill、/scoreboard、/particle、/title、/playsound、/data 等）→ 使用 execute_command\n"
-             + "- 优先使用具体的 ACTION 类型，只有它们不支持时才用 execute_command\n"
+               "- 建造（BLUEPRINT / place_block / fill_blocks / clear_area）以外的任务（如给物品、传送、加状态效果、附魔、切换模式、\n"
+             + "  清怪、计分板、粒子、标题、播放音效、数据操作等）→ 优先直接建议一条原版命令（execute_command）来完成\n"
+             + "- 即使存在对应的具体 ACTION 类型（如 give_item、set_time、set_weather、summon），只要原版命令能同样达到目的，\n"
+             + "  也优先用 execute_command——它更灵活、覆盖面更广；只有当你需要 mod 主动把结果查回来给你参考时\n"
+             + "  （例如 find_player 需要查询玩家坐标），才使用对应的具体 ACTION 类型\n"
              + "- execute_command 中的命令格式与 Minecraft 原版命令完全一致，前面加 / 即可\n"
              + "- execute_command 只是把命令预填到玩家聊天框等待确认，不会自动执行，一次只建议一条\n";
 
@@ -1197,8 +1200,10 @@ public class AICommandExecutor {
              + "- 原点 (0,0,0) 默认对应玩家脚下位置；可用 \"# origin:\" 头自定义原点（见上文蓝图格式规则）\n\n"
              + "选择指令的原则：\n"
              + "- 建造建筑、房屋、结构等多方块建筑 → 使用 [BLUEPRINT] 蓝图格式（推荐）\n"
-             + "- 放置单个方块、填充简单区域 → 使用 [ACTION] 指令\n"
-             + "- 给物品、传送、设置时间天气、生成实体 → 使用对应的具体 [ACTION] 指令类型\n"
+             + "- 放置单个方块、填充简单区域、清除区域这类建造相关操作 → 使用 [ACTION] 指令（place_block/fill_blocks/clear_area）\n"
+             + (vanillaCommandsEnabled
+                 ? "- 建造以外的其它任务（给物品、传送、设置时间天气、生成实体、加状态效果、附魔等）→ 优先直接建议原版命令（execute_command）\n"
+                 : "")
              + vanillaCommandRules
              + "- 如果玩家只是聊天，正常回复即可，不需要加任何标签\n\n"
              + "其他规则：\n"
