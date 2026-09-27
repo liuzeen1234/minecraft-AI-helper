@@ -42,7 +42,7 @@ public class BlueprintBuilder {
     );
 
     /**
-     * 在玩家位置建造蓝图建筑。自动识别 V1/V2 格式。
+     * 在玩家位置建造蓝图建筑。自动识别 V1/V2/V3 格式。
      * @return 放置的方块数量
      */
     public static int build(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world) {
@@ -50,21 +50,24 @@ public class BlueprintBuilder {
     }
 
     /**
-     * 在指定原点建造蓝图建筑。自动识别 V1/V2 格式。
+     * 在指定原点建造蓝图建筑。自动识别 V1/V2/V3 格式。
+     * V3 格式坐标本身即世界绝对坐标，调用方应传入 {@link BlockPos#ORIGIN}（详见
+     * {@code AICommandExecutor#resolveOrigin}），此处不做特殊处理，仍按传入的 origin 累加。
      * @param origin 放置原点（由放置界面指定，缺省时为玩家当前位置）
      * @return 放置的方块数量
      */
     public static int build(BlueprintData blueprint, ServerPlayerEntity player, ServerWorld world, BlockPos origin) {
-        if (blueprint.isV2()) {
+        if (blueprint.isBlockList()) {
             return buildV2(blueprint, origin, world);
         }
         return buildV1(blueprint, player, world, origin);
     }
 
     /**
-     * V2 格式建造：直接按显式坐标放置方块，所有 block state 属性完整还原。
+     * V2/V3 格式建造：直接按显式坐标放置方块，所有 block state 属性完整还原。
      * 分两阶段：先放实体方块，再放附着方块（按钮、火把等）。
      * 如果方块带有 items 数据，放置后写入容器物品。
+     * V2 坐标为相对 origin 的偏移，V3 坐标为世界绝对坐标（调用方需传入零 origin）。
      */
     private static int buildV2(BlueprintData blueprint, BlockPos origin, ServerWorld world) {
         List<BlueprintData.BlockEntry3D> blocks = blueprint.getBlocks3d();

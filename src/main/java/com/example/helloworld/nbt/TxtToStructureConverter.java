@@ -15,14 +15,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 将 MCBLUEPRINT v2（.txt）文本解析结果 {@link BlueprintData} 转换为统一的
+ * 将 MCBLUEPRINT v2/v3（.txt）文本解析结果 {@link BlueprintData} 转换为统一的
  * {@link NbtStructureParser.StructureData}，使 TXT 能够复用现有的
  * NBT/Litematic 写出器（{@link NbtStructureWriter} / Litematica 写出器）。
  *
  * 与 {@link NbtToTxtConverter}（StructureData → TXT）互为逆操作。
  *
- * 仅支持 V2 格式（本 mod 唯一在用的 TXT 蓝图格式）；V1（字符网格）蓝图
- * 语义上不含显式坐标/尺寸，不适合作为结构文件互转的输入，遇到 V1 会抛出异常。
+ * 支持 V2（相对坐标）和 V3（世界绝对坐标）两种逐方块显式坐标格式：
+ *   V2 坐标原样使用；
+ *   V3 坐标会先按所有方块坐标的最小值整体平移归零（即 V3→V2 的坐标语义转换），
+ *   再走与 V2 相同的 palette/blocks 构建逻辑，因此写出的结构文件坐标始终从 0 起。
+ * V1（字符网格）蓝图语义上不含显式坐标/尺寸，不适合作为结构文件互转的输入，
+ * 遇到 V1 会抛出异常。
  */
 public final class TxtToStructureConverter {
 
@@ -35,10 +39,25 @@ public final class TxtToStructureConverter {
         return convert(blueprint, file.getName());
     }
 
-    /** 将已解析的 {@link BlueprintData}（须为 V2）转换为 StructureData。 */
+    /** 将已解析的 {@link BlueprintData}（须为 V2 或 V3）转换为 StructureData。 */
     public static NbtStructureParser.StructureData convert(BlueprintData blueprint, String fileName) {
-        if (!blueprint.isV2()) {
-            throw new IllegalArgumentException("仅支持 MCBLUEPRINT v2 格式的 TXT 转换为结构文件（V1 字符网格格式不含显式坐标/尺寸）");
+        if (!blueprint.isBlockList()) {
+            throw new IllegalArgumentException("仅支持 MCBLUEPRINT v2/v3 格式的 TXT 转换为结构文件（V1 字符网格格式不含显式坐标/尺寸）");
+        }
+
+        // V3 坐标是世界绝对坐标，需先按最小坐标整体平移归零，换算为 V2 语义的相对坐标，
+        // 结构文件（NBT/Litematic）本身只支持从 0 起的局部坐标。
+        int offsetX = 0, offsetY = 0, offsetZ = 0;
+        if (blueprint.isV3() && !blueprint.getBlocks3d().isEmpty()) {
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+            for (BlueprintData.BlockEntry3D b : blueprint.getBlocks3d()) {
+                minX = Math.min(minX, b.getX());
+                minY = Math.min(minY, b.getY());
+                minZ = Math.min(minZ, b.getZ());
+            }
+            offsetX = minX;
+            offsetY = minY;
+            offsetZ = minZ;
         }
 
         NbtStructureParser.StructureData data = new NbtStructureParser.StructureData();
@@ -66,9 +85,9 @@ public final class TxtToStructureConverter {
             });
 
             NbtStructureParser.BlockEntry be = new NbtStructureParser.BlockEntry();
-            be.x = entry.getX();
-            be.y = entry.getY();
-            be.z = entry.getZ();
+            be.x = entry.getX() - offsetX;
+            be.y = entry.getY() - offsetY;
+            be.z = entry.getZ() - offsetZ;
             be.paletteIndex = index;
             be.blockEntityNbt = buildBlockEntityNbt(entry);
             data.blocks.add(be);

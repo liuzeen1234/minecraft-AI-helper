@@ -8,17 +8,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 解析蓝图文本文件，自动识别两种格式：
+ * 解析蓝图文本文件，自动识别三种格式：
  *
  * V1 格式（旧格式，向后兼容）：
  *   {{layered blueprint}} 字符网格，图例用单字符映射方块。
  *   图例格式：|字符=方块名称[-rot角度][+属性]
  *   层分隔：|----第N层|
  *
- * V2 格式（新格式）：
+ * V2 格式：
  *   首行为 "# MCBLUEPRINT v2"
- *   方块行格式：x,y,z   block_id   [key=value ...]
+ *   方块行格式：x,y,z   block_id   [key=value ...]，坐标为相对坐标
+ *   （相对于放置原点，原点默认为玩家脚下，可用 "# origin:" 头自定义）。
  *   支持所有原版 block state 属性，坐标显式指定，无字符数量限制。
+ *
+ * V3 格式：
+ *   首行为 "# MCBLUEPRINT v3"
+ *   方块行格式与 V2 完全相同，但坐标 x,y,z 直接是世界绝对坐标，
+ *   放置时不做任何平移（原点固定为世界坐标原点）。不支持 "# origin:" 头，
+ *   若出现该头会被忽略并记录警告。主要用于 [QUERY_REGION] 地形查询结果回喂给 AI，
+ *   让 AI 后续可直接复用查询到的绝对坐标建造，无需再计算相对偏移。
  */
 public class BlueprintParser {
 
@@ -47,21 +55,25 @@ public class BlueprintParser {
 
     public static BlueprintData parse(String text) {
         String trimmed = text.stripLeading();
+        if (trimmed.startsWith("# MCBLUEPRINT v3") || trimmed.startsWith("#MCBLUEPRINT v3")) {
+            return parseBlockListFormat(text, BlueprintData.Format.V3);
+        }
         if (trimmed.startsWith("# MCBLUEPRINT v2") || trimmed.startsWith("#MCBLUEPRINT v2")) {
-            return parseV2(text);
+            return parseBlockListFormat(text, BlueprintData.Format.V2);
         }
         return parseV1(text);
     }
 
     // =========================================================================
-    // V2 解析
+    // V2/V3 解析（逐方块显式坐标格式，二者语法完全一致，仅坐标语义和 origin 支持不同）
     // =========================================================================
 
     // 物品行匹配：slot=N  item_id  count=C  [nbt={...}]
     private static final Pattern V2_ITEM_PATTERN =
             Pattern.compile("^slot=(\\d+)\\s+(\\S+)\\s+count=(\\d+)(.*)$");
 
-    private static BlueprintData parseV2(String text) {
+    private static BlueprintData parseBlockListFormat(String text, BlueprintData.Format format) {
+        boolean isV3 = format == BlueprintData.Format.V3;
         String name = "unknown";
         int sizeX = 0, sizeY = 0, sizeZ = 0;
         BlueprintData.OriginSpec origin = null;
@@ -213,8 +225,13 @@ public class BlueprintParser {
                 }
                 Matcher originMatcher = V2_ORIGIN_PATTERN.matcher(line);
                 if (originMatcher.find()) {
-                    BlueprintData.OriginSpec parsed = parseOrigin(originMatcher.group(1).trim());
-                    if (parsed != null) origin = parsed;
+                    if (isV3) {
+                        // V3 坐标本身即世界绝对坐标，不支持 origin 平移，忽略该头并警告
+                        LOGGER.warn("V3 格式蓝图不支持 \"# origin:\" 头，已忽略: '{}'", line);
+                    } else {
+                        BlueprintData.OriginSpec parsed = parseOrigin(originMatcher.group(1).trim());
+                        if (parsed != null) origin = parsed;
+                    }
                     continue;
                 }
                 Matcher sizeMatcher = V2_SIZE_PATTERN.matcher(line);
@@ -296,8 +313,8 @@ public class BlueprintParser {
             sizeZ = maxZ - minZ + 1;
         }
 
-        LOGGER.info("解析 V2 蓝图 '{}': {} 个方块, 尺寸 {}x{}x{}", name, blocks.size(), sizeX, sizeY, sizeZ);
-        BlueprintData data = new BlueprintData(name, blocks, sizeX, sizeY, sizeZ);
+        LOGGER.info("解析 {} 蓝图 '{}': {} 个方块, 尺寸 {}x{}x{}", format, name, blocks.size(), sizeX, sizeY, sizeZ);
+        BlueprintData data = new BlueprintData(name, format, blocks, sizeX, sizeY, sizeZ);
         if (origin != null) {
             data.setOrigin(origin);
         }

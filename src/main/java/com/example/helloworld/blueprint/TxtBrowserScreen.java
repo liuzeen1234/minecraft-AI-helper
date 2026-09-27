@@ -257,9 +257,10 @@ public class TxtBrowserScreen extends Screen {
             detailLines.add("");
             detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.filesize", file.length()));
 
-            if (data.isV2()) {
-                // ---- V2 格式详情 ----
-                detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.format.v2"));
+            if (data.isBlockList()) {
+                // ---- V2/V3 格式详情 ----
+                detailLines.add(com.example.helloworld.I18n.tr(
+                        data.isV3() ? "txtbrowser.detail.format.v3" : "txtbrowser.detail.format.v2"));
                 detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.size", data.getSizeX(), data.getSizeY(), data.getSizeZ()));
                 detailLines.add(com.example.helloworld.I18n.tr("txtbrowser.detail.totalblocks", data.getBlocks3d().size()));
 

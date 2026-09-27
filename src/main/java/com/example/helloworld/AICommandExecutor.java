@@ -304,9 +304,11 @@ public class AICommandExecutor {
      * 再根据"执行前需确认"开关决定直接建造，还是先发确认消息、挂起后由玩家点击 [是] 再建造。
      */
     private static String executeBlueprintMaybeConfirm(String blueprintText, ServerPlayerEntity player, ServerWorld world) {
-        // 确保文本以 V2 头部开始，如果 AI 没写头部则自动补上
+        // 确保文本以 V2 或 V3 头部开始，如果 AI 没写任何头部则默认补上 V2（导出/建造默认格式）
         String text = blueprintText.stripLeading();
-        if (!text.startsWith("# MCBLUEPRINT v2") && !text.startsWith("#MCBLUEPRINT v2")) {
+        boolean hasV2Header = text.startsWith("# MCBLUEPRINT v2") || text.startsWith("#MCBLUEPRINT v2");
+        boolean hasV3Header = text.startsWith("# MCBLUEPRINT v3") || text.startsWith("#MCBLUEPRINT v3");
+        if (!hasV2Header && !hasV3Header) {
             text = "# MCBLUEPRINT v2\n" + text;
         }
 
@@ -346,11 +348,16 @@ public class AICommandExecutor {
 
     /**
      * 根据蓝图的自定义原点信息计算实际放置原点。
-     * - 未指定：返回玩家脚下位置（默认行为）。
+     * - V3 格式：坐标本身即世界绝对坐标，固定返回世界坐标原点(0,0,0)，不叠加任何偏移，
+     *   不读取玩家位置也不读取 "# origin:" 头（V3 不支持该头，解析阶段已忽略）。
+     * - 未指定（V1/V2 无 origin 头）：返回玩家脚下位置（默认行为）。
      * - RELATIVE：基于玩家朝向的 forward/right/up 偏移。
      * - ABSOLUTE：世界绝对坐标。
      */
     private static BlockPos resolveOrigin(BlueprintData data, ServerPlayerEntity player) {
+        if (data.isV3()) {
+            return BlockPos.ORIGIN;
+        }
         if (!data.hasOrigin()) {
             return player.getBlockPos();
         }
@@ -909,6 +916,15 @@ public class AICommandExecutor {
              + "  比如贴着真实地面、避开或衔接已有建筑、跨越坡地。这比 relative 更可控，也不会因玩家移动或转身而错位。\n"
              + "  典型流程：[QUERY_REGION] 查地形 → 从返回的方块绝对坐标确定地面高度和落点 → \n"
              + "  用蓝图坐标(0,0,0 为结构西北角最低层) + \"# origin: absolute\" 指定该落点，把结构精确放上去。\n\n"
+             + "========== V3 蓝图格式（世界绝对坐标，可选）==========\n\n"
+             + "- [QUERY_REGION] 查询结果就是 V3 格式：其中每个方块行的 x,y,z 直接是世界绝对坐标。\n"
+             + "- 你也可以直接输出 V3 蓝图来建造，此时首行写 \"# MCBLUEPRINT v3\"（而不是 v2），\n"
+             + "  方块行格式与 V2 完全相同，唯一区别是坐标语义：V3 的 x,y,z 直接就是世界绝对坐标，\n"
+             + "  放置时不做任何平移，也不支持、不需要 \"# origin:\" 头（写了会被忽略）。\n"
+             + "- 使用场景：已经用 [QUERY_REGION] 查过地形、手上有一批方块的真实世界坐标时，\n"
+             + "  用 V3 直接照抄这些坐标写蓝图最省心，不用像 V2 那样再换算相对偏移或填 origin。\n"
+             + "- 除此之外的常规建造场景（不知道具体世界坐标，只知道\"在玩家前方/附近\"）仍优先用 V2 + relative origin。\n"
+             + "- V2 和 V3 二选一，同一个 [BLUEPRINT] 标签内不要混用。\n\n"
              + "常用方块属性示例：\n"
              + "- 楼梯: facing=north/south/east/west  half=bottom/top  shape=straight\n"
              + "- 台阶: type=bottom/top/double  waterlogged=false\n"
@@ -1213,7 +1229,7 @@ public class AICommandExecutor {
              + "- [FETCH] 和 [SEARCH] 不要在同一条回复中同时使用\n\n"
              + "地形查询（读取世界现有方块）：\n"
              + "- 当你需要了解某块区域的现有地形、地面高度、已有建筑或方块分布时，使用 [QUERY_REGION]...[/QUERY_REGION] 标签查询。\n"
-             + "- 系统会扫描该区域并把其中所有非空气方块（含世界绝对坐标 x,y,z、方块 ID、block state 属性、容器物品、告示牌文字）以 MCBLUEPRINT v2 文本返回给你。\n"
+             + "- 系统会扫描该区域并把其中所有非空气方块（含世界绝对坐标 x,y,z、方块 ID、block state 属性、容器物品、告示牌文字）以 MCBLUEPRINT v3 文本返回给你（v3 的坐标即世界绝对坐标，与 v2 的相对坐标不同）。\n"
              + "- 两种写法：\n"
              + "    1) 绝对坐标：[QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION]\n"
              + "       两组坐标用空格分隔，每组内 x,y,z 用逗号分隔，表示区域的两个对角。\n"
@@ -1224,7 +1240,7 @@ public class AICommandExecutor {
              + "- 单次查询区域体积建议不超过约 30000 个方块（长x宽x高）。范围过大会返回大量文本、"
              + "占用较多上下文，建议把大区域拆分成多个小块，分多次调用 [QUERY_REGION] 逐块查询。\n"
              + "- 建造前若不确定地形（如坡地、已有建筑、水面），先用 [QUERY_REGION] 查一下再决定放置位置和朝向。\n"
-             + "- 查询结果里的坐标是世界绝对坐标，可直接用于后续 [ACTION] 绝对坐标操作或 [BLUEPRINT] 的 \"# origin: absolute\"。\n"
+             + "- 查询结果里的坐标是世界绝对坐标，可直接用于后续 [ACTION] 绝对坐标操作，或直接写成 V3 蓝图（见下文），或作为 V2 蓝图 \"# origin: absolute\" 的落点。\n"
              + "- 重要：你通常不知道玩家所处的世界绝对坐标。因此当你还不知道具体坐标时，"
              + "请优先用 [QUERY_REGION]around 半径[/QUERY_REGION] 从玩家周围开始探查——它以玩家为中心，无需你提供坐标。\n"
              + "- 拿到 around 的查询结果后，其中每个方块都带有真实的世界绝对坐标；"
@@ -1385,7 +1401,7 @@ public class AICommandExecutor {
      * @param spec   [QUERY_REGION] 标签内的文本
      * @param player 发起查询的玩家（用于 around 的中心点）
      * @param world  服务端世界
-     * @return 扫描得到的 MCBLUEPRINT v2 文本，或以 "ERROR:" 开头的错误提示（供回喂给 AI）
+     * @return 扫描得到的 MCBLUEPRINT v3 文本（世界绝对坐标），或以 "ERROR:" 开头的错误提示（供回喂给 AI）
      */
     public static String executeQueryRegion(String spec, ServerPlayerEntity player, ServerWorld world) {
         if (spec == null || spec.isBlank()) {

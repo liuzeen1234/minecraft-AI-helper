@@ -246,6 +246,91 @@ class BlueprintParserTest {
         assertEquals(0, data.getBlocks3d().size());
     }
 
+    // ========== V3 格式测试（世界绝对坐标）==========
+
+    @Test
+    void testParseV3_BasicStructure_UsesAbsoluteCoords() {
+        String blueprint = """
+                # MCBLUEPRINT v3
+                # name: region_query
+                
+                ## BLOCKS
+                
+                100,64,-200   stone
+                101,64,-200   dirt
+                """;
+
+        BlueprintData data = BlueprintParser.parse(blueprint);
+
+        assertNotNull(data);
+        assertTrue(data.isV3());
+        assertFalse(data.isV2());
+        assertEquals(2, data.getBlocks3d().size());
+
+        BlueprintData.BlockEntry3D first = data.getBlocks3d().get(0);
+        assertEquals(100, first.getX());
+        assertEquals(64, first.getY());
+        assertEquals(-200, first.getZ());
+    }
+
+    @Test
+    void testParseV3_IgnoresOriginHeader() {
+        // V3 不支持 origin 平移，即使写了该头也应被忽略，不产生任何 OriginSpec
+        String blueprint = """
+                # MCBLUEPRINT v3
+                # name: with_origin_header
+                # origin: absolute 10 20 30
+                
+                ## BLOCKS
+                
+                5,5,5   stone
+                """;
+
+        BlueprintData data = BlueprintParser.parse(blueprint);
+
+        assertNotNull(data);
+        assertTrue(data.isV3());
+        assertFalse(data.hasOrigin(), "V3 应忽略 origin 头，不设置任何自定义原点");
+        assertEquals(5, data.getBlocks3d().get(0).getX());
+    }
+
+    @Test
+    void testParseV3_SupportsItemsAndSignText() {
+        // items/sign_text 子块语法与 V2 完全一致
+        String blueprint = """
+                # MCBLUEPRINT v3
+                # name: v3_with_items
+                
+                ## BLOCKS
+                
+                10,64,20   chest
+                  items:
+                    slot=0  diamond  count=5
+                
+                """;
+
+        BlueprintData data = BlueprintParser.parse(blueprint);
+
+        assertNotNull(data);
+        assertTrue(data.isV3());
+        assertEquals(1, data.getBlocks3d().size());
+        BlueprintData.BlockEntry3D chest = data.getBlocks3d().get(0);
+        assertEquals("chest", chest.getBlockId());
+        assertTrue(chest.hasItems());
+        assertEquals(1, chest.getItems().size());
+        assertEquals("diamond", chest.getItems().get(0).getItemId());
+    }
+
+    @Test
+    void testParseV3_IsBlockListButNotV2() {
+        String v3 = "# MCBLUEPRINT v3\n# name: test\n\n## BLOCKS\n\n0,0,0   stone\n";
+        BlueprintData data = BlueprintParser.parse(v3);
+        assertTrue(data.isBlockList(), "V3 应与 V2 一样走 blocks3d 列表存储");
+        assertFalse(data.isV2());
+        assertTrue(data.isV3());
+        assertEquals(BlueprintData.Format.V3, data.getFormat());
+    }
+
     // ========== V1 格式测试 ==========
 
     @Test

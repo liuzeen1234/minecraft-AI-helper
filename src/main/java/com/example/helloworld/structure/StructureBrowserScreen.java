@@ -324,8 +324,9 @@ public class StructureBrowserScreen extends Screen {
             detailLines.add("");
             detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.filesize", file.length()));
 
-            if (data.isV2()) {
-                detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.format.v2"));
+            if (data.isBlockList()) {
+                detailLines.add(com.example.helloworld.I18n.tr(
+                        data.isV3() ? "structurebrowser.detail.format.v3" : "structurebrowser.detail.format.v2"));
                 detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.size", data.getSizeX(), data.getSizeY(), data.getSizeZ()));
                 detailLines.add(com.example.helloworld.I18n.tr("structurebrowser.detail.totalblocks", data.getBlocks3d().size()));
 
@@ -528,7 +529,7 @@ public class StructureBrowserScreen extends Screen {
                 String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
                 BlueprintData data = BlueprintParser.parse(content);
                 name = data.getName() != null ? data.getName() : entry.name;
-                if (data.isV2()) {
+                if (data.isBlockList()) {
                     sx = data.getSizeX();
                     sy = data.getSizeY();
                     sz = data.getSizeZ();

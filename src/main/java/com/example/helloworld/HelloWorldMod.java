@@ -248,9 +248,12 @@ public class HelloWorldMod implements ModInitializer {
                     String content = java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
                     com.example.helloworld.blueprint.BlueprintData data =
                             com.example.helloworld.blueprint.BlueprintParser.parse(content);
-                    net.minecraft.util.math.BlockPos origin = hasOrigin
-                            ? new net.minecraft.util.math.BlockPos(ox, oy, oz)
-                            : player.getBlockPos();
+                    // V3 坐标本身即世界绝对坐标，忽略放置界面传入的自定义原点，固定为世界坐标原点
+                    net.minecraft.util.math.BlockPos origin = data.isV3()
+                            ? net.minecraft.util.math.BlockPos.ORIGIN
+                            : (hasOrigin
+                                    ? new net.minecraft.util.math.BlockPos(ox, oy, oz)
+                                    : player.getBlockPos());
                     int count = com.example.helloworld.blueprint.BlueprintBuilder.build(
                             data, player, player.getServerWorld(), origin);
                     player.sendMessage(Text.literal(I18n.tr("server.txt.placed",
@@ -1650,8 +1653,20 @@ public class HelloWorldMod implements ModInitializer {
     private void runToolLoop(String initialResponse, boolean initiallyStreamed,
                               ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
                               boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+        runToolLoop(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher, 0);
+    }
+
+    /**
+     * @param startRound 循环起始已完成轮数（首次调用为 0；由确认流程续跑时传入
+     *                    "确认前已完成的轮数"，避免每次经过确认续跑都把计数器重置回 0，
+     *                    导致 max_tool_rounds 上限在开启"执行前需确认"时形同虚设）。
+     */
+    private void runToolLoop(String initialResponse, boolean initiallyStreamed,
+                              ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
+                              boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher,
+                              int startRound) {
         try {
-            runToolLoopInternal(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher);
+            runToolLoopInternal(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher, startRound);
         } catch (Exception e) {
             finisher.finish(ToolLoopOutcome.failed(e));
         }
@@ -1659,13 +1674,15 @@ public class HelloWorldMod implements ModInitializer {
 
     private void runToolLoopInternal(String initialResponse, boolean initiallyStreamed,
                                       ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
-                                      boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) throws Exception {
+                                      boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher,
+                                      int startRound) throws Exception {
         String response = initialResponse;
         boolean streamedLastRound = initiallyStreamed;
         int maxRounds = CONFIG.getMaxToolRounds();
 
-        // round 从 1 开始计数已执行的工具轮数
-        int round = 0;
+        // round 从 startRound 开始计数已执行的工具轮数（续跑场景需要延续之前的计数，
+        // 否则每次经过确认流程续跑都会重置为 0，导致轮数上限失效）
+        int round = startRound;
         while (true) {
             if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
 
@@ -2054,7 +2071,8 @@ public class HelloWorldMod implements ModInitializer {
                 streamedThisRound = false;
             }
             if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
-            runToolLoop(response, streamedThisRound, player, server, streaming, notifier, finisher);
+            // 传入 round 作为起始轮数，延续确认前已完成的计数，避免轮数上限被重置
+            runToolLoop(response, streamedThisRound, player, server, streaming, notifier, finisher, round);
         } catch (Exception e) {
             LOGGER.error("确认后续跑多轮工具循环失败", e);
             finisher.finish(ToolLoopOutcome.failed(e));

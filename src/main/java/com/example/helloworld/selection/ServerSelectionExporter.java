@@ -397,7 +397,10 @@ public class ServerSelectionExporter {
     }
 
     /**
-     * 扫描选区并返回 MCBLUEPRINT v2 格式的文本（不写文件），用于把地形信息回喂给 AI。
+     * 扫描选区并返回 MCBLUEPRINT v3 格式的文本（不写文件），用于把地形信息回喂给 AI。
+     *
+     * 使用 V3（世界绝对坐标）而非 V2：方块行坐标直接就是世界坐标，AI 拿到后可以
+     * 直接复用这些坐标写 [BLUEPRINT] v3 蓝图或 [ACTION] 绝对坐标操作，无需再换算相对偏移。
      *
      * 与 {@link #exportTxt} 使用同一套逐方块扫描逻辑（方块 id + block state 属性 +
      * 容器内容物 + 告示牌文字），但直接返回字符串而非落盘。空气方块（air/cave_air/void_air）
@@ -409,7 +412,7 @@ public class ServerSelectionExporter {
      * @param world 服务端世界
      * @param pos1  选区一角
      * @param pos2  选区对角
-     * @return MCBLUEPRINT v2 文本
+     * @return MCBLUEPRINT v3 文本
      */
     public static String scanToText(ServerWorld world, BlockPos pos1, BlockPos pos2) {
         BlockPos min = new BlockPos(
@@ -429,10 +432,9 @@ public class ServerSelectionExporter {
         Set<String> ignored = new HashSet<>(Arrays.asList("air", "cave_air", "void_air"));
 
         StringBuilder sb = new StringBuilder();
-        sb.append("# MCBLUEPRINT v2\n");
+        sb.append("# MCBLUEPRINT v3\n");
         sb.append("# name: region_query\n");
         sb.append("# size: ").append(sizeX).append("x").append(sizeY).append("x").append(sizeZ).append("\n");
-        sb.append("# origin: absolute ").append(min.getX()).append(" ").append(min.getY()).append(" ").append(min.getZ()).append("\n");
         sb.append("# 说明：以下为该区域现有地形，坐标为世界绝对坐标 x,y,z（已省略空气方块）\n");
         sb.append("# 格式：x,y,z  block_id  [key=value ...]\n");
         sb.append("\n");

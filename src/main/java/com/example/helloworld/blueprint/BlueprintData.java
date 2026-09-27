@@ -7,38 +7,50 @@ import java.util.Map;
 /**
  * 解析后的蓝图数据。
  *
- * 支持两种格式：
+ * 支持三种格式：
  *   V1：{{layered blueprint}} 字符网格格式（旧格式，向后兼容）
- *   V2：MCBLUEPRINT v2 逐方块显式坐标格式（新格式）
+ *   V2：MCBLUEPRINT v2 逐方块显式坐标格式（相对坐标，配合可选 # origin 平移）
+ *   V3：MCBLUEPRINT v3 逐方块显式坐标格式（坐标即世界绝对坐标，不支持 # origin 平移）
  */
 public class BlueprintData {
 
+    /** 蓝图文本格式版本。 */
+    public enum Format { V1, V2, V3 }
+
     private final String name;
+    private final Format format;
 
     // ---- V1 格式字段 ----
     private final Map<Character, BlockEntry> legend;
     private final List<char[][]> layers;
 
-    // ---- V2 格式字段 ----
+    // ---- V2/V3 格式字段（均使用 blocks3d，区别仅在坐标语义）----
     private final List<BlockEntry3D> blocks3d;
     private final int sizeX, sizeY, sizeZ;
 
-    // ---- 自定义放置原点（可选，两种格式都支持）----
+    // ---- 自定义放置原点（可选，仅 V1/V2 支持；V3 坐标本身即绝对坐标，不使用）----
     // 为 null 时表示未指定，放置端使用默认原点（玩家脚下位置）。
     private OriginSpec origin;
 
     /** 构造 V1 蓝图 */
     public BlueprintData(String name, Map<Character, BlockEntry> legend, List<char[][]> layers) {
         this.name = name;
+        this.format = Format.V1;
         this.legend = legend;
         this.layers = layers;
         this.blocks3d = null;
         this.sizeX = this.sizeY = this.sizeZ = 0;
     }
 
-    /** 构造 V2 蓝图 */
+    /** 构造 V2 蓝图（相对坐标，向后兼容原有调用点，默认标记为 V2） */
     public BlueprintData(String name, List<BlockEntry3D> blocks3d, int sizeX, int sizeY, int sizeZ) {
+        this(name, Format.V2, blocks3d, sizeX, sizeY, sizeZ);
+    }
+
+    /** 构造 V2/V3 蓝图，显式指定格式版本 */
+    public BlueprintData(String name, Format format, List<BlockEntry3D> blocks3d, int sizeX, int sizeY, int sizeZ) {
         this.name = name;
+        this.format = format;
         this.blocks3d = blocks3d;
         this.sizeX = sizeX;
         this.sizeY = sizeY;
@@ -49,8 +61,17 @@ public class BlueprintData {
 
     public String getName() { return name; }
 
-    /** 是否为 V2 格式 */
-    public boolean isV2() { return blocks3d != null; }
+    /** 蓝图文本格式版本 */
+    public Format getFormat() { return format; }
+
+    /** 是否为 V2 格式（相对坐标） */
+    public boolean isV2() { return format == Format.V2; }
+
+    /** 是否为 V3 格式（世界绝对坐标） */
+    public boolean isV3() { return format == Format.V3; }
+
+    /** 是否为逐方块显式坐标格式（V2 或 V3），二者共用 blocks3d 存储与放置逻辑 */
+    public boolean isBlockList() { return blocks3d != null; }
 
     // V1 访问器
     public Map<Character, BlockEntry> getLegend() { return legend; }

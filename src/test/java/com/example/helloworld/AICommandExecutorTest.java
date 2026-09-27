@@ -260,6 +260,8 @@ class AICommandExecutorTest {
         assertTrue(prompt.contains("[SEARCH]"));
         assertTrue(prompt.contains("[FETCH]"));
         assertTrue(prompt.contains("MCBLUEPRINT v2"));
+        // V3（世界绝对坐标）说明也应包含在系统提示词中，供 AI 在查完地形后直接复用绝对坐标建造
+        assertTrue(prompt.contains("MCBLUEPRINT v3"));
     }
 
     @Test
