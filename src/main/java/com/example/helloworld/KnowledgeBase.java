@@ -307,6 +307,95 @@ public class KnowledgeBase {
         return new KnowledgeDoc(name, relativePath, title, category, keywords, summary, body);
     }
 
+    /**
+     * 生成知识库根目录（{@link ModPaths#getKnowledgeDir()}）下完整的文件/文件夹树状结构文本，
+     * 供 [KNOWLEDGE_TREE] 工具使用。与 {@link #buildDirectoryText()}（仅扫描当前语言子目录、
+     * 只列 .md 文档摘要）不同，这里递归列出根目录下所有子目录和文件（不限扩展名、不限语言子目录），
+     * 让 AI 能看到完整目录结构后，再用 [KNOWLEDGE_FILE] 点名读取具体文件正文。
+     *
+     * @return 树状结构文本；知识库根目录不存在或为空时返回 null
+     */
+    public String buildTreeText() {
+        if (!Files.isDirectory(knowledgeRootDir)) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        try {
+            boolean any = appendTree(knowledgeRootDir, "", sb);
+            if (!any) {
+                return null;
+            }
+        } catch (IOException e) {
+            HelloWorldMod.LOGGER.error("扫描知识库目录树失败: {}", knowledgeRootDir, e);
+            return null;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 递归拼接目录树。子项按名称排序，目录在前，保证输出稳定，方便 AI 阅读和后续引用路径。
+     *
+     * @return 是否至少写入了一行（用于判断根目录是否为空）
+     */
+    private boolean appendTree(Path dir, String indent, StringBuilder sb) throws IOException {
+        List<Path> children;
+        try (Stream<Path> stream = Files.list(dir)) {
+            children = stream.sorted((a, b) -> {
+                boolean aDir = Files.isDirectory(a);
+                boolean bDir = Files.isDirectory(b);
+                if (aDir != bDir) return aDir ? -1 : 1;
+                return a.getFileName().toString().compareTo(b.getFileName().toString());
+            }).toList();
+        }
+        boolean any = false;
+        for (Path child : children) {
+            any = true;
+            String name = child.getFileName().toString();
+            if (Files.isDirectory(child)) {
+                sb.append(indent).append(name).append("/\n");
+                appendTree(child, indent + "  ", sb);
+            } else {
+                sb.append(indent).append(name).append("\n");
+            }
+        }
+        return any;
+    }
+
+    /**
+     * 按 [KNOWLEDGE_FILE] 标签点名的相对路径读取知识库目录下任意文件的原始文本内容。
+     * 路径需以 [KNOWLEDGE_TREE] 返回的树状结构中出现的相对路径为准，支持多级子目录
+     * （如 "basic_info_ch/方块特性/全方块图鉴.md"）。会做路径穿越校验，防止越界读取
+     * 知识库目录之外的文件。
+     *
+     * @param relativePath 相对知识库根目录的路径
+     * @param maxChars     返回内容的字符数上限，超出部分截断并附加提示
+     * @return 文件内容（可能带截断提示），或以 "ERROR:" 开头的错误说明
+     */
+    public String readFile(String relativePath, int maxChars) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return "ERROR: 未指定文件路径。";
+        }
+        Path target;
+        try {
+            target = ModPaths.resolveWithinBase(knowledgeRootDir, relativePath);
+        } catch (IOException e) {
+            return "ERROR: 非法路径: " + relativePath;
+        }
+        if (!Files.isRegularFile(target)) {
+            return "ERROR: 文件不存在: " + relativePath;
+        }
+        try {
+            String content = Files.readString(target, StandardCharsets.UTF_8);
+            if (maxChars > 0 && content.length() > maxChars) {
+                return content.substring(0, maxChars) + "\n\n（内容过长，已截断，仅展示前 " + maxChars + " 字符）";
+            }
+            return content;
+        } catch (IOException e) {
+            HelloWorldMod.LOGGER.error("读取知识库文件失败: {}", target, e);
+            return "ERROR: 读取文件失败: " + e.getMessage();
+        }
+    }
+
     /** 解析形如 "[苦力怕, creeper, 爆炸]" 的关键词列表。 */
     private List<String> parseKeywordList(String value) {
         List<String> result = new ArrayList<>();

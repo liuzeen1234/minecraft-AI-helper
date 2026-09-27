@@ -1232,6 +1232,7 @@ public class AICommandExecutor {
              + "- 典型流程：先 around 探周围地形 → 分析 → 决定建造位置 → （必要时再精查目标区域）→ 用绝对坐标生成蓝图/操作。\n"
              + "- 每次回复最多使用一个 [QUERY_REGION] 标签。\n\n"
              + getKnowledgeBaseSection()
+             + getKnowledgeFileToolsSection()
              + "建筑入口与地面衔接（重要，避免入口悬空或被埋）：\n"
              + "- 建造有门/主通道的建筑前，务必先用 [QUERY_REGION] 查清目标落点及其四周紧邻位置的真实地面高度（尤其入口朝向那一侧）。\n"
              + "- 地基要贴合真实地面：结构最低层(y对应的那一层)应落在实际地面上，不要整栋悬空，也不要半埋进土里。坡地/落差处可先用 air 削平或用方块补齐地基，使建筑坐落稳固。\n"
@@ -1275,6 +1276,39 @@ public class AICommandExecutor {
              + "- 如有需要，[KNOWLEDGE] 可以和 [SEARCH]/[FETCH] 出现在同一条回复里，但每次回复最多使用一个 [KNOWLEDGE] 标签。\n"
              + "- 知识库已覆盖的主题优先查知识库而不是联网搜索——它是为当前 Minecraft 版本整理校对过的资料。\n\n"
              + "知识库目录：\n" + directory + "\n";
+    }
+
+    /**
+     * 生成知识库文件浏览工具（[KNOWLEDGE_TREE] / [KNOWLEDGE_FILE]）的说明段落。
+     * 与 [KNOWLEDGE] 标签互补：[KNOWLEDGE] 只能按预置文档名检索固定语料，
+     * 而这两个工具可以让 AI 直接浏览 knowledge/ 目录下的完整文件/文件夹结构（不限语言子目录、不限扩展名），
+     * 并按 [KNOWLEDGE_TREE] 返回的相对路径读取任意文件的原始正文，覆盖范围更广（如 basic_info_ch/ 下的分类文档）。
+     * 知识库功能关闭时返回空串，不影响正常提示词。
+     */
+    private static String getKnowledgeFileToolsSection() {
+        if (!HelloWorldMod.getConfig().isRagEnabled()) {
+            return "";
+        }
+        if (I18n.isEnglish()) {
+            return "Knowledge base file browsing:\n"
+                 + "- Use [KNOWLEDGE_TREE][/KNOWLEDGE_TREE] (empty tag, no content needed) to list the full folder/file structure "
+                 + "under the knowledge base directory, including subfolders not covered by the directory above.\n"
+                 + "- The system will return a tree listing with one relative path per line (folders end with \"/\").\n"
+                 + "- Then use [KNOWLEDGE_FILE]relative/path/to/file.md[/KNOWLEDGE_FILE] to request the full raw text of one exact file, "
+                 + "using the exact relative path shown in the tree listing (including subfolders, if any).\n"
+                 + "- Typical flow: [KNOWLEDGE_TREE] to see what's available → pick a file path from the result → [KNOWLEDGE_FILE] to read it.\n"
+                 + "- Use at most one [KNOWLEDGE_TREE] and one [KNOWLEDGE_FILE] tag per reply; they may appear together with each other "
+                 + "or with [KNOWLEDGE]/[SEARCH]/[FETCH] in the same reply if needed.\n\n";
+        }
+        return "知识库文件浏览：\n"
+             + "- 使用 [KNOWLEDGE_TREE][/KNOWLEDGE_TREE]（空标签，不需要填写任何内容）可以列出知识库目录下完整的文件夹/文件结构，"
+             + "包括上面目录里没有覆盖到的子文件夹。\n"
+             + "- 系统会返回一份树状列表，每行一个相对路径（文件夹以 \"/\" 结尾）。\n"
+             + "- 然后使用 [KNOWLEDGE_FILE]相对路径/文件名.md[/KNOWLEDGE_FILE] 请求某一个具体文件的完整原始正文，"
+             + "路径需与树状列表中显示的相对路径完全一致（含多级子文件夹）。\n"
+             + "- 典型流程：先用 [KNOWLEDGE_TREE] 看看有哪些文件 → 从结果里挑一个文件路径 → 用 [KNOWLEDGE_FILE] 读取它的正文。\n"
+             + "- 每次回复最多使用一个 [KNOWLEDGE_TREE] 和一个 [KNOWLEDGE_FILE] 标签；如有需要，它们可以互相搭配，"
+             + "也可以和 [KNOWLEDGE]/[SEARCH]/[FETCH] 出现在同一条回复里。\n\n";
     }
 
     /**

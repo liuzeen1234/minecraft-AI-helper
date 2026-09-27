@@ -237,6 +237,108 @@ class KnowledgeBaseTest {
         assertTrue(result.contains(hugeBody));
     }
 
+    // ========== buildTreeText（[KNOWLEDGE_TREE] 工具） ==========
+
+    @Test
+    void testBuildTreeText_EmptyRoot_ReturnsNull() throws IOException {
+        // setUp() 已在 tempRoot 下创建了空的 test_docs 子目录，这里用一个真正空的独立目录测试
+        Path emptyRoot = tempRoot.resolve("truly_empty_root");
+        Files.createDirectories(emptyRoot);
+        KnowledgeBase kb = new KnowledgeBase(emptyRoot);
+        assertNull(kb.buildTreeText());
+    }
+
+    @Test
+    void testBuildTreeText_NonExistentRoot_ReturnsNull() {
+        KnowledgeBase kb = new KnowledgeBase(tempRoot.resolve("does_not_exist"));
+        assertNull(kb.buildTreeText());
+    }
+
+    @Test
+    void testBuildTreeText_ListsFilesAndFoldersAcrossSubdirs() throws IOException {
+        // 顶层文件（buildTreeText 扫描整个知识库根目录，不限于某个语言子目录）
+        Files.writeString(tempRoot.resolve("readme.md"), "顶层文档");
+        // 多级子目录，模拟 basic_info_ch/方块特性/xxx.md 的真实结构
+        Path subDir = tempRoot.resolve("basic_info_ch").resolve("方块特性");
+        Files.createDirectories(subDir);
+        Files.writeString(subDir.resolve("活塞.md"), "活塞正文");
+
+        String tree = knowledgeBase.buildTreeText();
+        assertNotNull(tree);
+        assertTrue(tree.contains("readme.md"));
+        assertTrue(tree.contains("basic_info_ch/"));
+        assertTrue(tree.contains("方块特性/"));
+        assertTrue(tree.contains("活塞.md"));
+    }
+
+    @Test
+    void testBuildTreeText_DirectoriesListedBeforeFiles() throws IOException {
+        Files.writeString(tempRoot.resolve("z_file.md"), "内容");
+        Files.createDirectories(tempRoot.resolve("a_dir"));
+
+        String tree = knowledgeBase.buildTreeText();
+        assertNotNull(tree);
+        int dirIndex = tree.indexOf("a_dir/");
+        int fileIndex = tree.indexOf("z_file.md");
+        assertTrue(dirIndex >= 0 && fileIndex >= 0);
+        assertTrue(dirIndex < fileIndex, "目录应排在文件前面");
+    }
+
+    // ========== readFile（[KNOWLEDGE_FILE] 工具） ==========
+
+    @Test
+    void testReadFile_ReturnsRawContent() throws IOException {
+        Files.writeString(tempRoot.resolve("plain.md"), "纯文本内容，不含 front matter");
+
+        String content = knowledgeBase.readFile("plain.md", 20000);
+        assertEquals("纯文本内容，不含 front matter", content);
+    }
+
+    @Test
+    void testReadFile_NestedRelativePath() throws IOException {
+        Path subDir = tempRoot.resolve("basic_info_ch").resolve("方块特性");
+        Files.createDirectories(subDir);
+        Files.writeString(subDir.resolve("活塞.md"), "活塞正文内容");
+
+        String content = knowledgeBase.readFile("basic_info_ch/方块特性/活塞.md", 20000);
+        assertEquals("活塞正文内容", content);
+    }
+
+    @Test
+    void testReadFile_NonExistentPath_ReturnsError() {
+        String content = knowledgeBase.readFile("not_here.md", 20000);
+        assertNotNull(content);
+        assertTrue(content.startsWith("ERROR:"));
+    }
+
+    @Test
+    void testReadFile_NullOrBlankPath_ReturnsError() {
+        assertTrue(knowledgeBase.readFile(null, 20000).startsWith("ERROR:"));
+        assertTrue(knowledgeBase.readFile("  ", 20000).startsWith("ERROR:"));
+    }
+
+    @Test
+    void testReadFile_PathTraversal_ReturnsError() throws IOException {
+        // 在知识库根目录之外放一个"敏感"文件，尝试用 ../ 越界读取
+        Files.writeString(tempRoot.getParent().resolve("secret.txt"), "机密内容");
+
+        String content = knowledgeBase.readFile("../secret.txt", 20000);
+        assertNotNull(content);
+        assertTrue(content.startsWith("ERROR:"), "路径穿越应被拒绝，而不是返回越界文件内容");
+        assertFalse(content.contains("机密内容"));
+    }
+
+    @Test
+    void testReadFile_TruncatesLongContentWithNotice() throws IOException {
+        String longContent = "A".repeat(200);
+        Files.writeString(tempRoot.resolve("long.md"), longContent);
+
+        String result = knowledgeBase.readFile("long.md", 50);
+        assertNotNull(result);
+        assertTrue(result.startsWith("A".repeat(50)));
+        assertTrue(result.contains("已截断"));
+    }
+
     // ========== [KNOWLEDGE] 标签提取（镜像 HelloWorldMod 私有逻辑） ==========
 
     @Test

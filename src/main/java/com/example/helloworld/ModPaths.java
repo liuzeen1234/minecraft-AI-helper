@@ -108,6 +108,24 @@ public class ModPaths {
     }
 
     /**
+     * 在 {@code baseDir} 内安全解析一个相对路径，防止路径穿越（如 "../../etc/passwd"）。
+     * 用于处理来自 AI 回复（不可信输入）的相对路径，如 [KNOWLEDGE_FILE] 标签点名的文件路径。
+     *
+     * @param baseDir      允许访问的根目录
+     * @param relativePath 相对路径（可能包含 AI 输出的任意内容）
+     * @return 解析并校验后的绝对路径
+     * @throws IOException 当解析结果越界到 baseDir 之外时抛出
+     */
+    public static Path resolveWithinBase(Path baseDir, String relativePath) throws IOException {
+        Path base = baseDir.toAbsolutePath().normalize();
+        Path resolved = base.resolve(relativePath).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new IOException("非法路径（越界访问）: " + relativePath);
+        }
+        return resolved;
+    }
+
+    /**
      * 文件系统中真正不允许出现在文件名里的字符（Windows 最严格，取其并集以保证跨平台安全）：
      * {@code \ / : * ? " < > |} 以及 ASCII 控制字符（0x00-0x1F）。
      * 中文、日文、韩文等 Unicode 文字、空格、括号等符号都是合法的，不应被替换。

@@ -1539,6 +1539,30 @@ public class HelloWorldMod implements ModInitializer {
         return names;
     }
 
+    /**
+     * 判断 AI 回复中是否请求了知识库目录结构（[KNOWLEDGE_TREE][/KNOWLEDGE_TREE]，标签内不需要任何内容）。
+     * 用于配合 [KNOWLEDGE_FILE] 使用：AI 先用这个工具看清知识库下的完整文件/文件夹结构，
+     * 再用 [KNOWLEDGE_FILE] 点名读取某个具体文件的正文。
+     */
+    private boolean containsKnowledgeTreeTag(String response) {
+        return response != null && response.contains("[KNOWLEDGE_TREE]");
+    }
+
+    /**
+     * 从 AI 回复中提取 [KNOWLEDGE_FILE]相对路径[/KNOWLEDGE_FILE] 标签内点名的文件相对路径。
+     * 路径应为 [KNOWLEDGE_TREE] 返回结果中出现的相对路径（相对知识库根目录，支持多级子目录）。
+     * 仅取第一个 [KNOWLEDGE_FILE] 标签（与 SEARCH/FETCH/KNOWLEDGE 规则一致）。
+     */
+    private String extractKnowledgeFilePath(String response) {
+        int start = response.indexOf("[KNOWLEDGE_FILE]");
+        int end = response.indexOf("[/KNOWLEDGE_FILE]");
+        if (start != -1 && end != -1 && end > start) {
+            String path = response.substring(start + "[KNOWLEDGE_FILE]".length(), end).trim();
+            return path.isEmpty() ? null : path;
+        }
+        return null;
+    }
+
     // ================= 多轮工具调用循环 =================
 
     /**
@@ -1658,9 +1682,13 @@ public class HelloWorldMod implements ModInitializer {
             String regionQuerySpec = AICommandExecutor.extractQueryRegionSpec(response);
             List<String> knowledgeDocNames = extractKnowledgeDocNames(response);
             boolean knowledgeAvailable = !knowledgeDocNames.isEmpty() && CONFIG.isRagEnabled();
+            boolean knowledgeTreeRequested = containsKnowledgeTreeTag(response) && CONFIG.isRagEnabled();
+            String knowledgeFilePath = extractKnowledgeFilePath(response);
+            boolean knowledgeFileRequested = knowledgeFilePath != null && CONFIG.isRagEnabled();
 
             boolean requestedTool = fetchUrl != null || webSearchAvailable || hasGameAction
-                    || regionQuerySpec != null || knowledgeAvailable;
+                    || regionQuerySpec != null || knowledgeAvailable
+                    || knowledgeTreeRequested || knowledgeFileRequested;
 
             if (!requestedTool || !canDoMoreRounds) {
                 // 没有可执行的工具，或已达上限：先清理联网标签（FETCH/SEARCH/QUERY_REGION），
@@ -1946,6 +1974,34 @@ public class HelloWorldMod implements ModInitializer {
                 }
             }
 
+            // 6) 查看知识库目录结构（[KNOWLEDGE_TREE]）：本地读取文件树，只读操作，不涉及网络或游戏世界状态，
+            // 因此不走确认流程，直接在当前线程处理。用于让 AI 先看清 knowledge/ 下的完整文件/文件夹结构，
+            // 再用 [KNOWLEDGE_FILE] 点名读取具体文件正文。
+            if (knowledgeTreeRequested) {
+                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.knowledge_tree.querying"));
+                String treeText = knowledgeBase.buildTreeText();
+                if (treeText != null) {
+                    if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.knowledge_tree.done") + "\n\n");
+                    feedback.append("以下是知识库目录结构:\n\n").append(treeText).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge_tree"), treeText);
+                } else {
+                    feedback.append(I18n.tr("server.knowledge_tree.not_found")).append("\n\n");
+                    debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge_tree"), I18n.tr("server.knowledge_tree.not_found"));
+                }
+            }
+
+            // 7) 读取知识库中某个具体文件的正文（[KNOWLEDGE_FILE]）：本地读取任意文件原始文本，
+            // 只读操作，不涉及网络或游戏世界状态，因此不走确认流程，直接在当前线程处理。
+            if (knowledgeFileRequested) {
+                final String filePath = knowledgeFilePath;
+                if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.knowledge_file.querying"));
+                String fileContent = knowledgeBase.readFile(filePath, CONFIG.getRagMaxChars());
+                if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.knowledge_file.done") + "\n\n");
+                feedback.append("以下是知识库文件「").append(filePath).append("」的内容:\n\n")
+                        .append(fileContent).append("\n\n");
+                debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge_file"), fileContent);
+            }
+
             // 进入下一轮：把反馈回喂给 AI
             round++;
             boolean lastAllowedRound = !(maxRounds > 0 && round < maxRounds);
@@ -2028,12 +2084,14 @@ public class HelloWorldMod implements ModInitializer {
         });
     }
 
-    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION / KNOWLEDGE），保留 ACTION / BLUEPRINT 供最终展示。 */
+    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION / KNOWLEDGE / KNOWLEDGE_TREE / KNOWLEDGE_FILE），保留 ACTION / BLUEPRINT 供最终展示。 */
     private static String stripWebTags(String response) {
         if (response == null) return "";
         String r = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
         r = r.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
         r = r.replaceAll("(?s)\\[QUERY_REGION\\].*?\\[/QUERY_REGION\\]", "").trim();
+        r = r.replaceAll("\\[KNOWLEDGE_TREE\\].*?\\[/KNOWLEDGE_TREE\\]", "").trim();
+        r = r.replaceAll("\\[KNOWLEDGE_FILE\\].*?\\[/KNOWLEDGE_FILE\\]", "").trim();
         r = r.replaceAll("\\[KNOWLEDGE\\].*?\\[/KNOWLEDGE\\]", "").trim();
         return r;
     }
