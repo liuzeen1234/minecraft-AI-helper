@@ -1,5 +1,6 @@
 package com.example.helloworld;
 
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.api.ModInitializer;
@@ -28,7 +29,11 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class HelloWorldMod implements ModInitializer {
@@ -70,6 +75,10 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier CHAT_SCREEN_MSG_WITH_IMG_PACKET = new Identifier(MOD_ID, "chat_screen_msg_img");
     // 服务端 -> 客户端：AI 建议的原版命令，预填到聊天输入框，需玩家自行确认发送（不会自动执行）
     public static final Identifier SUGGEST_COMMAND_PACKET = new Identifier(MOD_ID, "suggest_command");
+    // 服务端 -> 客户端：请求在指定坐标/角度用摄像机截图（[CAMERA_SHOT] 工具与 /ai cam_test 测试命令共用）
+    public static final Identifier REQUEST_CAMERA_SHOT_PACKET = new Identifier(MOD_ID, "request_camera_shot");
+    // 客户端 -> 服务端：回传摄像机截图结果（文件路径，空字符串表示截图关闭或失败）
+    public static final Identifier CAMERA_SHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "camera_shot_response");
 
     /**
      * "思考已终止" 消息的稳定哨兵值（跨端网络协议 + 客户端逻辑判断使用）。
@@ -91,6 +100,17 @@ public class HelloWorldMod implements ModInitializer {
     // 对话历史记录（多轮上下文）
     private final List<String> conversationHistory = new ArrayList<>();
     private static final int MAX_HISTORY_SIZE = 20; // 最多保留 20 条消息（10轮对话）
+
+    /**
+     * 等待客户端摄像机截图回包的挂起 Future：key 为玩家 UUID，value 在
+     * {@code CAMERA_SHOT_RESPONSE_PACKET} 处理器收到回包时被 complete（结果为截图文件路径，
+     * 空字符串表示截图功能关闭或客户端截图失败）。同一玩家同一时间只应有一次拍照在途，
+     * 与 {@link #pendingAiTask} 单任务模式一致。
+     */
+    private static final Map<UUID, CompletableFuture<String>> pendingCameraShots = new ConcurrentHashMap<>();
+
+    /** 等待客户端摄像机截图回包的最长时长（秒）：超时后放弃等待，回喂 AI 一条失败提示。 */
+    private static final int CAMERA_SHOT_TIMEOUT_SECONDS = 8;
 
     // 当前正在执行的 AI 请求（用于取消）
     private volatile CompletableFuture<?> pendingAiTask = null;
@@ -478,27 +498,8 @@ public class HelloWorldMod implements ModInitializer {
             }
             String screenshotPath = buf.isReadable() ? buf.readString() : "";
 
-            // 从文件路径读取图片并转 base64（与 SCREENSHOT_RESPONSE_PACKET 处理器一致）
-            String base64Image = "";
-            if (screenshotPath != null && !screenshotPath.isEmpty()) {
-                java.nio.file.Path imgPath = java.nio.file.Path.of(screenshotPath);
-                for (int attempt = 0; attempt < 5; attempt++) {
-                    try {
-                        if (java.nio.file.Files.exists(imgPath) && java.nio.file.Files.size(imgPath) > 0) {
-                            byte[] imageBytes = java.nio.file.Files.readAllBytes(imgPath);
-                            base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
-                            break;
-                        }
-                    } catch (java.nio.file.AccessDeniedException e) {
-                        LOGGER.warn("截图文件被占用，重试中... ({})", attempt + 1);
-                    } catch (Exception e) {
-                        LOGGER.error("读取截图文件失败: {}", screenshotPath, e);
-                        break;
-                    }
-                    try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-                }
-            }
-            final String finalBase64Image = base64Image;
+            // 从文件路径读取图片并转 base64（与 SCREENSHOT_RESPONSE_PACKET 处理器共用同一读取逻辑）
+            final String finalBase64Image = readImageAsBase64WithRetry(screenshotPath);
 
             server.execute(() -> {
                 if ("__CLEAR_HISTORY__".equals(message)) {
@@ -598,28 +599,8 @@ public class HelloWorldMod implements ModInitializer {
             String message = buf.readString();
             String screenshotPath = buf.readString();
 
-            // 从文件读取图片并转 base64
-            String base64Image = "";
-            if (screenshotPath != null && !screenshotPath.isEmpty()) {
-                java.nio.file.Path imgPath = java.nio.file.Path.of(screenshotPath);
-                // 等待文件写入完成，最多重试 5 次，每次间隔 200ms
-                for (int attempt = 0; attempt < 5; attempt++) {
-                    try {
-                        if (java.nio.file.Files.exists(imgPath) && java.nio.file.Files.size(imgPath) > 0) {
-                            byte[] imageBytes = java.nio.file.Files.readAllBytes(imgPath);
-                            base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
-                            break;
-                        }
-                    } catch (java.nio.file.AccessDeniedException e) {
-                        LOGGER.warn("截图文件被占用，重试中... ({})", attempt + 1);
-                    } catch (Exception e) {
-                        LOGGER.error("读取截图文件失败: {}", screenshotPath, e);
-                        break;
-                    }
-                    try { Thread.sleep(200); } catch (InterruptedException ignored) {}
-                }
-            }
-            final String finalBase64Image = base64Image;
+            // 从文件读取图片并转 base64（与 CHAT_SCREEN_MSG_WITH_IMG_PACKET 处理器共用同一读取逻辑）
+            final String finalBase64Image = readImageAsBase64WithRetry(screenshotPath);
 
             server.execute(() -> {
                 ServerCommandSource source = player.getCommandSource();
@@ -685,6 +666,25 @@ public class HelloWorldMod implements ModInitializer {
             });
         });
 
+        // 注册接收客户端摄像机截图结果的处理器（[CAMERA_SHOT] 工具 / /ai cam_test 测试命令共用）。
+        // 若有对应的挂起 Future（AI 工具循环发起的请求），优先 complete 它，交给等待方处理；
+        // 否则说明是 /ai cam_test 测试命令发起的（不等待结果），直接在聊天框回显路径。
+        ServerPlayNetworking.registerGlobalReceiver(CAMERA_SHOT_RESPONSE_PACKET, (server, player, handler, buf, responseSender) -> {
+            String screenshotPath = buf.readString();
+            CompletableFuture<String> pending = pendingCameraShots.remove(player.getUuid());
+            if (pending != null) {
+                pending.complete(screenshotPath == null ? "" : screenshotPath);
+                return;
+            }
+            server.execute(() -> {
+                if (screenshotPath == null || screenshotPath.isEmpty()) {
+                    player.sendMessage(Text.literal(I18n.tr("cmd.camera_shot.disabled")), false);
+                } else {
+                    player.sendMessage(Text.literal(I18n.tr("cmd.camera_shot.done", screenshotPath)), false);
+                }
+            });
+        });
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             // 注册 NBT 解析命令
             NbtCommands.register(dispatcher);
@@ -698,6 +698,22 @@ public class HelloWorldMod implements ModInitializer {
                 )
                 .then(CommandManager.literal("test_stairs")
                     .executes(this::executeTestStairs)
+                )
+                // /ai cam_test <x> <y> <z> <yaw> <pitch> - 测试摄像机截图工具：
+                // 直接调用 AICommandExecutor.executeCameraShotMaybeConfirm（与未来 [CAMERA_SHOT]
+                // 标签共用同一入口），会按 confirm_before_execute_enabled 走确认流程。
+                .then(CommandManager.literal("cam_test")
+                    .then(CommandManager.argument("x", DoubleArgumentType.doubleArg())
+                        .then(CommandManager.argument("y", DoubleArgumentType.doubleArg())
+                            .then(CommandManager.argument("z", DoubleArgumentType.doubleArg())
+                                .then(CommandManager.argument("yaw", DoubleArgumentType.doubleArg())
+                                    .then(CommandManager.argument("pitch", DoubleArgumentType.doubleArg())
+                                        .executes(this::executeCameraShotTest)
+                                    )
+                                )
+                            )
+                        )
+                    )
                 )
                 .then(CommandManager.argument("message", StringArgumentType.greedyString())
                     .executes(this::executeAi)
@@ -915,6 +931,99 @@ public class HelloWorldMod implements ModInitializer {
         return 1;
     }
 
+    /**
+     * 测试命令：{@code /ai cam_test <x> <y> <z> <yaw> <pitch>}。
+     * 直接调用 {@link AICommandExecutor#executeCameraShotMaybeConfirm}——与未来
+     * {@code [CAMERA_SHOT]} 标签共用同一入口，会按 {@code confirm_before_execute_enabled}
+     * 走确认流程（开启时先弹 [是]/[否]，玩家确认后才真正发包给客户端截图）。
+     */
+    private int executeCameraShotTest(CommandContext<ServerCommandSource> context) {
+        ServerPlayerEntity player = context.getSource().getPlayer();
+        if (player == null) return 0;
+
+        double x = DoubleArgumentType.getDouble(context, "x");
+        double y = DoubleArgumentType.getDouble(context, "y");
+        double z = DoubleArgumentType.getDouble(context, "z");
+        float yaw = (float) DoubleArgumentType.getDouble(context, "yaw");
+        float pitch = (float) DoubleArgumentType.getDouble(context, "pitch");
+
+        String feedback = AICommandExecutor.executeCameraShotMaybeConfirm(x, y, z, yaw, pitch, player);
+        context.getSource().sendFeedback(() -> Text.literal(feedback), false);
+        return 1;
+    }
+
+    /**
+     * 给指定玩家的客户端发包，请求在指定坐标/角度用摄像机截图。
+     * 截图是否开启（{@code screenshot_enabled}）由客户端处理器自行判断，
+     * 关闭时客户端会回传空字符串路径。
+     */
+    public static void requestCameraShot(ServerPlayerEntity player, double x, double y, double z,
+                                          float yaw, float pitch) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeDouble(x);
+        buf.writeDouble(y);
+        buf.writeDouble(z);
+        buf.writeFloat(yaw);
+        buf.writeFloat(pitch);
+        ServerPlayNetworking.send(player, REQUEST_CAMERA_SHOT_PACKET, buf);
+    }
+
+    /**
+     * 给指定玩家的客户端发包请求摄像机截图，并阻塞等待客户端回包（最多
+     * {@link #CAMERA_SHOT_TIMEOUT_SECONDS} 秒），返回截图文件路径。
+     *
+     * <p>供 AI 工具循环使用（{@code [CAMERA_SHOT]} 标签）：调用方需在独立线程上调用本方法
+     * （它会阻塞当前线程等待网络往返），不能在服务端主线程上调用。
+     *
+     * @return 截图文件路径；超时、客户端截图关闭或失败时返回空字符串
+     */
+    public static String requestCameraShotAndAwait(ServerPlayerEntity player, double x, double y, double z,
+                                                     float yaw, float pitch) {
+        UUID uuid = player.getUuid();
+        CompletableFuture<String> future = new CompletableFuture<>();
+        // 同一玩家若已有一次拍照在途，先取消旧的等待方（避免它永久卡住），让新请求覆盖
+        CompletableFuture<String> previous = pendingCameraShots.put(uuid, future);
+        if (previous != null) {
+            previous.complete("");
+        }
+        requestCameraShot(player, x, y, z, yaw, pitch);
+        try {
+            return future.get(CAMERA_SHOT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOGGER.warn("等待摄像机截图回包超时或失败: {}", e.getMessage());
+            return "";
+        } finally {
+            pendingCameraShots.remove(uuid, future);
+        }
+    }
+
+    /**
+     * 从截图文件路径读取图片并转 base64。文件可能刚被客户端写入还没落盘完成，
+     * 最多重试 5 次、每次间隔 200ms（与现有 {@code SCREENSHOT_RESPONSE_PACKET} /
+     * {@code CHAT_SCREEN_MSG_WITH_IMG_PACKET} 处理器里的读取逻辑一致，此处抽成共享方法）。
+     *
+     * @return base64 编码的图片内容；路径为空或读取失败时返回空字符串
+     */
+    private String readImageAsBase64WithRetry(String imagePath) {
+        if (imagePath == null || imagePath.isEmpty()) return "";
+        java.nio.file.Path imgPath = java.nio.file.Path.of(imagePath);
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                if (java.nio.file.Files.exists(imgPath) && java.nio.file.Files.size(imgPath) > 0) {
+                    byte[] imageBytes = java.nio.file.Files.readAllBytes(imgPath);
+                    return java.util.Base64.getEncoder().encodeToString(imageBytes);
+                }
+            } catch (java.nio.file.AccessDeniedException e) {
+                LOGGER.warn("图片文件被占用，重试中... ({})", attempt + 1);
+            } catch (Exception e) {
+                LOGGER.error("读取图片文件失败: {}", imagePath, e);
+                break;
+            }
+            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+        }
+        return "";
+    }
+
     private int executeAi(CommandContext<ServerCommandSource> context) {
         String message = StringArgumentType.getString(context, "message");
         ServerCommandSource source = context.getSource();
@@ -1074,7 +1183,7 @@ public class HelloWorldMod implements ModInitializer {
         String currentUserMessage = buildUserMessage(escapedMessage, base64Image);
 
         // system prompt 用于告诉 AI 可用的游戏指令
-        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt(CONFIG.isVanillaCommandsEnabled()));
+        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt(CONFIG.isVanillaCommandsEnabled(), CONFIG.isCameraShotEnabled()));
 
         // 构建 messages 数组（OpenAI 格式会自动加入 system 消息）
         String messagesArray = buildMessagesArray(currentUserMessage, systemPrompt);
@@ -1131,7 +1240,7 @@ public class HelloWorldMod implements ModInitializer {
         // 构建当前用户消息
         String currentUserMessage = buildUserMessage(escapedMessage, base64Image);
 
-        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt(CONFIG.isVanillaCommandsEnabled()));
+        String systemPrompt = escapeJson(AICommandExecutor.getSystemPrompt(CONFIG.isVanillaCommandsEnabled(), CONFIG.isCameraShotEnabled()));
 
         // 构建 messages 数组（OpenAI 格式会自动加入 system 消息）
         String messagesArray = buildMessagesArray(currentUserMessage, systemPrompt);
@@ -1684,6 +1793,11 @@ public class HelloWorldMod implements ModInitializer {
         // 否则每次经过确认流程续跑都会重置为 0，导致轮数上限失效）
         int round = startRound;
         while (true) {
+            // 非确认路径下（confirm_before_execute_enabled 关闭）本轮 [CAMERA_SHOT] 拍到的图片
+            // 暂存在这里，本轮末尾统一调用 callKimiApi/callKimiApiStreaming 时随反馈一起带上。
+            // 每轮开始时重置，避免把上一轮的图片错误地带到本轮（确认路径不用这个变量，
+            // 那条路径通过 resumeToolLoopAfterConfirmedInfoTool 的 base64Image 重载直接传递）。
+            String pendingCameraShotImage = "";
             if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
 
             // 达到上限（maxRounds=0 时立刻退出循环，不执行任何工具回喂）后，
@@ -1697,6 +1811,9 @@ public class HelloWorldMod implements ModInitializer {
                     && CONFIG.getTavilyApiKey() != null && !CONFIG.getTavilyApiKey().isEmpty();
             boolean hasGameAction = AICommandExecutor.containsGameActionTags(response);
             String regionQuerySpec = AICommandExecutor.extractQueryRegionSpec(response);
+            // 运行时二次防御：即使 AI 因记忆/越狱等原因仍输出了 [CAMERA_SHOT]，只要玩家关闭了
+            // "允许 AI 使用摄像机截图"开关，这里也直接忽略该标签，不发起任何拍照请求。
+            String cameraShotSpec = CONFIG.isCameraShotEnabled() ? AICommandExecutor.extractCameraShotSpec(response) : null;
             List<String> knowledgeDocNames = extractKnowledgeDocNames(response);
             boolean knowledgeAvailable = !knowledgeDocNames.isEmpty() && CONFIG.isRagEnabled();
             boolean knowledgeTreeRequested = containsKnowledgeTreeTag(response) && CONFIG.isRagEnabled();
@@ -1704,7 +1821,7 @@ public class HelloWorldMod implements ModInitializer {
             boolean knowledgeFileRequested = knowledgeFilePath != null && CONFIG.isRagEnabled();
 
             boolean requestedTool = fetchUrl != null || webSearchAvailable || hasGameAction
-                    || regionQuerySpec != null || knowledgeAvailable
+                    || regionQuerySpec != null || cameraShotSpec != null || knowledgeAvailable
                     || knowledgeTreeRequested || knowledgeFileRequested;
 
             if (!requestedTool || !canDoMoreRounds) {
@@ -1974,6 +2091,88 @@ public class HelloWorldMod implements ModInitializer {
                 }
             }
 
+            // 4.5) 摄像机截图（[CAMERA_SHOT]）：给玩家客户端发包、等待截图回包，把结果作为
+            // 图片随本轮反馈一起带给 AI，让它能"看到"刚拍的画面并继续对话（自查/纠错）。
+            // 这个动作会短暂借用玩家视角，因此和 QUERY_REGION 一样按同一开关走单条确认。
+            if (cameraShotSpec != null) {
+                final String spec = cameraShotSpec;
+                double[] parsed = AICommandExecutor.parseCameraShotSpec(spec);
+                if (parsed == null) {
+                    // 格式错误：不发起截图，直接把错误提示当文本反馈回喂给 AI，本轮循环正常继续
+                    feedback.append("[CAMERA_SHOT] 格式错误: \"").append(spec)
+                            .append("\"，应为 5 个逗号分隔的数字 x,y,z,yaw,pitch\n\n");
+                } else {
+                    final double camX = parsed[0], camY = parsed[1], camZ = parsed[2];
+                    final float camYaw = (float) parsed[3], camPitch = (float) parsed[4];
+
+                    if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                        final String[] summaryHolder = new String[1];
+                        final boolean[] confirmedHolder = new boolean[1];
+                        final int roundForResume = round;
+                        final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                        java.util.concurrent.CountDownLatch confirmLatch = new java.util.concurrent.CountDownLatch(1);
+                        server.execute(() -> {
+                            try {
+                                String summary = I18n.tr("confirm.summary.camera_shot", camX, camY, camZ, camYaw, camPitch);
+                                summaryHolder[0] = summary;
+                                PendingActionConfirmation.request(player, summary, () -> {
+                                    // 拍照+读图是阻塞操作，续跑还要调用 AI（网络阻塞），
+                                    // 都不能卡在 /aiconfirm 命令线程（服务端主线程）上，切到独立线程处理。
+                                    CompletableFuture.runAsync(() -> {
+                                        String path = requestCameraShotAndAwait(player, camX, camY, camZ, camYaw, camPitch);
+                                        String base64Image = readImageAsBase64WithRetry(path);
+                                        String toolFeedback = !base64Image.isEmpty()
+                                                ? "已在坐标 (" + camX + ", " + camY + ", " + camZ + ") 朝向 (yaw=" + camYaw + ", pitch=" + camPitch
+                                                        + ") 拍摄了一张截图，图片已附上，请观察画面内容。\n\n"
+                                                : "ERROR: 摄像机截图失败或超时，请检查坐标是否在玩家客户端已加载的区域内，或稍后重试。\n\n";
+                                        debugPrintToolResult(player, server, I18n.tr("debug.tool.camera_shot"),
+                                                !base64Image.isEmpty() ? "[截图成功]" : "[截图失败]");
+                                        resumeToolLoopAfterConfirmedInfoTool(toolFeedback, base64Image, roundForResume,
+                                                lastAllowedForResume, player, server, streaming, notifier, finisher);
+                                    });
+                                });
+                                confirmedHolder[0] = true;
+                            } catch (Exception e) {
+                                LOGGER.error("发送摄像机截图确认请求失败", e);
+                            } finally {
+                                confirmLatch.countDown();
+                            }
+                        });
+                        try {
+                            confirmLatch.await();
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            finisher.finish(ToolLoopOutcome.cancelled());
+                            return;
+                        }
+                        if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                        if (confirmedHolder[0]) {
+                            String pendingText = I18n.tr("confirm.pending", summaryHolder[0], PendingActionConfirmation.TIMEOUT_SECONDS);
+                            finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
+                            return;
+                        }
+                        // 发送确认请求本身失败时，跳过本次拍照，避免整轮卡死
+                    } else {
+                        if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.camera_shot.taking"));
+                        String path = requestCameraShotAndAwait(player, camX, camY, camZ, camYaw, camPitch);
+                        if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                        String base64Image = readImageAsBase64WithRetry(path);
+                        if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.camera_shot.done") + "\n\n");
+                        if (!base64Image.isEmpty()) {
+                            // 图片本身不能塞进纯文本反馈里——记录下来，本轮结束后随 reprompt 一起发送
+                            pendingCameraShotImage = base64Image;
+                            feedback.append("已在坐标 (").append(camX).append(", ").append(camY).append(", ").append(camZ)
+                                    .append(") 朝向 (yaw=").append(camYaw).append(", pitch=").append(camPitch)
+                                    .append(") 拍摄了一张截图，图片已附上，请观察画面内容。\n\n");
+                        } else {
+                            feedback.append("ERROR: 摄像机截图失败或超时，请检查坐标是否在玩家客户端已加载的区域内，或稍后重试。\n\n");
+                        }
+                        debugPrintToolResult(player, server, I18n.tr("debug.tool.camera_shot"),
+                                !base64Image.isEmpty() ? "[截图成功]" : "[截图失败]");
+                    }
+                }
+            }
+
             // 5) 查阅知识库（[KNOWLEDGE]）：本地读取 Markdown 文档正文，只读操作，速度快，
             // 不涉及网络或游戏世界状态，因此不走确认流程，直接在当前线程处理。
             if (knowledgeAvailable) {
@@ -2032,12 +2231,13 @@ public class HelloWorldMod implements ModInitializer {
                 notifier.notify("\n§7" + I18n.tr("server.toolloop.round", round, maxRounds) + "\n\n");
             }
 
-            // 中间轮次不携带截图
+            // 中间轮次通常不携带截图；若本轮执行了 [CAMERA_SHOT]（非确认路径），
+            // 把拍到的图片带上，让 AI 真正"看到"刚拍的画面。
             if (streaming) {
-                response = callKimiApiStreaming(reprompt, "", player, server);
+                response = callKimiApiStreaming(reprompt, pendingCameraShotImage, player, server);
                 streamedLastRound = true;
             } else {
-                response = callKimiApi(reprompt, "");
+                response = callKimiApi(reprompt, pendingCameraShotImage);
                 streamedLastRound = false;
             }
         }
@@ -2048,8 +2248,25 @@ public class HelloWorldMod implements ModInitializer {
      * 把工具结果组装成反馈文本，重新调用 AI，再递归进入 {@link #runToolLoopInternal} 处理后续可能的工具调用。
      * 该方法运行在 /aiconfirm 命令处理线程上（服务端主线程），调用 AI 是网络阻塞操作，
      * 但这条命令本身就是玩家主动触发的一次性操作，阻塞时长可接受（与 /ai 命令同步等待 AI 回复的体验一致）。
+     *
+     * <p>等价于 {@code resumeToolLoopAfterConfirmedInfoTool(toolFeedback, "", ...)}，不带图片续跑。
      */
     private void resumeToolLoopAfterConfirmedInfoTool(String toolFeedback, int roundBeforeResume, boolean lastAllowedRound,
+                                                        ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
+                                                        boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+        resumeToolLoopAfterConfirmedInfoTool(toolFeedback, "", roundBeforeResume, lastAllowedRound,
+                player, server, streaming, notifier, finisher);
+    }
+
+    /**
+     * 同上，额外支持把一张图片（base64）随本轮反馈一起带给 AI——
+     * 目前仅 {@code [CAMERA_SHOT]} 摄像机截图工具会用到：AI 建造后拍照自查，
+     * 拍到的图片需要在这一轮续跑时真正传给视觉模型，而不是像其他信息获取型工具那样只传文本。
+     *
+     * @param base64Image 要随本轮续跑一起发送的图片（base64 编码），无图时传空字符串
+     */
+    private void resumeToolLoopAfterConfirmedInfoTool(String toolFeedback, String base64Image,
+                                                        int roundBeforeResume, boolean lastAllowedRound,
                                                         ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
                                                         boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
         int round = roundBeforeResume + 1;
@@ -2064,10 +2281,10 @@ public class HelloWorldMod implements ModInitializer {
             String response;
             boolean streamedThisRound;
             if (streaming) {
-                response = callKimiApiStreaming(reprompt, "", player, server);
+                response = callKimiApiStreaming(reprompt, base64Image, player, server);
                 streamedThisRound = true;
             } else {
-                response = callKimiApi(reprompt, "");
+                response = callKimiApi(reprompt, base64Image);
                 streamedThisRound = false;
             }
             if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
@@ -2102,12 +2319,13 @@ public class HelloWorldMod implements ModInitializer {
         });
     }
 
-    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION / KNOWLEDGE / KNOWLEDGE_TREE / KNOWLEDGE_FILE），保留 ACTION / BLUEPRINT 供最终展示。 */
+    /** 清理联网/查询类工具标签（FETCH / SEARCH / QUERY_REGION / CAMERA_SHOT / KNOWLEDGE / KNOWLEDGE_TREE / KNOWLEDGE_FILE），保留 ACTION / BLUEPRINT 供最终展示。 */
     private static String stripWebTags(String response) {
         if (response == null) return "";
         String r = response.replaceAll("\\[FETCH\\].*?\\[/FETCH\\]", "").trim();
         r = r.replaceAll("\\[SEARCH\\].*?\\[/SEARCH\\]", "").trim();
         r = r.replaceAll("(?s)\\[QUERY_REGION\\].*?\\[/QUERY_REGION\\]", "").trim();
+        r = r.replaceAll("(?s)\\[CAMERA_SHOT\\].*?\\[/CAMERA_SHOT\\]", "").trim();
         r = r.replaceAll("\\[KNOWLEDGE_TREE\\].*?\\[/KNOWLEDGE_TREE\\]", "").trim();
         r = r.replaceAll("\\[KNOWLEDGE_FILE\\].*?\\[/KNOWLEDGE_FILE\\]", "").trim();
         r = r.replaceAll("\\[KNOWLEDGE\\].*?\\[/KNOWLEDGE\\]", "").trim();

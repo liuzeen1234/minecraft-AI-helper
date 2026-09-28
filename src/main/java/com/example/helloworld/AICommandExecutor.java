@@ -69,6 +69,8 @@ public class AICommandExecutor {
     private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*?)\\[/BLUEPRINT\\]", Pattern.DOTALL);
     // 地形查询工具：[QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION] 或 [QUERY_REGION]around <半径>[/QUERY_REGION]
     private static final Pattern QUERY_REGION_PATTERN = Pattern.compile("\\[QUERY_REGION\\](.*?)\\[/QUERY_REGION\\]", Pattern.DOTALL);
+    // 摄像机截图工具：[CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT]，用于建造后自查/视觉纠错
+    private static final Pattern CAMERA_SHOT_PATTERN = Pattern.compile("\\[CAMERA_SHOT\\](.*?)\\[/CAMERA_SHOT\\]", Pattern.DOTALL);
     // 匹配未闭合的 [BLUEPRINT]（AI 输出被 token 截断时）
     private static final Pattern BLUEPRINT_UNCLOSED_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*)", Pattern.DOTALL);
 
@@ -838,7 +840,20 @@ public class AICommandExecutor {
      * 默认允许原版命令建议（execute_command），等价于 {@code getSystemPrompt(true)}。
      */
     public static String getSystemPrompt() {
-        return getSystemPrompt(true);
+        return getSystemPrompt(true, true);
+    }
+
+    /**
+     * 生成 system prompt，告诉 AI 可以使用哪些指令。
+     * 默认允许摄像机截图工具（[CAMERA_SHOT]），等价于 {@code getSystemPrompt(vanillaCommandsEnabled, true)}。
+     * 保留此重载是为了向后兼容既有调用方/测试。
+     *
+     * @param vanillaCommandsEnabled 是否允许 AI 使用 execute_command（建议原版命令）。
+     *                                关闭时，system prompt 中完全不会出现 execute_command 相关说明，
+     *                                AI 也就不会尝试生成这类指令，只能使用 mod 自带的具体功能（ACTION/BLUEPRINT 等）。
+     */
+    public static String getSystemPrompt(boolean vanillaCommandsEnabled) {
+        return getSystemPrompt(vanillaCommandsEnabled, true);
     }
 
     /**
@@ -847,8 +862,10 @@ public class AICommandExecutor {
      * @param vanillaCommandsEnabled 是否允许 AI 使用 execute_command（建议原版命令）。
      *                                关闭时，system prompt 中完全不会出现 execute_command 相关说明，
      *                                AI 也就不会尝试生成这类指令，只能使用 mod 自带的具体功能（ACTION/BLUEPRINT 等）。
+     * @param cameraShotEnabled      是否允许 AI 使用摄像机截图工具（[CAMERA_SHOT]）自查建造效果。
+     *                                关闭时，system prompt 中完全不会出现该工具说明，AI 不会尝试使用。
      */
-    public static String getSystemPrompt(boolean vanillaCommandsEnabled) {
+    public static String getSystemPrompt(boolean vanillaCommandsEnabled, boolean cameraShotEnabled) {
         String vanillaCommandSection = !vanillaCommandsEnabled ? "" :
                "11. 建议一条 Minecraft 命令（万能后备，不会自动执行）:\n"
              + "[ACTION]{\"type\":\"execute_command\",\"command\":\"/命令内容\"}[/ACTION]\n"
@@ -1208,6 +1225,9 @@ public class AICommandExecutor {
              + "- 如果玩家只是聊天，正常回复即可，不需要加任何标签\n\n"
              + "其他规则：\n"
              + "- 可以一次执行多个操作（多个标签）\n"
+             + "- 同一种工具可以在不同轮次的回复中多次调用（只要每次参数不同、目的不同），"
+             + "例如多次 [QUERY_REGION] 查询不同区域、多次 [CAMERA_SHOT] 从不同角度拍照、多次 [ACTION] 放置不同方块——"
+             + "这不算\"重复已执行过的操作\"，是完成任务的正常步骤，不必因为用过某个工具就不敢再用它\n"
              + "- 方块和物品 ID 使用 Minecraft 的英文 ID（不含 minecraft: 前缀）\n"
              + "- fill_blocks 建议单次不超过约 10000 个方块，范围过大请拆分为多次调用\n"
              + "- summon 最多生成 20 个实体\n"
@@ -1252,6 +1272,7 @@ public class AICommandExecutor {
              + "你可以据此推断玩家附近的坐标范围，再用绝对坐标写法 [QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION] 精确查询更远或更大的区域。\n"
              + "- 典型流程：先 around 探周围地形 → 分析 → 决定建造位置 → （必要时再精查目标区域）→ 用绝对坐标生成蓝图/操作。\n"
              + "- 每次回复最多使用一个 [QUERY_REGION] 标签。\n\n"
+             + getCameraShotSection(cameraShotEnabled)
              + getKnowledgeBaseSection()
              + getKnowledgeFileToolsSection()
              + "建筑入口与地面衔接（重要，避免入口悬空或被埋）：\n"
@@ -1264,6 +1285,31 @@ public class AICommandExecutor {
              + "- 小结：先查地面高度 → 地基贴合地面 → 入口与外部地面平齐 → 有落差就用楼梯/台阶向外衔接并填实下方，做到\"从外面能一步步顺畅走进门\"。\n"
              + getForceMultiToolInstruction()
              + getLanguageInstruction();
+    }
+
+    /**
+     * 生成摄像机截图工具（[CAMERA_SHOT]）的说明段落。关闭时返回空串，
+     * AI 完全不会看到该工具的存在，也就不会尝试使用（运行时还有二次拦截作为兜底）。
+     */
+    private static String getCameraShotSection(boolean cameraShotEnabled) {
+        if (!cameraShotEnabled) {
+            return "";
+        }
+        return "摄像机截图（视觉自查，建造后确认效果）：\n"
+             + "- 建造完一个结构后，如果你想亲眼看看实际摆放效果、检查有没有明显错误（缺块、朝向不对、比例失衡等），"
+             + "可以使用 [CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT] 标签，在指定的世界绝对坐标、以指定角度拍一张截图。\n"
+             + "- 系统会把这张截图作为图片直接发给你（你能看到画面内容），然后你基于观察结果继续对话——"
+             + "确认没问题就告知玩家完成，发现问题就用 [ACTION]/[BLUEPRINT] 修正后可以再拍一张确认。\n"
+             + "- 参数说明（用英文逗号分隔，5 个数字，不支持相对坐标）：\n"
+             + "    x,y,z: 摄像机所在的世界绝对坐标（允许小数）。通常选在结构前方几格、比结构中心略高的位置，能完整看到整体外观。\n"
+             + "    yaw:   水平朝向角度。0=朝南, 90=朝西, 180 或 -180=朝北, -90=朝东（与玩家朝向定义一致）。\n"
+             + "    pitch: 俯仰角度。0=水平看，负值=向上看，正值=向下看（如 -10 略微上仰，20 略微俯视全貌）。\n"
+             + "- 示例：[CAMERA_SHOT]105,72,-198,180,10[/CAMERA_SHOT] 表示在 (105,72,-198) 朝北、略微俯视拍一张照片。\n"
+             + "- 用法建议：先用 [QUERY_REGION] 或建造时的已知坐标确定结构大致位置和尺寸，"
+             + "再把摄像机坐标定在结构正面/侧面外侧几格、高度与结构中上部相近的地方，朝向对准结构中心，这样拍出来的画面最容易看清整体。\n"
+             + "- 每次回复最多使用一个 [CAMERA_SHOT] 标签；如需从多个角度确认，可分多轮依次拍摄。\n"
+             + "- 这是只读操作，不会改变游戏世界，但会短暂借用玩家的屏幕视角来拍照（画面会有短暂跳动），"
+             + "因此不要过于频繁地重复拍摄同一角度。\n\n";
     }
 
     /**
@@ -1469,5 +1515,90 @@ public class AICommandExecutor {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    // ================= 摄像机截图工具 [CAMERA_SHOT]（AI 工具循环 + /ai cam_test 测试命令共用） =================
+
+    /**
+     * 判断 AI 回复中是否请求了摄像机截图工具（[CAMERA_SHOT]）。
+     */
+    public static boolean containsCameraShotTag(String aiResponse) {
+        if (aiResponse == null || aiResponse.isEmpty()) return false;
+        return CAMERA_SHOT_PATTERN.matcher(aiResponse).find();
+    }
+
+    /**
+     * 从 AI 回复中提取第一个 [CAMERA_SHOT] 标签的内容（去除首尾空白）。
+     * 未找到时返回 null。
+     */
+    public static String extractCameraShotSpec(String aiResponse) {
+        if (aiResponse == null) return null;
+        Matcher m = CAMERA_SHOT_PATTERN.matcher(aiResponse);
+        if (m.find()) {
+            String spec = m.group(1).trim();
+            return spec.isEmpty() ? null : spec;
+        }
+        return null;
+    }
+
+    /**
+     * 解析 [CAMERA_SHOT] 标签内容 "x,y,z,yaw,pitch" 为 double 数组 {x, y, z, yaw, pitch}。
+     * 格式不对（分段数不对、任一段无法解析为数字）时返回 null，供调用方回喂 AI 一条错误提示。
+     * 包级可见，便于单元测试。
+     */
+    static double[] parseCameraShotSpec(String spec) {
+        if (spec == null || spec.isBlank()) return null;
+        String[] parts = spec.trim().split(",");
+        if (parts.length != 5) return null;
+        try {
+            double[] result = new double[5];
+            for (int i = 0; i < 5; i++) {
+                result[i] = Double.parseDouble(parts[i].trim());
+            }
+            return result;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 摄像机截图指令的确认包装：根据"执行前需确认"开关决定直接发起拍照，
+     * 还是先在聊天框弹出 [是]/[否]，玩家确认后再真正发包给客户端。
+     *
+     * <p>这是 {@code /ai cam_test} 测试命令专用的"发完包就返回"版本：不等待、不读图，
+     * 客户端截图完成后由 {@code CAMERA_SHOT_RESPONSE_PACKET} 处理器单独回显路径。
+     * AI 工具循环中的 {@code [CAMERA_SHOT]} 标签走的是 {@code HelloWorldMod} 里
+     * 会阻塞等待客户端回包、并把图片转 base64 喂回 AI 的另一套逻辑（见 {@code awaitCameraShot}），
+     * 两者共用同一个 {@code requestCameraShot} 发包入口，只是等不等结果不同。
+     *
+     * @param x, y, z 世界绝对坐标（允许小数，摄像机精确放置在该点）
+     * @param yaw     水平朝向角度，0=南，90=西，180/-180=北，-90=东（与 Minecraft 原版一致）
+     * @param pitch   俯仰角度，-90=垂直向上，0=水平，90=垂直向下
+     * @param player  发起请求的玩家（拍照结果只会发给这个玩家的客户端）
+     */
+    public static String executeCameraShotMaybeConfirm(double x, double y, double z,
+                                                         float yaw, float pitch,
+                                                         ServerPlayerEntity player) {
+        String summary = I18n.tr("confirm.summary.camera_shot", x, y, z, yaw, pitch);
+        if (!HelloWorldMod.getConfig().isConfirmBeforeExecuteEnabled()) {
+            return executeCameraShot(x, y, z, yaw, pitch, player);
+        }
+        PendingActionConfirmation.request(player, summary,
+                () -> executeCameraShot(x, y, z, yaw, pitch, player));
+        return I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
+    }
+
+    /**
+     * 真正发起摄像机截图：给玩家客户端发包，请求在指定坐标/角度截图。
+     *
+     * <p>注意：这里只是发包，不会同步等待客户端截图完成——{@code onAccept} 可能运行在
+     * {@code /aiconfirm} 命令处理线程（服务端主线程）上，绝不能阻塞等待网络往返。
+     * 真正的截图结果由 {@code CAMERA_SHOT_RESPONSE_PACKET} 的接收器异步收到后另行处理
+     * （测试阶段：直接聊天框回显文件路径；未来接入 AI 工具循环：把结果喂回续跑逻辑）。
+     */
+    private static String executeCameraShot(double x, double y, double z, float yaw, float pitch,
+                                              ServerPlayerEntity player) {
+        HelloWorldMod.requestCameraShot(player, x, y, z, yaw, pitch);
+        return I18n.tr("cmd.camera_shot.requested", x, y, z, yaw, pitch);
     }
 }

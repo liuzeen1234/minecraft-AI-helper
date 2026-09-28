@@ -10,6 +10,9 @@ import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.MarkerEntity;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 
@@ -28,6 +31,20 @@ public class HelloWorldClientMod implements ClientModInitializer {
     // 延迟截图用的状态
     private String pendingMessage = null;
     private int delayTicks = 0;
+
+    // 摄像机截图（[CAMERA_SHOT] 工具 / /ai cam_test 测试命令共用）用的延迟状态
+    private double pendingCamX, pendingCamY, pendingCamZ;
+    private float pendingCamYaw, pendingCamPitch;
+    private boolean pendingCameraShot = false;
+    private int cameraShotDelayTicks = 0;
+    /**
+     * 切镜头与真正截图之间需要错开至少一个 tick：Minecraft 的渲染循环是
+     * "本帧先跑完待处理的 tick，再画这一帧"，setCameraEntity 只影响*下一次*渲染，
+     * 若在切镜头的同一个 tick 回调里立刻读 framebuffer，读到的仍是上一帧（旧镜头）的画面。
+     * 因此拆成两阶段：{@link #cameraShotDelayTicks} 倒数结束后先切镜头并置位此标记，
+     * 下一个 tick（此时新镜头那一帧已经渲染完成）才真正截图、恢复镜头、发包。
+     */
+    private boolean awaitingCameraRenderTick = false;
 
     // 按键绑定：打开设置页面
     private static KeyBinding openSettingsKey;
@@ -62,6 +79,25 @@ public class HelloWorldClientMod implements ClientModInitializer {
             client.execute(() -> {
                 pendingMessage = message;
                 delayTicks = 2;
+            });
+        });
+
+        // 注册接收服务端摄像机截图请求（[CAMERA_SHOT] 工具 / /ai cam_test 测试命令共用）：
+        // 收到坐标+角度后，等 2 个 tick 再截图（等待区块/光照渲染稳定）。
+        ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.REQUEST_CAMERA_SHOT_PACKET, (client, handler, buf, responseSender) -> {
+            double x = buf.readDouble();
+            double y = buf.readDouble();
+            double z = buf.readDouble();
+            float yaw = buf.readFloat();
+            float pitch = buf.readFloat();
+            client.execute(() -> {
+                pendingCamX = x;
+                pendingCamY = y;
+                pendingCamZ = z;
+                pendingCamYaw = yaw;
+                pendingCamPitch = pitch;
+                pendingCameraShot = true;
+                cameraShotDelayTicks = 2;
             });
         });
 
@@ -175,7 +211,89 @@ public class HelloWorldClientMod implements ClientModInitializer {
                     doScreenshotAndSend(client, message);
                 }
             }
+
+            if (awaitingCameraRenderTick) {
+                // 上一 tick 已切好镜头，这一 tick 开始时新镜头那一帧已经渲染完成，可以安全截图了。
+                awaitingCameraRenderTick = false;
+                captureAndRestoreCamera(client);
+            } else if (pendingCameraShot && cameraShotDelayTicks > 0) {
+                cameraShotDelayTicks--;
+                if (cameraShotDelayTicks == 0) {
+                    pendingCameraShot = false;
+                    switchCameraForShot(client, pendingCamX, pendingCamY, pendingCamZ, pendingCamYaw, pendingCamPitch);
+                }
+            }
         });
+    }
+
+    /** 截图期间临时顶替玩家视角的摄像机实体；截图完成后销毁引用并把视角切回下面记录的原视角。 */
+    private MarkerEntity activeCameraEntity = null;
+    /** 切换摄像机之前的原视角实体（通常是玩家本体），截图完成后恢复。 */
+    private Entity originalCameraEntity = null;
+
+    /**
+     * 第一阶段：把客户端摄像机切到一个不加入世界实体列表的 {@link MarkerEntity} 上
+     * （只用作渲染用的位置/朝向锚点，不影响玩家本体的实际位置/不会被其他玩家看到瞬移）。
+     * 真正的截图推迟到下一个 tick（见 {@link #captureAndRestoreCamera}），
+     * 因为 {@code setCameraEntity} 只影响下一次渲染，本 tick 内读 framebuffer 仍是旧画面。
+     */
+    private void switchCameraForShot(MinecraftClient client, double x, double y, double z, float yaw, float pitch) {
+        boolean screenshotEnabled = HelloWorldMod.getConfig().isScreenshotEnabled();
+        if (!screenshotEnabled || client.player == null || client.world == null) {
+            PacketByteBuf responseBuf = PacketByteBufs.create();
+            responseBuf.writeString("");
+            ClientPlayNetworking.send(HelloWorldMod.CAMERA_SHOT_RESPONSE_PACKET, responseBuf);
+            return;
+        }
+
+        MarkerEntity camEntity = new MarkerEntity(EntityType.MARKER, client.world);
+        camEntity.setPosition(x, y, z);
+        camEntity.setYaw(yaw);
+        camEntity.setPitch(pitch);
+        // 消除跨 tick 插值：不设置的话摄像机会从上一帧位置慢慢"飘"过来，
+        // 下一帧截图就会截到过渡中的画面。
+        camEntity.prevX = x;
+        camEntity.prevY = y;
+        camEntity.prevZ = z;
+        camEntity.prevYaw = yaw;
+        camEntity.prevPitch = pitch;
+        camEntity.lastRenderX = x;
+        camEntity.lastRenderY = y;
+        camEntity.lastRenderZ = z;
+
+        originalCameraEntity = client.getCameraEntity();
+        activeCameraEntity = camEntity;
+        client.setCameraEntity(camEntity);
+        awaitingCameraRenderTick = true;
+    }
+
+    /**
+     * 第二阶段：新镜头那一帧已经渲染完成，读取 framebuffer 存盘，
+     * 随后立即把视角恢复为原视角（通常是玩家本体），并发包回传结果。
+     */
+    private void captureAndRestoreCamera(MinecraftClient client) {
+        try {
+            File screenshotDir = ModPaths.getScreenshotsDir().toFile();
+            if (!screenshotDir.exists()) {
+                screenshotDir.mkdirs();
+            }
+            File camShot = new File(screenshotDir, "ai_camera_shot.png");
+            saveScaledScreenshot(client.getFramebuffer(), camShot);
+
+            PacketByteBuf responseBuf = PacketByteBufs.create();
+            responseBuf.writeString(camShot.getAbsolutePath());
+            ClientPlayNetworking.send(HelloWorldMod.CAMERA_SHOT_RESPONSE_PACKET, responseBuf);
+        } catch (Exception e) {
+            HelloWorldMod.LOGGER.error("摄像机截图失败", e);
+            PacketByteBuf responseBuf = PacketByteBufs.create();
+            responseBuf.writeString("");
+            ClientPlayNetworking.send(HelloWorldMod.CAMERA_SHOT_RESPONSE_PACKET, responseBuf);
+        } finally {
+            // 恢复视角为原视角（若原本就是玩家本体则等价于恢复原状）
+            client.setCameraEntity(originalCameraEntity != null ? originalCameraEntity : client.player);
+            activeCameraEntity = null;
+            originalCameraEntity = null;
+        }
     }
 
     private void doScreenshotAndSend(MinecraftClient client, String message) {

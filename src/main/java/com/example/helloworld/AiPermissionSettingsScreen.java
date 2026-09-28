@@ -60,8 +60,21 @@ public class AiPermissionSettingsScreen extends Screen {
                 .build()
         );
 
+        // 摄像机截图（视觉自查）开关。关闭后 AI 不会再看到 [CAMERA_SHOT] 工具说明，
+        // 也不能再发起任何角度的截图请求（运行时二次拦截兜底）。
+        int cameraShotY = confirmY + (btnH + gap);
+        this.addDrawableChild(ButtonWidget.builder(
+                getCameraShotButtonText(),
+                button -> {
+                    config.setCameraShotEnabled(!config.isCameraShotEnabled());
+                    button.setMessage(getCameraShotButtonText());
+                })
+                .dimensions(startX, cameraShotY, 200, btnH)
+                .build()
+        );
+
         // 最大工具调用轮数输入框（0=禁用多轮）。标签绘制在输入框上方，输入框宽度略小以容纳保存按钮。
-        int roundsY = confirmY + (btnH + gap) + 10; // 上方留一点空间给标签
+        int roundsY = cameraShotY + (btnH + gap) + 10; // 上方留一点空间给标签
         maxRoundsLabelX = startX;
         maxRoundsLabelY = roundsY - 10;
         maxToolRoundsField = new TextFieldWidget(this.textRenderer, startX, roundsY, 150, btnH,
@@ -98,6 +111,11 @@ public class AiPermissionSettingsScreen extends Screen {
     private Text getConfirmBeforeExecuteButtonText() {
         String state = config.isConfirmBeforeExecuteEnabled() ? I18n.tr("settings.chat.on") : I18n.tr("settings.chat.off");
         return Text.literal(I18n.tr("settings.permission.confirm_before_execute", state));
+    }
+
+    private Text getCameraShotButtonText() {
+        String state = config.isCameraShotEnabled() ? I18n.tr("settings.chat.on") : I18n.tr("settings.chat.off");
+        return Text.literal(I18n.tr("settings.permission.camera_shot", state));
     }
 
     /** 解析输入框内容并保存 max_tool_rounds；非法输入给出提示且不覆盖旧值。 */
