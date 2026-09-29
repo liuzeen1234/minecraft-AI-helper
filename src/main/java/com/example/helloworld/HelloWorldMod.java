@@ -699,6 +699,12 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("test_stairs")
                     .executes(this::executeTestStairs)
                 )
+                // /ai force_timeout - 调试用：强制让自己当前所有待确认的 AI 操作请求
+                // （PendingActionConfirmation，如放置方块/建造蓝图/建议原版命令等）立即按
+                // 超时（=拒绝）处理，无需等待真实的 60 秒窗口，便于测试超时路径。
+                .then(CommandManager.literal("force_timeout")
+                    .executes(this::executeForceTimeout)
+                )
                 // /ai cam_test <x> <y> <z> <yaw> <pitch> - 测试摄像机截图工具：
                 // 直接调用 AICommandExecutor.executeCameraShotMaybeConfirm（与未来 [CAMERA_SHOT]
                 // 标签共用同一入口），会按 confirm_before_execute_enabled 走确认流程。
@@ -928,6 +934,28 @@ public class HelloWorldMod implements ModInitializer {
             context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test_stairs.item", (idx + 1), facing, (idx * 2))), false);
         }
         context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test_stairs.done")), false);
+        return 1;
+    }
+
+    /**
+     * 调试命令：{@code /ai force_timeout}。
+     * 强制让当前玩家所有待确认的 AI 操作请求（{@link PendingActionConfirmation}）立即
+     * 按超时（=拒绝）处理，用于测试"玩家未在 60 秒内确认"这一路径，无需真的等待。
+     */
+    private int executeForceTimeout(CommandContext<ServerCommandSource> context) {
+        ServerPlayerEntity player = context.getSource().getPlayer();
+        if (player == null) return 0;
+
+        // 同时覆盖两类挂起：待玩家点击 [是]/[否] 确认的操作，以及 execute_command 建议后
+        // 等待玩家在聊天框执行的命令（后者超时会触发"未执行"续跑）。
+        int count = PendingActionConfirmation.forceTimeoutForPlayer(player.getUuid())
+                + PendingCommandSuggestion.forceTimeoutForPlayer(player.getUuid());
+        if (count == 0) {
+            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.force_timeout.none")), false);
+        } else {
+            final int finalCount = count;
+            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.force_timeout.done", finalCount)), false);
+        }
         return 1;
     }
 
@@ -1967,18 +1995,29 @@ public class HelloWorldMod implements ModInitializer {
                 final int roundForResume = round;
                 final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
                 // 方块放置需在主线程执行
+                final boolean[] commandSuggestionHolder = new boolean[1];
                 java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
                 server.execute(() -> {
                     try {
-                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player, toolFeedback -> {
-                            // 批次内所有操作均已确认完毕：网络调用（续跑 AI）不能卡在这个回调所在的
-                            // /aiconfirm 命令线程（服务端主线程）上，切到独立线程异步处理。
-                            CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
-                                    toolFeedback, roundForResume, lastAllowedForResume,
-                                    player, server, streaming, notifier, finisher));
-                        });
+                        AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player,
+                            toolFeedback -> {
+                                // 批次内所有操作均已确认完毕：网络调用（续跑 AI）不能卡在这个回调所在的
+                                // /aiconfirm 命令线程（服务端主线程）上，切到独立线程异步处理。
+                                CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
+                                        toolFeedback, roundForResume, lastAllowedForResume,
+                                        player, server, streaming, notifier, finisher));
+                            },
+                            commandFeedback -> {
+                                // execute_command 建议的命令被玩家执行（或超时未执行）后触发：
+                                // 该回调由命令执行/超时线程（服务端主线程或超时线程）调用，续跑要调 AI（网络阻塞），
+                                // 切到独立线程异步处理，避免卡住主线程 tick。
+                                CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
+                                        commandFeedback, roundForResume, lastAllowedForResume,
+                                        player, server, streaming, notifier, finisher));
+                            });
                         resultHolder[0] = pr.resultBlock;
                         pendingHolder[0] = pr.hasPendingConfirmation;
+                        commandSuggestionHolder[0] = pr.hasPendingCommandSuggestion;
                     } catch (Exception e) {
                         LOGGER.error("多轮循环中执行游戏操作失败", e);
                         resultHolder[0] = I18n.tr("cmd.action.failed", e.getMessage());
@@ -1995,10 +2034,10 @@ public class HelloWorldMod implements ModInitializer {
                 }
                 if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
 
-                // 有操作正在等待玩家点击 [是]/[否] 确认：必须在这里停止循环，
-                // 不能把"等待确认"这句提示当作已完成的结果继续喂给 AI 做下一步推演。
-                // 真正的续跑会在这批全部确认完毕后，由上面的回调自动触发。
-                if (pendingHolder[0]) {
+                // 有操作正在等待玩家点击 [是]/[否] 确认，或有 execute_command 建议的命令正在等待玩家执行：
+                // 都必须在这里停止循环，不能把"等待确认/等待执行"这句提示当作已完成的结果继续喂给 AI 推演。
+                // 真正的续跑会在玩家确认完毕、或玩家执行了建议命令（拿到反馈）后，由上面的回调自动触发。
+                if (pendingHolder[0] || commandSuggestionHolder[0]) {
                     String pendingText = resultHolder[0] != null ? resultHolder[0] : "";
                     finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(stripWebTags(pendingText), false)));
                     return;

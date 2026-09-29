@@ -81,6 +81,9 @@
     "cmd.command.suggested": "§eAI suggested a command: %s (filled into your chat box, review it and press Enter to send)",
     "cmd.command.suggest_failed": "§cFailed to suggest command: %s - %s",
     "cmd.command.disabled_by_setting": "§cVanilla command suggestions are disabled in AI Permission Settings",
+    "cmd.command.executed_feedback": "The command you suggested, %s, was executed by the player. Here is the command's output:\n%s",
+    "cmd.command.executed_no_output": "The command executed successfully but produced no text output.",
+    "cmd.command.not_executed": "The command you suggested, %s, was never executed by the player (they may have declined or used another approach). Do not suggest the same command again; try a different approach or ask the player how to proceed.",
     "cmd.camera_shot.requested": "§eRequested a screenshot at (%.1f, %.1f, %.1f) facing (yaw=%.1f, pitch=%.1f), waiting for the client...",
     "cmd.camera_shot.done": "§aCamera screenshot done, saved to: %s",
     "cmd.camera_shot.failed": "§cCamera screenshot failed or timed out: %s",
@@ -443,5 +446,7 @@
     "server.blueprints.reloaded": "§a[Blueprint] Reloaded %s blueprint(s)",
     "server.test_stairs.item": "§eStair %s: facing=%s (east offset %s)",
     "server.test_stairs.done": "§aPlaced 4 stairs 3 blocks north, left to right: north, south, east, west",
+    "server.force_timeout.none": "§7[Debug] No pending AI action confirmations",
+    "server.force_timeout.done": "§a[Debug] Forced %s pending confirmation(s) to time out",
     "server.thinking_cancelled": "§7[Thinking cancelled]"
 }

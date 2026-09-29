@@ -112,11 +112,24 @@ public class AICommandExecutor {
         public final String resultBlock;
         public final String fullText;
         public final boolean hasPendingConfirmation;
+        /**
+         * 本次处理中是否有 execute_command 建议了一条原版命令并已登记等待玩家执行。
+         * 为 true 时，调用方（多轮工具循环）应停止本轮继续推演/回喂 AI，等玩家真正执行该命令、
+         * 拿到执行反馈后再由 {@link PendingCommandSuggestion} 的回调自动续跑。
+         * 与 {@link #hasPendingConfirmation} 类似，但触发续跑的信号是"玩家执行了建议的命令"，
+         * 而不是"玩家点击了确认按钮"。
+         */
+        public final boolean hasPendingCommandSuggestion;
         ProcessResult(String cleanText, String resultBlock, String fullText, boolean hasPendingConfirmation) {
+            this(cleanText, resultBlock, fullText, hasPendingConfirmation, false);
+        }
+        ProcessResult(String cleanText, String resultBlock, String fullText,
+                      boolean hasPendingConfirmation, boolean hasPendingCommandSuggestion) {
             this.cleanText = cleanText;
             this.resultBlock = resultBlock;
             this.fullText = fullText;
             this.hasPendingConfirmation = hasPendingConfirmation;
+            this.hasPendingCommandSuggestion = hasPendingCommandSuggestion;
         }
     }
 
@@ -129,6 +142,22 @@ public class AICommandExecutor {
             ThreadLocal.withInitial(ArrayList::new);
     /** 与 {@link #PENDING_BATCH_ITEMS} 一一对应，记录每项的摘要和最终结果，用于批次完成后拼接续跑反馈文本。 */
     private static final ThreadLocal<List<BatchEntry>> PENDING_BATCH_ENTRIES = ThreadLocal.withInitial(ArrayList::new);
+
+    /**
+     * 本次 process() 调用中，execute_command 是否建议了一条原版命令并已登记等待玩家执行。
+     * 由 {@link #executeMinecraftCommand} 在成功发送并登记建议后置 true，process() 读取后封进
+     * {@link ProcessResult#hasPendingCommandSuggestion}，用于让多轮工具循环暂停等待玩家执行命令。
+     */
+    private static final ThreadLocal<Boolean> PENDING_COMMAND_SUGGESTION = ThreadLocal.withInitial(() -> false);
+
+    /**
+     * 本次 process() 调用中，"玩家执行了建议命令、拿到反馈后如何续跑"的回调工厂。
+     * 由多轮工具循环调用 {@link #process(String, ServerPlayerEntity, java.util.function.Consumer, java.util.function.Consumer)}
+     * 传入：参数为收集到的命令执行反馈文本（玩家未执行超时时为 null），实现负责把结果续跑回喂给 AI。
+     * 为 null 时（如最终展示环节）execute_command 只发送建议、不登记续跑。
+     */
+    private static final ThreadLocal<java.util.function.Consumer<String>> COMMAND_SUGGESTION_RESUME =
+            new ThreadLocal<>();
 
     /** 批次中一项的记录：摘要 + 是否被接受 + 真实执行结果文本（拒绝/超时时为 null）。 */
     private static final class BatchEntry {
@@ -168,10 +197,26 @@ public class AICommandExecutor {
      *                        （只包含被接受并成功执行的操作结果）。可为 null（不需要续跑）。
      */
     public static ProcessResult process(String aiResponse, ServerPlayerEntity player, java.util.function.Consumer<String> onAllConfirmed) {
+        return process(aiResponse, player, onAllConfirmed, null);
+    }
+
+    /**
+     * 同上，额外支持 execute_command 建议命令的"执行结果续跑"。
+     *
+     * @param onCommandExecuted 当本次调用中 execute_command 建议了一条原版命令时，玩家真正执行该命令、
+     *                          拿到执行反馈后（或超时未执行时）调用一次。参数为命令执行反馈文本
+     *                          （玩家未执行超时时为 null）。实现负责把结果续跑回喂给 AI。
+     *                          可为 null（如最终展示环节，此时只发送建议、不登记续跑）。
+     */
+    public static ProcessResult process(String aiResponse, ServerPlayerEntity player,
+                                        java.util.function.Consumer<String> onAllConfirmed,
+                                        java.util.function.Consumer<String> onCommandExecuted) {
         if (player == null) return new ProcessResult(aiResponse, "", aiResponse, false);
 
         PENDING_BATCH_ITEMS.get().clear();
         PENDING_BATCH_ENTRIES.get().clear();
+        PENDING_COMMAND_SUGGESTION.set(false);
+        COMMAND_SUGGESTION_RESUME.set(onCommandExecuted);
         ServerWorld world = player.getServerWorld();
         List<String> results = new ArrayList<>();
         boolean foundBlueprint = false;
@@ -262,6 +307,11 @@ public class AICommandExecutor {
             PENDING_BATCH_ENTRIES.remove();
         }
 
+        // 读取本次是否有 execute_command 建议了命令并登记了续跑，随后清理相关 ThreadLocal
+        boolean pendingCommandSuggestion = Boolean.TRUE.equals(PENDING_COMMAND_SUGGESTION.get());
+        PENDING_COMMAND_SUGGESTION.remove();
+        COMMAND_SUGGESTION_RESUME.remove();
+
         // 如果有执行结果，组装结果块
         if (!results.isEmpty()) {
             StringBuilder resultSb = new StringBuilder(I18n.tr("cmd.result.header"));
@@ -273,10 +323,12 @@ public class AICommandExecutor {
             StringBuilder full = new StringBuilder(cleanResponse);
             if (!cleanResponse.isEmpty()) full.append("\n");
             full.append(resultBlock);
-            return new ProcessResult(cleanResponse, resultBlock, full.toString(), pendingConfirmation);
+            return new ProcessResult(cleanResponse, resultBlock, full.toString(),
+                    pendingConfirmation, pendingCommandSuggestion);
         }
 
-        return new ProcessResult(cleanResponse, "", cleanResponse, pendingConfirmation);
+        return new ProcessResult(cleanResponse, "", cleanResponse,
+                pendingConfirmation, pendingCommandSuggestion);
     }
 
     /**
@@ -752,6 +804,27 @@ public class AICommandExecutor {
             buf.writeString(fullCommand);
             net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(
                     player, HelloWorldMod.SUGGEST_COMMAND_PACKET, buf);
+
+            // 若本次 process() 调用带了"命令执行结果续跑"回调（多轮工具循环场景），
+            // 则登记这条建议：玩家在聊天框真正执行该命令后，其执行反馈会被自动收集并回喂给 AI；
+            // 玩家迟迟不执行则会在超时后触发一次"未执行"续跑，避免对话永久卡住。
+            java.util.function.Consumer<String> resume = COMMAND_SUGGESTION_RESUME.get();
+            if (resume != null) {
+                final String suggestedCommand = fullCommand;
+                PendingCommandSuggestion.register(player, fullCommand, (feedbackText, success) -> {
+                    String toolFeedback;
+                    if (success) {
+                        String fb = (feedbackText == null || feedbackText.isBlank())
+                                ? I18n.tr("cmd.command.executed_no_output")
+                                : feedbackText;
+                        toolFeedback = I18n.tr("cmd.command.executed_feedback", suggestedCommand, fb) + "\n\n";
+                    } else {
+                        toolFeedback = I18n.tr("cmd.command.not_executed", suggestedCommand) + "\n\n";
+                    }
+                    resume.accept(toolFeedback);
+                });
+                PENDING_COMMAND_SUGGESTION.set(true);
+            }
             return I18n.tr("cmd.command.suggested", fullCommand);
         } catch (Exception e) {
             LOGGER.error("发送命令建议失败: {}", fullCommand, e);
