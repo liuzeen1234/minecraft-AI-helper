@@ -39,11 +39,10 @@
 | `/ai <消息>` | 与 AI 对话；AI 可执行受支持的建造操作 |
 | `/ai blueprints` | 列出已加载的 TXT 蓝图 |
 | `/ai reload_blueprints` | 从磁盘重载 TXT 蓝图 |
-| `/ai test_stairs` | 放置楼梯朝向调试样例 |
 | `/ainew` | 清空对话历史 |
 | `/aistop` | 终止当前 AI 请求 |
 | `/aipos` | 显示当前坐标和维度 |
-| `/aiconfirm <请求ID> <yes\|no>` | 确认或拒绝待处理的 AI 操作请求，通常由点击聊天框 [是]/[否] 按钮自动触发 |
+| `/ai reject` | 拒绝 AI 当前所有待确认的操作请求（无需输入请求 ID，等同点击 [否]） |
 
 ### 配置命令
 
@@ -59,18 +58,13 @@
 
 `/aiconfig` 不是通用键值命令。截图、上下文和流式输出请在设置界面调整；`api_format`、`rag_*` 请直接编辑配置文件后重载。界面显示语言不可配置，自动跟随当前 Minecraft 游戏语言。
 
-### 结构命令
+### 结构
 
-| 命令 | 说明 |
-|---|---|
-| `/ainbt list` | 列出 NBT 和 Litematica 结构 |
-| `/ainbt info <文件名>` | 显示 NBT 或 Litematica 结构详情 |
-| `/ainbt all` | 显示全部结构摘要 |
-| `/ainbt place <文件名>` | 在玩家脚下放置 NBT 或 Litematica 结构 |
-
-`/ainbt` 没有无参数 GUI；图形化浏览器请使用 `K` → **加载结构**。
+浏览与放置 NBT / Litematica 结构请使用图形化浏览器：`K` → **加载结构**。
 
 > 聊天框日志转发和“生成测试日志”由可选的 debug-menu 模组提供，不属于 AI Builder 命令。
+
+> 开发者备注：聊天框 [是]/[否] 按钮通过 ClickEvent 执行命令——`[是]` → `/ai confirm <请求ID>`，`[否]` → `/ai reject <请求ID>`。`/ai reject` 不带参数可一次性拒绝当前所有待确认请求。
 
 ## 功能详解
 

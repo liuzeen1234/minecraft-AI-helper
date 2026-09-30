@@ -76,10 +76,10 @@
 | `/ai blueprints` | 列出所有已加载的蓝图 |
 | `/ainew` | 清空对话历史，开始新对话 |
 | `/aistop` | 终止正在进行的 AI 回复 |
-| `/aiconfirm <请求ID> <yes\|no>` | 确认或拒绝待处理的 AI 操作请求（通常通过聊天框 [是]/[否] 按钮点击触发） |
+| `/ai reject` | 拒绝 AI 当前所有待确认的操作请求（无需请求 ID，等同点击 [否]） |
 | `/aiconfig show` | 显示当前配置 |
 | `/aiconfig reload` | 热加载配置文件 |
-| `/ainbt list` / `info` / `all` / `place` | 管理和放置 NBT / Litematica 结构；图形化浏览器通过 `K` → 加载结构打开 |
+| 结构管理 | 通过 `K` → 加载结构 打开图形化浏览器，浏览并放置 NBT / Litematica 结构 |
 | `/aipos` | 显示当前玩家坐标 |
 
 > 完整命令、配置项、蓝图格式规范和常见问题请查阅 **[用户手册 (USER_MANUAL.md)](USER_MANUAL.md)**。
@@ -93,17 +93,16 @@
 | 命令 | 说明 |
 |------|------|
 | `/ai reload_blueprints` | 重新从磁盘加载蓝图文件 |
-| `/ai test_stairs` | 测试放置楼梯方块（调试用） |
 | `/aiconfig api_base_url <值>` | 设置 AI API 地址 |
 | `/aiconfig api_key <值>` | 设置 AI API 密钥 |
 | `/aiconfig model <值>` | 设置 AI 模型名称 |
 | `/aiconfig web_search <on/off>` | 开启/关闭联网搜索 |
 | `/aiconfig tavily_api_key <值>` | 设置 Tavily 联网搜索 API 密钥 |
 | debug-menu 菜单「生成测试日志」 | 触发测试日志，验证聊天框日志显示是否正常（原 `/aitest` 命令已迁移到 debug-menu 调试菜单，默认 M 键） |
-| `/ainbt list` | 列出 `.nbt` 与 `.litematic` 结构文件 |
-| `/ainbt info <文件名>` | 显示指定 NBT 或 Litematica 结构的详细信息 |
-| `/ainbt all` | 显示所有 NBT / Litematica 结构的汇总信息 |
-| `/ainbt place <文件名>` | 在当前位置放置指定 NBT 或 Litematica 结构 |
+
+> NBT / Litematica 结构的浏览、查看与放置已统一到图形化浏览器（`K` → 加载结构），原 `/ainbt` 命令已移除。
+
+> 内部实现：聊天框 [是]/[否] 按钮通过 `ClickEvent` 执行命令——`[是]` → `/ai confirm <请求ID>`，`[否]` → `/ai reject <请求ID>`。玩家也可手动用 `/ai reject`（不带参数）一次性拒绝当前所有待确认请求。
 
 ---
 

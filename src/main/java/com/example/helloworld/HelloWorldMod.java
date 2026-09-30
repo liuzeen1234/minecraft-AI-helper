@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import com.example.helloworld.blueprint.BlueprintBuilder;
 import com.example.helloworld.blueprint.BlueprintData;
 import com.example.helloworld.blueprint.BlueprintRegistry;
-import com.example.helloworld.nbt.NbtCommands;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -686,9 +685,6 @@ public class HelloWorldMod implements ModInitializer {
         });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            // 注册 NBT 解析命令
-            NbtCommands.register(dispatcher);
-
             dispatcher.register(CommandManager.literal("ai")
                 .then(CommandManager.literal("blueprints")
                     .executes(this::listBlueprints)
@@ -696,14 +692,21 @@ public class HelloWorldMod implements ModInitializer {
                 .then(CommandManager.literal("reload_blueprints")
                     .executes(this::reloadBlueprints)
                 )
-                .then(CommandManager.literal("test_stairs")
-                    .executes(this::executeTestStairs)
+                // /ai confirm <requestId> - 确认指定的 AI 待确认操作请求（聊天框 [是] 按钮触发）。
+                .then(CommandManager.literal("confirm")
+                    .then(CommandManager.argument("requestId", StringArgumentType.word())
+                        .executes(this::executeConfirmRequest)
+                    )
                 )
-                // /ai force_timeout - 调试用：强制让自己当前所有待确认的 AI 操作请求
-                // （PendingActionConfirmation，如放置方块/建造蓝图/建议原版命令等）立即按
-                // 超时（=拒绝）处理，无需等待真实的 60 秒窗口，便于测试超时路径。
-                .then(CommandManager.literal("force_timeout")
-                    .executes(this::executeForceTimeout)
+                // /ai reject [requestId] - 拒绝 AI 待确认的操作请求：
+                //   带 requestId：拒绝该条（聊天框 [否] 按钮触发）；
+                //   不带参数：拒绝当前玩家所有待确认请求。
+                // 拒绝会触发拒绝回调并让对话续跑（AI 会收到"用户已拒绝"）。
+                .then(CommandManager.literal("reject")
+                    .then(CommandManager.argument("requestId", StringArgumentType.word())
+                        .executes(this::executeRejectRequest)
+                    )
+                    .executes(this::executeReject)
                 )
                 // /ai cam_test <x> <y> <z> <yaw> <pitch> - 测试摄像机截图工具：
                 // 直接调用 AICommandExecutor.executeCameraShotMaybeConfirm（与未来 [CAMERA_SHOT]
@@ -852,28 +855,6 @@ public class HelloWorldMod implements ModInitializer {
                 })
             );
 
-            // /aiconfirm <requestId> <yes|no> - 玩家点击聊天框 [是]/[否] 按钮时触发，
-            // 用于确认或拒绝 AI 使用 mod 自定义功能前弹出的操作确认请求（见 PendingActionConfirmation）。
-            dispatcher.register(CommandManager.literal("aiconfirm")
-                .then(CommandManager.argument("requestId", StringArgumentType.word())
-                    .then(CommandManager.argument("decision", StringArgumentType.word())
-                        .executes(ctx -> {
-                            ServerPlayerEntity player = ctx.getSource().getPlayer();
-                            if (player == null) return 0;
-                            String requestId = StringArgumentType.getString(ctx, "requestId");
-                            String decision = StringArgumentType.getString(ctx, "decision");
-                            boolean accepted = "yes".equalsIgnoreCase(decision);
-                            if (!accepted && !"no".equalsIgnoreCase(decision)) {
-                                ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("confirm.invalid_decision")), false);
-                                return 0;
-                            }
-                            String feedback = PendingActionConfirmation.resolve(requestId, accepted, player);
-                            ctx.getSource().sendFeedback(() -> Text.literal(feedback), false);
-                            return 1;
-                        })
-                    )
-                )
-            );
         });
     }
 
@@ -898,64 +879,51 @@ public class HelloWorldMod implements ModInitializer {
     }
 
     /**
-     * 测试命令：在玩家前方放置4个楼梯，分别标注 facing 方向。
-     * 用于确认 facing 属性的实际视觉效果。
+     * 命令：{@code /ai reject}。
+     * 拒绝当前玩家所有待确认的 AI 操作请求（{@link PendingActionConfirmation}），
+     * 无需输入 requestId 或点击 [否] 按钮。走与真实超时完全相同的拒绝路径：触发拒绝回调、
+     * 把"用户已拒绝"结果回喂给 AI 让对话续跑。
      */
-    private int executeTestStairs(CommandContext<ServerCommandSource> context) {
-        ServerPlayerEntity player = context.getSource().getPlayer();
-        if (player == null) return 0;
-
-        net.minecraft.server.world.ServerWorld world = player.getServerWorld();
-        net.minecraft.util.math.BlockPos base = player.getBlockPos().north(3);
-
-        String[] facings = {"north", "south", "east", "west"};
-        for (int i = 0; i < 4; i++) {
-            net.minecraft.util.math.BlockPos pos = base.east(i * 2);
-            net.minecraft.block.BlockState state = net.minecraft.block.Blocks.OAK_STAIRS.getDefaultState();
-            // 设置 facing
-            net.minecraft.state.property.Property<?> facingProp = null;
-            for (var prop : state.getProperties()) {
-                if (prop.getName().equals("facing")) {
-                    facingProp = prop;
-                    break;
-                }
-            }
-            if (facingProp != null) {
-                @SuppressWarnings({"unchecked", "rawtypes"})
-                net.minecraft.block.BlockState finalState = state.with(
-                    (net.minecraft.state.property.Property) facingProp,
-                    (Comparable) facingProp.parse(facings[i]).get()
-                );
-                world.setBlockState(pos, finalState);
-            }
-            // 在楼梯上方放一个告示牌...算了，直接在聊天里告诉玩家
-            String facing = facings[i];
-            int idx = i;
-            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test_stairs.item", (idx + 1), facing, (idx * 2))), false);
-        }
-        context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.test_stairs.done")), false);
-        return 1;
-    }
-
-    /**
-     * 调试命令：{@code /ai force_timeout}。
-     * 强制让当前玩家所有待确认的 AI 操作请求（{@link PendingActionConfirmation}）立即
-     * 按超时（=拒绝）处理，用于测试"玩家未在 60 秒内确认"这一路径，无需真的等待。
-     */
-    private int executeForceTimeout(CommandContext<ServerCommandSource> context) {
+    private int executeReject(CommandContext<ServerCommandSource> context) {
         ServerPlayerEntity player = context.getSource().getPlayer();
         if (player == null) return 0;
 
         // 同时覆盖两类挂起：待玩家点击 [是]/[否] 确认的操作，以及 execute_command 建议后
-        // 等待玩家在聊天框执行的命令（后者超时会触发"未执行"续跑）。
+        // 等待玩家在聊天框执行的命令（后者拒绝会触发"未执行"续跑）。
         int count = PendingActionConfirmation.forceTimeoutForPlayer(player.getUuid())
                 + PendingCommandSuggestion.forceTimeoutForPlayer(player.getUuid());
         if (count == 0) {
-            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.force_timeout.none")), false);
+            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.reject.none")), false);
         } else {
             final int finalCount = count;
-            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.force_timeout.done", finalCount)), false);
+            context.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.reject.done", finalCount)), false);
         }
+        return 1;
+    }
+
+    /**
+     * 命令：{@code /ai confirm <requestId>}。确认指定的 AI 待确认操作请求，
+     * 由聊天框 [是] 按钮的 ClickEvent 触发。调用 {@link PendingActionConfirmation#resolve}。
+     */
+    private int executeConfirmRequest(CommandContext<ServerCommandSource> context) {
+        ServerPlayerEntity player = context.getSource().getPlayer();
+        if (player == null) return 0;
+        String requestId = StringArgumentType.getString(context, "requestId");
+        String feedback = PendingActionConfirmation.resolve(requestId, true, player);
+        context.getSource().sendFeedback(() -> Text.literal(feedback), false);
+        return 1;
+    }
+
+    /**
+     * 命令：{@code /ai reject <requestId>}。拒绝指定的 AI 待确认操作请求，
+     * 由聊天框 [否] 按钮的 ClickEvent 触发。调用 {@link PendingActionConfirmation#resolve}。
+     */
+    private int executeRejectRequest(CommandContext<ServerCommandSource> context) {
+        ServerPlayerEntity player = context.getSource().getPlayer();
+        if (player == null) return 0;
+        String requestId = StringArgumentType.getString(context, "requestId");
+        String feedback = PendingActionConfirmation.resolve(requestId, false, player);
+        context.getSource().sendFeedback(() -> Text.literal(feedback), false);
         return 1;
     }
 
@@ -1916,8 +1884,8 @@ public class HelloWorldMod implements ModInitializer {
                     final int roundForResume = round;
                     final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
                     PendingActionConfirmation.request(player, summary, () -> {
-                        // 抓取网页 + 续跑时的 AI 调用都是网络阻塞操作，绝不能在 /aiconfirm 命令线程
-                        // （服务端主线程）上同步执行，否则会卡住整个服务器 tick。丢到独立线程异步处理。
+                        // 抓取网页 + 续跑时的 AI 调用都是网络阻塞操作，绝不能在确认包接收器切过来的
+                        // 服务端主线程上同步执行，否则会卡住整个服务器 tick。丢到独立线程异步处理。
                         CompletableFuture.runAsync(() -> {
                             String pageContent = webFetchService.fetch(url);
                             String toolFeedback = pageContent != null
@@ -2002,7 +1970,7 @@ public class HelloWorldMod implements ModInitializer {
                         AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player,
                             toolFeedback -> {
                                 // 批次内所有操作均已确认完毕：网络调用（续跑 AI）不能卡在这个回调所在的
-                                // /aiconfirm 命令线程（服务端主线程）上，切到独立线程异步处理。
+                                // 服务端主线程（由确认包接收器 server.execute 切来）上，切到独立线程异步处理。
                                 CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
                                         toolFeedback, roundForResume, lastAllowedForResume,
                                         player, server, streaming, notifier, finisher));
@@ -2069,7 +2037,7 @@ public class HelloWorldMod implements ModInitializer {
                             String summary = I18n.tr("confirm.summary.query_region", spec);
                             summaryHolder[0] = summary;
                             PendingActionConfirmation.request(player, summary, () -> {
-                                // executeQueryRegion 读取世界方块，此刻在主线程（/aiconfirm 命令线程）上
+                                // executeQueryRegion 读取世界方块，此刻在主线程（确认包接收器切来）上
                                 // 同步执行是安全且快速的；但续跑要调用 AI（网络阻塞），必须切到独立线程，
                                 // 避免卡住服务器主线程 tick。
                                 String result = AICommandExecutor.executeQueryRegion(spec, player, player.getServerWorld());
@@ -2156,7 +2124,7 @@ public class HelloWorldMod implements ModInitializer {
                                 summaryHolder[0] = summary;
                                 PendingActionConfirmation.request(player, summary, () -> {
                                     // 拍照+读图是阻塞操作，续跑还要调用 AI（网络阻塞），
-                                    // 都不能卡在 /aiconfirm 命令线程（服务端主线程）上，切到独立线程处理。
+                                    // 都不能卡在确认包接收器切来的服务端主线程上，切到独立线程处理。
                                     CompletableFuture.runAsync(() -> {
                                         String path = requestCameraShotAndAwait(player, camX, camY, camZ, camYaw, camPitch);
                                         String base64Image = readImageAsBase64WithRetry(path);
@@ -2285,8 +2253,8 @@ public class HelloWorldMod implements ModInitializer {
     /**
      * 信息获取型工具（联网搜索/抓取网页/地形查询）经玩家确认后的续跑逻辑：
      * 把工具结果组装成反馈文本，重新调用 AI，再递归进入 {@link #runToolLoopInternal} 处理后续可能的工具调用。
-     * 该方法运行在 /aiconfirm 命令处理线程上（服务端主线程），调用 AI 是网络阻塞操作，
-     * 但这条命令本身就是玩家主动触发的一次性操作，阻塞时长可接受（与 /ai 命令同步等待 AI 回复的体验一致）。
+     * 该方法运行在确认包接收器 server.execute 切来的服务端主线程上，调用 AI 是网络阻塞操作，
+     * 但这本身就是玩家主动点击触发的一次性操作，阻塞时长可接受（与 /ai 命令同步等待 AI 回复的体验一致）。
      *
      * <p>等价于 {@code resumeToolLoopAfterConfirmedInfoTool(toolFeedback, "", ...)}，不带图片续跑。
      */

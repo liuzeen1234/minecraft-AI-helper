@@ -1665,7 +1665,7 @@ public class AICommandExecutor {
      * 真正发起摄像机截图：给玩家客户端发包，请求在指定坐标/角度截图。
      *
      * <p>注意：这里只是发包，不会同步等待客户端截图完成——{@code onAccept} 可能运行在
-     * {@code /aiconfirm} 命令处理线程（服务端主线程）上，绝不能阻塞等待网络往返。
+     * 确认包接收器 server.execute 切来的服务端主线程上，绝不能阻塞等待网络往返。
      * 真正的截图结果由 {@code CAMERA_SHOT_RESPONSE_PACKET} 的接收器异步收到后另行处理
      * （测试阶段：直接聊天框回显文件路径；未来接入 AI 工具循环：把结果喂回续跑逻辑）。
      */

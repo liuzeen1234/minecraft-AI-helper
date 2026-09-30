@@ -48,11 +48,10 @@
 | `/ai <消息>` | 与 AI 对话；AI 可按回复中的受支持指令执行建造操作 |
 | `/ai blueprints` | 列出已加载的 TXT 蓝图 |
 | `/ai reload_blueprints` | 重新加载 TXT 蓝图 |
-| `/ai test_stairs` | 放置用于调试朝向的楼梯样例 |
 | `/ainew` | 清空对话历史，开始新话题 |
 | `/aistop` | 终止当前 AI 请求 |
 | `/aipos` | 显示当前坐标和维度 |
-| `/aiconfirm <请求ID> <yes\|no>` | 确认或拒绝待处理的 AI 操作请求，通常由点击聊天框 [是]/[否] 按钮自动触发，无需手动输入 |
+| `/ai reject` | 拒绝 AI 当前所有待确认的操作请求，无需输入请求 ID（等同点击聊天框 [否]，AI 会收到"用户已拒绝"并据此续跑） |
 
 ### 配置
 
@@ -68,16 +67,9 @@
 
 `/aiconfig` 不是通用的“任意键值”命令；`screenshot_enabled`、`context_enabled`、`stream_output_enabled` 请在设置界面调整，`api_format`、`rag_*` 请直接编辑配置文件后重载。界面显示语言不可配置，自动跟随当前 Minecraft 游戏语言。
 
-### 结构命令
+### 结构
 
-| 命令 | 说明 |
-|---|---|
-| `/ainbt list` | 列出 NBT 与 Litematica 结构文件 |
-| `/ainbt info <文件名>` | 显示 NBT 或 Litematica 结构详情 |
-| `/ainbt all` | 显示全部结构摘要 |
-| `/ainbt place <文件名>` | 在玩家脚下放置 NBT 或 Litematica 结构 |
-
-`/ainbt` 没有无参数 GUI。图形化结构管理请使用 `K` → **加载结构**。
+NBT / Litematica 结构的浏览、查看与放置请使用图形化浏览器：`K` → **加载结构**。（原 `/ainbt` 命令已移除。）
 
 > 聊天框日志显示和“生成测试日志”由可选的 debug-menu 模组提供，不属于 AI Builder 命令。
 
@@ -100,8 +92,10 @@ Mod 内置一套 Minecraft 知识库（方块、生物、指令、游戏机制�
 按 `K` → **AI 权限设置**（从原 AI 聊天设置中拆分出的独立页面）可控制：
 
 - **允许 AI 使用原版命令**（`vanilla_commands_enabled`，默认开启）：关闭后 system prompt 不再包含 `execute_command` 相关说明，AI 只能使用 mod 自带的具体功能（放置方块、给物品、生成实体、蓝图等），即使 AI 仍尝试生成该指令也会被直接拒绝。
-- **执行前需玩家确认**（`confirm_before_execute_enabled`，默认关闭）：开启后，AI 使用 mod 自定义功能（放置方块、建造蓝图、地形查询、联网搜索、抓取网页等）前会先在聊天框发送一条 [是]/[否] 按钮的确认消息，同一轮内的多个操作会合并为一次批量确认；60 秒内未确认将自动取消。点击按钮会自动执行 `/aiconfirm <请求ID> yes|no`，无需手动输入。
+- **执行前需玩家确认**（`confirm_before_execute_enabled`，默认关闭）：开启后，AI 使用 mod 自定义功能（放置方块、建造蓝图、地形查询、联网搜索、抓取网页等）前会先在聊天框发送一条 [是]/[否] 按钮的确认消息，同一轮内的多个操作会合并为一次批量确认；60 秒内未确认将按拒绝处理自动取消。点击 [是]/[否] 按钮即可确认或拒绝，无需输入任何命令；若想一次性拒绝当前所有待确认请求，可直接使用 `/ai reject`。
 - **最大工具调用轮数**（原聊天设置中的 `max_tool_rounds`，现迁移到本页面）：控制多轮 agentic 工具调用循环的上限，0 表示禁用多轮调用。
+
+> 开发者备注：聊天框 [是]/[否] 按钮通过 `ClickEvent.RUN_COMMAND` 执行命令——`[是]` → `/ai confirm <请求ID>`，`[否]` → `/ai reject <请求ID>`，命令处理器调用 `PendingActionConfirmation.resolve(...)`。`/ai reject` 不带参数则拒绝当前玩家所有待确认请求。
 
 ### 统一结构浏览器
 

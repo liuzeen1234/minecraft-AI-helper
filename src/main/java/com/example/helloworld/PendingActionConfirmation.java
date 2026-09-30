@@ -29,8 +29,9 @@ import java.util.function.Consumer;
  * 不会直接执行游戏操作，而是先通过本类在玩家聊天框发送一条带 [是]/[否] 可点击按钮的确认消息，
  * 并挂起真正的执行逻辑（以 {@link Runnable} 形式保存），等待玩家点击。
  *
- * <p>玩家点击按钮时会通过 ClickEvent 触发运行 {@code /aiconfirm <requestId> yes|no} 命令
- * （见 {@link HelloWorldMod} 中对该命令的注册），命令处理器调用 {@link #resolve(String, boolean, ServerPlayerEntity)}。
+ * <p>玩家点击按钮时通过 ClickEvent 运行命令：{@code [是]} → {@code /ai confirm <requestId>}，
+ * {@code [否]} → {@code /ai reject <requestId>}（见 {@link HelloWorldMod} 中 /ai 命令的注册），
+ * 命令处理器调用 {@link #resolve(String, boolean, ServerPlayerEntity)}。
  *
  * <p>超过 {@link #TIMEOUT_SECONDS} 秒未确认的请求会自动视为"否"，避免请求无限挂起。
  */
@@ -175,7 +176,7 @@ public final class PendingActionConfirmation {
                         .withColor(Formatting.GREEN)
                         .withBold(true)
                         .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                                "/aiconfirm " + requestId + " yes"))
+                                "/ai confirm " + requestId))
                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                 Text.literal(I18n.tr("confirm.yes_hover")))));
     }
@@ -186,17 +187,17 @@ public final class PendingActionConfirmation {
                         .withColor(Formatting.RED)
                         .withBold(true)
                         .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                                "/aiconfirm " + requestId + " no"))
+                                "/ai reject " + requestId))
                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                 Text.literal(I18n.tr("confirm.no_hover")))));
     }
 
     /**
-     * 处理玩家的确认结果（由 /aiconfirm 命令调用）。
+     * 处理玩家的确认结果（由 /ai confirm 或 /ai reject 命令调用）。
      *
      * @param requestId 请求 ID
-     * @param accepted  true=玩家点击了"是"，false=点击了"否"
-     * @param player    发起 /aiconfirm 的玩家（用于校验是否为请求发起者本人，并用于回复消息）
+     * @param accepted  true=玩家点击了"是"（/ai confirm），false=点击了"否"（/ai reject）
+     * @param player    执行命令的玩家（用于校验是否为请求发起者本人，并用于回复消息）
      * @return 处理结果文本，用于命令反馈
      */
     public static String resolve(String requestId, boolean accepted, ServerPlayerEntity player) {
@@ -236,6 +237,29 @@ public final class PendingActionConfirmation {
         return feedback;
     }
 
+    /**
+     * 调试/测试用：强制让指定玩家当前所有待确认请求立即按超时（=拒绝）处理，
+     * 不必等待真实的 {@link #TIMEOUT_SECONDS} 秒窗口。用于测试"AI 操作确认超时"路径，
+     * 复用与真实超时完全相同的逻辑（{@link #onTimeout()}），包括批次完成回调
+     * （如果这些请求属于同一批，触发后会照常把"拒绝"结果回喂给 AI）。
+     *
+     * @param playerUuid 目标玩家 UUID
+     * @return 被强制触发超时的请求数量
+     */
+    public static int forceTimeoutForPlayer(UUID playerUuid) {
+        List<PendingActionConfirmation> matched = new ArrayList<>();
+        for (PendingActionConfirmation pending : PENDING.values()) {
+            if (pending.playerUuid.equals(playerUuid)) {
+                matched.add(pending);
+            }
+        }
+        for (PendingActionConfirmation pending : matched) {
+            pending.timeoutTask.cancel(false);
+            pending.onTimeout();
+        }
+        return matched.size();
+    }
+
     private void onTimeout() {
         if (!markResolved()) {
             return;
@@ -245,8 +269,9 @@ public final class PendingActionConfirmation {
         try {
             net.minecraft.server.MinecraftServer server = player.getServer();
             Runnable task = () -> {
+                // 超时统一按"拒绝"处理，给玩家展示与主动拒绝相同的提示（confirm.rejected）。
                 // 玩家可能已经下线，sendMessage 在这种情况下由 Minecraft 内部处理，不会抛异常
-                player.sendMessage(Text.literal(I18n.tr("confirm.timeout", summary)), false);
+                player.sendMessage(Text.literal(I18n.tr("confirm.rejected", summary)), false);
                 if (onReject != null) {
                     try {
                         onReject.accept(player);

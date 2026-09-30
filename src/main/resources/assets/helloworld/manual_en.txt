@@ -39,11 +39,10 @@ Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other key
 | `/ai <message>` | Chat with AI; it can perform supported building actions |
 | `/ai blueprints` | List loaded TXT blueprints |
 | `/ai reload_blueprints` | Reload TXT blueprints from disk |
-| `/ai test_stairs` | Place a stair-orientation debug sample |
 | `/ainew` | Clear conversation history |
 | `/aistop` | Cancel the active AI request |
 | `/aipos` | Show the current coordinates and dimension |
-| `/aiconfirm <requestId> <yes\|no>` | Confirm or reject a pending AI action request; normally triggered automatically by clicking the [Yes]/[No] chat buttons |
+| `/ai reject` | Reject all pending AI action requests (no request ID needed; same as clicking [No]) |
 
 ### Configuration commands
 
@@ -59,18 +58,13 @@ Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other key
 
 `/aiconfig` is not a generic key/value command. Change screenshot, context, and streaming in the settings screens; edit `api_format` and `rag_*` options directly in the configuration file and reload it. The UI display language is not configurable; it automatically follows the current Minecraft game language.
 
-### Structure commands
+### Structures
 
-| Command | Description |
-|---|---|
-| `/ainbt list` | List NBT and Litematica structures |
-| `/ainbt info <filename>` | Show NBT or Litematica structure details |
-| `/ainbt all` | Show a summary of all structures |
-| `/ainbt place <filename>` | Place an NBT or Litematica structure at player feet |
-
-`/ainbt` has no no-argument GUI. Open the graphical browser through `K` → **Load Structures**.
+Browse and place NBT / Litematica structures through the graphical browser: `K` → **Load Structures**.
 
 > Chat-log forwarding and “Generate Test Logs” are supplied by the optional debug-menu mod, not by AI Builder commands.
+
+> Developer note: the [Yes]/[No] chat buttons run commands via ClickEvent — `[Yes]` → `/ai confirm <requestId>`, `[No]` → `/ai reject <requestId>`. Running `/ai reject` with no argument rejects all pending requests at once.
 
 ## Features
 

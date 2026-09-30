@@ -48,11 +48,10 @@ You can also press `K` → **AI Chat Settings** for a visual configuration. The 
 | `/ai <message>` | Chat with the AI; the AI can perform building actions via supported instructions in its reply |
 | `/ai blueprints` | List loaded TXT blueprints |
 | `/ai reload_blueprints` | Reload TXT blueprints |
-| `/ai test_stairs` | Place a sample of stairs for debugging orientation |
 | `/ainew` | Clear conversation history and start a new topic |
 | `/aistop` | Abort the current AI request |
 | `/aipos` | Show current coordinates and dimension |
-| `/aiconfirm <requestId> <yes\|no>` | Confirm or reject a pending AI action request; normally triggered automatically by clicking the [Yes]/[No] buttons in chat, no manual input needed |
+| `/ai reject` | Reject all of your pending AI action requests without typing a request ID (same as clicking [No]; the AI receives "user rejected" and continues accordingly) |
 
 ### Configuration
 
@@ -68,16 +67,9 @@ You can also press `K` → **AI Chat Settings** for a visual configuration. The 
 
 `/aiconfig` is not a general "arbitrary key-value" command. Set `screenshot_enabled`, `context_enabled`, and `stream_output_enabled` in the settings screen, and set `api_format` and `rag_*` options by editing the config file directly and then reloading. The UI display language is not configurable; it automatically follows the current Minecraft game language.
 
-### Structure Commands
+### Structures
 
-| Command | Description |
-|---|---|
-| `/ainbt list` | List NBT and Litematica structure files |
-| `/ainbt info <filename>` | Show details of an NBT or Litematica structure |
-| `/ainbt all` | Show a summary of all structures |
-| `/ainbt place <filename>` | Place an NBT or Litematica structure at the player's feet |
-
-`/ainbt` has no argument-less GUI. For graphical structure management, use `K` → **Load Structure**.
+Browse, inspect, and place NBT / Litematica structures through the graphical browser: `K` → **Load Structure**. (The former `/ainbt` command has been removed.)
 
 > The in-chat log display and "generate test log" are provided by the optional debug-menu mod and are not AI Builder commands.
 
@@ -100,8 +92,10 @@ The mod ships a built-in Minecraft knowledge base (Markdown docs covering blocks
 Press `K` → **AI Permission Settings** (split out from the AI Chat Settings screen into its own page) to control:
 
 - **Allow AI to Use Vanilla Commands** (`vanilla_commands_enabled`, on by default): when off, the system prompt no longer includes `execute_command` instructions, so the AI can only use the mod's built-in features (placing blocks, giving items, spawning entities, blueprints, etc.); even if the AI still tries to generate that instruction, it is rejected outright.
-- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, before the AI uses a mod-specific feature (placing blocks, building blueprints, terrain queries, web search, web scraping, etc.) it first sends a [Yes]/[No] confirmation message in chat; multiple actions in the same round are merged into a single batch confirmation, and unconfirmed requests are automatically canceled after 60 seconds. Clicking a button runs `/aiconfirm <requestId> yes|no` automatically.
+- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, before the AI uses a mod-specific feature (placing blocks, building blueprints, terrain queries, web search, web scraping, etc.) it first sends a [Yes]/[No] confirmation message in chat; multiple actions in the same round are merged into a single batch confirmation, and unconfirmed requests are treated as rejected and automatically canceled after 60 seconds. Just click [Yes]/[No] to confirm or reject — no command input needed; to reject all pending requests at once, use `/ai reject`.
 - **Max tool-call rounds** (the `max_tool_rounds` setting, moved here from the chat settings screen): caps the multi-round agentic tool-call loop; 0 disables multi-round tool calls.
+
+> Developer note: the [Yes]/[No] chat buttons run commands via `ClickEvent.RUN_COMMAND` — `[Yes]` → `/ai confirm <requestId>`, `[No]` → `/ai reject <requestId>`; the handler calls `PendingActionConfirmation.resolve(...)`. Running `/ai reject` with no argument rejects all of the player's pending requests.
 
 ### Unified Structure Browser
 
