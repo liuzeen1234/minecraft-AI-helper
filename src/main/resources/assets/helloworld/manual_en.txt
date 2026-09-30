@@ -37,12 +37,10 @@ Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other key
 | Command | Description |
 |---|---|
 | `/ai <message>` | Chat with AI; it can perform supported building actions |
-| `/ai blueprints` | List loaded TXT blueprints |
-| `/ai reload_blueprints` | Reload TXT blueprints from disk |
+| `/aiblueprints` | List loaded TXT blueprints |
 | `/ainew` | Clear conversation history |
 | `/aistop` | Cancel the active AI request |
-| `/aipos` | Show the current coordinates and dimension |
-| `/ai reject` | Reject all pending AI action requests (no request ID needed; same as clicking [No]) |
+| `/aireject` | Reject all pending AI action requests (no request ID needed; same as clicking [No]) |
 
 ### Configuration commands
 
@@ -52,7 +50,6 @@ Rebind `K` in Options → Controls → Key Binds under **AI Builder**. Other key
 | `/aiconfig api_base_url <value>` | Set the API endpoint |
 | `/aiconfig api_key <value>` | Set the API key |
 | `/aiconfig model <value>` | Set the model |
-| `/aiconfig web_search <on/off>` | Enable or disable web search |
 | `/aiconfig tavily_api_key <value>` | Set the Tavily API key |
 | `/aiconfig reload` | Reload a manually edited configuration file |
 
@@ -64,7 +61,7 @@ Browse and place NBT / Litematica structures through the graphical browser: `K` 
 
 > Chat-log forwarding and “Generate Test Logs” are supplied by the optional debug-menu mod, not by AI Builder commands.
 
-> Developer note: the [Yes]/[No] chat buttons run commands via ClickEvent — `[Yes]` → `/ai confirm <requestId>`, `[No]` → `/ai reject <requestId>`. Running `/ai reject` with no argument rejects all pending requests at once.
+> Developer note: the [Yes]/[No] chat buttons run commands via ClickEvent — `[Yes]` → `/aiconfirm <requestId>`, `[No]` → `/aireject <requestId>`. Running `/aireject` with no argument rejects all pending requests at once.
 
 ## Features
 

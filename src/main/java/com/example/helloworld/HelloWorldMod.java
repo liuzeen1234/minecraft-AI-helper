@@ -1,6 +1,5 @@
 package com.example.helloworld;
 
-import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.api.ModInitializer;
@@ -74,7 +73,7 @@ public class HelloWorldMod implements ModInitializer {
     public static final Identifier CHAT_SCREEN_MSG_WITH_IMG_PACKET = new Identifier(MOD_ID, "chat_screen_msg_img");
     // 服务端 -> 客户端：AI 建议的原版命令，预填到聊天输入框，需玩家自行确认发送（不会自动执行）
     public static final Identifier SUGGEST_COMMAND_PACKET = new Identifier(MOD_ID, "suggest_command");
-    // 服务端 -> 客户端：请求在指定坐标/角度用摄像机截图（[CAMERA_SHOT] 工具与 /ai cam_test 测试命令共用）
+    // 服务端 -> 客户端：请求在指定坐标/角度用摄像机截图（AI 工具循环的 [CAMERA_SHOT] 标签使用）
     public static final Identifier REQUEST_CAMERA_SHOT_PACKET = new Identifier(MOD_ID, "request_camera_shot");
     // 客户端 -> 服务端：回传摄像机截图结果（文件路径，空字符串表示截图关闭或失败）
     public static final Identifier CAMERA_SHOT_RESPONSE_PACKET = new Identifier(MOD_ID, "camera_shot_response");
@@ -715,9 +714,9 @@ public class HelloWorldMod implements ModInitializer {
             });
         });
 
-        // 注册接收客户端摄像机截图结果的处理器（[CAMERA_SHOT] 工具 / /ai cam_test 测试命令共用）。
-        // 若有对应的挂起 Future（AI 工具循环发起的请求），优先 complete 它，交给等待方处理；
-        // 否则说明是 /ai cam_test 测试命令发起的（不等待结果），直接在聊天框回显路径。
+        // 注册接收客户端摄像机截图结果的处理器（AI 工具循环的 [CAMERA_SHOT] 标签使用）。
+        // 正常情况下都有对应的挂起 Future（AI 工具循环发起的请求），complete 它交给等待方处理；
+        // 兜底：若没有匹配的 Future（异常/孤立回包），直接在聊天框回显路径或提示截图关闭。
         ServerPlayNetworking.registerGlobalReceiver(CAMERA_SHOT_RESPONSE_PACKET, (server, player, handler, buf, responseSender) -> {
             String screenshotPath = buf.readString();
             CompletableFuture<String> pending = pendingCameraShots.remove(player.getUuid());
@@ -736,47 +735,32 @@ public class HelloWorldMod implements ModInitializer {
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(CommandManager.literal("ai")
-                .then(CommandManager.literal("blueprints")
-                    .executes(this::listBlueprints)
-                )
-                .then(CommandManager.literal("reload_blueprints")
-                    .executes(this::reloadBlueprints)
-                )
-                // /ai confirm <requestId> - 确认指定的 AI 待确认操作请求（聊天框 [是] 按钮触发）。
-                .then(CommandManager.literal("confirm")
-                    .then(CommandManager.argument("requestId", StringArgumentType.word())
-                        .executes(this::executeConfirmRequest)
-                    )
-                )
-                // /ai reject [requestId] - 拒绝 AI 待确认的操作请求：
-                //   带 requestId：拒绝该条（聊天框 [否] 按钮触发）；
-                //   不带参数：拒绝当前玩家所有待确认请求。
-                // 拒绝会触发拒绝回调并让对话续跑（AI 会收到"用户已拒绝"）。
-                .then(CommandManager.literal("reject")
-                    .then(CommandManager.argument("requestId", StringArgumentType.word())
-                        .executes(this::executeRejectRequest)
-                    )
-                    .executes(this::executeReject)
-                )
-                // /ai cam_test <x> <y> <z> <yaw> <pitch> - 测试摄像机截图工具：
-                // 直接调用 AICommandExecutor.executeCameraShotMaybeConfirm（与未来 [CAMERA_SHOT]
-                // 标签共用同一入口），会按 confirm_before_execute_enabled 走确认流程。
-                .then(CommandManager.literal("cam_test")
-                    .then(CommandManager.argument("x", DoubleArgumentType.doubleArg())
-                        .then(CommandManager.argument("y", DoubleArgumentType.doubleArg())
-                            .then(CommandManager.argument("z", DoubleArgumentType.doubleArg())
-                                .then(CommandManager.argument("yaw", DoubleArgumentType.doubleArg())
-                                    .then(CommandManager.argument("pitch", DoubleArgumentType.doubleArg())
-                                        .executes(this::executeCameraShotTest)
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
                 .then(CommandManager.argument("message", StringArgumentType.greedyString())
                     .executes(this::executeAi)
                 )
+            );
+
+            // /aiblueprints - 列出已加载的 TXT 蓝图
+            dispatcher.register(CommandManager.literal("aiblueprints")
+                .executes(this::listBlueprints)
+            );
+
+            // /aiconfirm <requestId> - 确认指定的 AI 待确认操作请求（聊天框 [是] 按钮触发）。
+            dispatcher.register(CommandManager.literal("aiconfirm")
+                .then(CommandManager.argument("requestId", StringArgumentType.word())
+                    .executes(this::executeConfirmRequest)
+                )
+            );
+
+            // /aireject [requestId] - 拒绝 AI 待确认的操作请求：
+            //   带 requestId：拒绝该条（聊天框 [否] 按钮触发）；
+            //   不带参数：拒绝当前玩家所有待确认请求。
+            // 拒绝会触发拒绝回调并让对话续跑（AI 会收到"用户已拒绝"）。
+            dispatcher.register(CommandManager.literal("aireject")
+                .then(CommandManager.argument("requestId", StringArgumentType.word())
+                    .executes(this::executeRejectRequest)
+                )
+                .executes(this::executeReject)
             );
 
             // /aiconfig 查看和修改 AI 配置
@@ -826,18 +810,6 @@ public class HelloWorldMod implements ModInitializer {
                         })
                     )
                 )
-                // /aiconfig web_search <on/off>
-                .then(CommandManager.literal("web_search")
-                    .then(CommandManager.argument("value", StringArgumentType.greedyString())
-                        .executes(ctx -> {
-                            String value = StringArgumentType.getString(ctx, "value");
-                            boolean enabled = value.equalsIgnoreCase("on") || value.equalsIgnoreCase("true");
-                            CONFIG.setWebSearchEnabled(enabled);
-                            ctx.getSource().sendFeedback(() -> Text.literal(enabled ? I18n.tr("server.config.web_search.enabled") : I18n.tr("server.config.web_search.disabled")), false);
-                            return 1;
-                        })
-                    )
-                )
                 // /aiconfig tavily_api_key <value>
                 .then(CommandManager.literal("tavily_api_key")
                     .then(CommandManager.argument("value", StringArgumentType.greedyString())
@@ -864,25 +836,6 @@ public class HelloWorldMod implements ModInitializer {
                 .executes(ctx -> {
                     conversationHistory.clear();
                     ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.ai.new_topic")), false);
-                    return 1;
-                })
-            );
-
-            // /aipos - 显示当前坐标
-            dispatcher.register(CommandManager.literal("aipos")
-                .executes(ctx -> {
-                    ServerPlayerEntity p = ctx.getSource().getPlayer();
-                    if (p == null) {
-                        ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.pos.players_only")), false);
-                        return 0;
-                    }
-                    double x = Math.round(p.getX() * 100.0) / 100.0;
-                    double y = Math.round(p.getY() * 100.0) / 100.0;
-                    double z = Math.round(p.getZ() * 100.0) / 100.0;
-                    String dim = p.getWorld().getRegistryKey().getValue().toString();
-                    ctx.getSource().sendFeedback(() -> Text.literal(
-                        I18n.tr("server.pos.result", x, y, z, dim)
-                    ), false);
                     return 1;
                 })
             );
@@ -921,15 +874,8 @@ public class HelloWorldMod implements ModInitializer {
         return 1;
     }
 
-    private int reloadBlueprints(CommandContext<ServerCommandSource> context) {
-        blueprintRegistry.loadAll();
-        ServerCommandSource source = context.getSource();
-        source.sendFeedback(() -> Text.literal(I18n.tr("server.blueprints.reloaded", blueprintRegistry.size())), false);
-        return 1;
-    }
-
     /**
-     * 命令：{@code /ai reject}。
+     * 命令：{@code /aireject}。
      * 拒绝当前玩家所有待确认的 AI 操作请求（{@link PendingActionConfirmation}），
      * 无需输入 requestId 或点击 [否] 按钮。走与真实超时完全相同的拒绝路径：触发拒绝回调、
      * 把"用户已拒绝"结果回喂给 AI 让对话续跑。
@@ -952,7 +898,7 @@ public class HelloWorldMod implements ModInitializer {
     }
 
     /**
-     * 命令：{@code /ai confirm <requestId>}。确认指定的 AI 待确认操作请求，
+     * 命令：{@code /aiconfirm <requestId>}。确认指定的 AI 待确认操作请求，
      * 由聊天框 [是] 按钮的 ClickEvent 触发。调用 {@link PendingActionConfirmation#resolve}。
      */
     private int executeConfirmRequest(CommandContext<ServerCommandSource> context) {
@@ -965,7 +911,7 @@ public class HelloWorldMod implements ModInitializer {
     }
 
     /**
-     * 命令：{@code /ai reject <requestId>}。拒绝指定的 AI 待确认操作请求，
+     * 命令：{@code /aireject <requestId>}。拒绝指定的 AI 待确认操作请求，
      * 由聊天框 [否] 按钮的 ClickEvent 触发。调用 {@link PendingActionConfirmation#resolve}。
      */
     private int executeRejectRequest(CommandContext<ServerCommandSource> context) {
@@ -973,27 +919,6 @@ public class HelloWorldMod implements ModInitializer {
         if (player == null) return 0;
         String requestId = StringArgumentType.getString(context, "requestId");
         String feedback = PendingActionConfirmation.resolve(requestId, false, player);
-        context.getSource().sendFeedback(() -> Text.literal(feedback), false);
-        return 1;
-    }
-
-    /**
-     * 测试命令：{@code /ai cam_test <x> <y> <z> <yaw> <pitch>}。
-     * 直接调用 {@link AICommandExecutor#executeCameraShotMaybeConfirm}——与未来
-     * {@code [CAMERA_SHOT]} 标签共用同一入口，会按 {@code confirm_before_execute_enabled}
-     * 走确认流程（开启时先弹 [是]/[否]，玩家确认后才真正发包给客户端截图）。
-     */
-    private int executeCameraShotTest(CommandContext<ServerCommandSource> context) {
-        ServerPlayerEntity player = context.getSource().getPlayer();
-        if (player == null) return 0;
-
-        double x = DoubleArgumentType.getDouble(context, "x");
-        double y = DoubleArgumentType.getDouble(context, "y");
-        double z = DoubleArgumentType.getDouble(context, "z");
-        float yaw = (float) DoubleArgumentType.getDouble(context, "yaw");
-        float pitch = (float) DoubleArgumentType.getDouble(context, "pitch");
-
-        String feedback = AICommandExecutor.executeCameraShotMaybeConfirm(x, y, z, yaw, pitch, player);
         context.getSource().sendFeedback(() -> Text.literal(feedback), false);
         return 1;
     }
@@ -2311,7 +2236,7 @@ public class HelloWorldMod implements ModInitializer {
      * AI 卡在等待中（连拍会直接中断）。这里让拒绝也续跑一次：把"用户拒绝了本次【XX】操作"喂回 AI，
      * 让它据此继续（换方案、拍下一张或直接答复），而不是无响应。
      *
-     * <p>onReject 由 {@code resolve}（/ai reject 命令线程）或 {@code onTimeout}（超时线程 server.execute 主线程）
+     * <p>onReject 由 {@code resolve}（/aireject 命令线程）或 {@code onTimeout}（超时线程 server.execute 主线程）
      * 调用，续跑要调 AI（网络阻塞），因此和 onAccept 一样必须切到独立线程，绝不能卡在调用线程上。
      *
      * @param toolName          展示给 AI 的工具名（如"摄像机截图"），拼进拒绝反馈文本

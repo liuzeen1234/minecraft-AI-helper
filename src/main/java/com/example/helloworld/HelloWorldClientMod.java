@@ -32,7 +32,7 @@ public class HelloWorldClientMod implements ClientModInitializer {
     private String pendingMessage = null;
     private int delayTicks = 0;
 
-    // 摄像机截图（[CAMERA_SHOT] 工具 / /ai cam_test 测试命令共用）用的延迟状态
+    // 摄像机截图（AI 工具循环的 [CAMERA_SHOT] 标签）用的延迟状态
     private double pendingCamX, pendingCamY, pendingCamZ;
     private float pendingCamYaw, pendingCamPitch;
     private boolean pendingCameraShot = false;
@@ -82,7 +82,7 @@ public class HelloWorldClientMod implements ClientModInitializer {
             });
         });
 
-        // 注册接收服务端摄像机截图请求（[CAMERA_SHOT] 工具 / /ai cam_test 测试命令共用）：
+        // 注册接收服务端摄像机截图请求（AI 工具循环的 [CAMERA_SHOT] 标签）：
         // 收到坐标+角度后，等 2 个 tick 再截图（等待区块/光照渲染稳定）。
         ClientPlayNetworking.registerGlobalReceiver(HelloWorldMod.REQUEST_CAMERA_SHOT_PACKET, (client, handler, buf, responseSender) -> {
             double x = buf.readDouble();

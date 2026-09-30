@@ -46,12 +46,10 @@ You can also press `K` → **AI Chat Settings** for a visual configuration. The 
 | Command | Description |
 |---|---|
 | `/ai <message>` | Chat with the AI; the AI can perform building actions via supported instructions in its reply |
-| `/ai blueprints` | List loaded TXT blueprints |
-| `/ai reload_blueprints` | Reload TXT blueprints |
+| `/aiblueprints` | List loaded TXT blueprints |
 | `/ainew` | Clear conversation history and start a new topic |
 | `/aistop` | Abort the current AI request |
-| `/aipos` | Show current coordinates and dimension |
-| `/ai reject` | Reject all of your pending AI action requests without typing a request ID (same as clicking [No]; the AI receives "user rejected" and continues accordingly) |
+| `/aireject` | Reject all of your pending AI action requests without typing a request ID (same as clicking [No]; the AI receives "user rejected" and continues accordingly) |
 
 ### Configuration
 
@@ -61,7 +59,6 @@ You can also press `K` → **AI Chat Settings** for a visual configuration. The 
 | `/aiconfig api_base_url <value>` | Set the API URL |
 | `/aiconfig api_key <value>` | Set the API key |
 | `/aiconfig model <value>` | Set the model name |
-| `/aiconfig web_search <on/off>` | Enable or disable web search |
 | `/aiconfig tavily_api_key <value>` | Set the Tavily API key |
 | `/aiconfig reload` | Reload the config file after manual edits |
 
@@ -92,10 +89,10 @@ The mod ships a built-in Minecraft knowledge base (Markdown docs covering blocks
 Press `K` → **AI Permission Settings** (split out from the AI Chat Settings screen into its own page) to control:
 
 - **Allow AI to Use Vanilla Commands** (`vanilla_commands_enabled`, on by default): when off, the system prompt no longer includes `execute_command` instructions, so the AI can only use the mod's built-in features (placing blocks, giving items, spawning entities, blueprints, etc.); even if the AI still tries to generate that instruction, it is rejected outright.
-- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, before the AI uses a mod-specific feature (placing blocks, building blueprints, terrain queries, web search, web scraping, etc.) it first sends a [Yes]/[No] confirmation message in chat; multiple actions in the same round are merged into a single batch confirmation, and unconfirmed requests are treated as rejected and automatically canceled after 60 seconds. Just click [Yes]/[No] to confirm or reject — no command input needed; to reject all pending requests at once, use `/ai reject`.
+- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, before the AI uses a mod-specific feature (placing blocks, building blueprints, terrain queries, web search, web scraping, etc.) it first sends a [Yes]/[No] confirmation message in chat; multiple actions in the same round are merged into a single batch confirmation, and unconfirmed requests are treated as rejected and automatically canceled after 60 seconds. Just click [Yes]/[No] to confirm or reject — no command input needed; to reject all pending requests at once, use `/aireject`.
 - **Max tool-call rounds** (the `max_tool_rounds` setting, moved here from the chat settings screen): caps the multi-round agentic tool-call loop; 0 disables multi-round tool calls.
 
-> Developer note: the [Yes]/[No] chat buttons run commands via `ClickEvent.RUN_COMMAND` — `[Yes]` → `/ai confirm <requestId>`, `[No]` → `/ai reject <requestId>`; the handler calls `PendingActionConfirmation.resolve(...)`. Running `/ai reject` with no argument rejects all of the player's pending requests.
+> Developer note: the [Yes]/[No] chat buttons run commands via `ClickEvent.RUN_COMMAND` — `[Yes]` → `/aiconfirm <requestId>`, `[No]` → `/aireject <requestId>`; the handler calls `PendingActionConfirmation.resolve(...)`. Running `/aireject` with no argument rejects all of the player's pending requests.
 
 ### Unified Structure Browser
 

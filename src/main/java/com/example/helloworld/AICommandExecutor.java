@@ -1590,7 +1590,7 @@ public class AICommandExecutor {
         }
     }
 
-    // ================= 摄像机截图工具 [CAMERA_SHOT]（AI 工具循环 + /ai cam_test 测试命令共用） =================
+    // ================= 摄像机截图工具 [CAMERA_SHOT]（AI 工具循环使用） =================
 
     /**
      * 判断 AI 回复中是否请求了摄像机截图工具（[CAMERA_SHOT]）。
@@ -1634,44 +1634,4 @@ public class AICommandExecutor {
         }
     }
 
-    /**
-     * 摄像机截图指令的确认包装：根据"执行前需确认"开关决定直接发起拍照，
-     * 还是先在聊天框弹出 [是]/[否]，玩家确认后再真正发包给客户端。
-     *
-     * <p>这是 {@code /ai cam_test} 测试命令专用的"发完包就返回"版本：不等待、不读图，
-     * 客户端截图完成后由 {@code CAMERA_SHOT_RESPONSE_PACKET} 处理器单独回显路径。
-     * AI 工具循环中的 {@code [CAMERA_SHOT]} 标签走的是 {@code HelloWorldMod} 里
-     * 会阻塞等待客户端回包、并把图片转 base64 喂回 AI 的另一套逻辑（见 {@code awaitCameraShot}），
-     * 两者共用同一个 {@code requestCameraShot} 发包入口，只是等不等结果不同。
-     *
-     * @param x, y, z 世界绝对坐标（允许小数，摄像机精确放置在该点）
-     * @param yaw     水平朝向角度，0=南，90=西，180/-180=北，-90=东（与 Minecraft 原版一致）
-     * @param pitch   俯仰角度，-90=垂直向上，0=水平，90=垂直向下
-     * @param player  发起请求的玩家（拍照结果只会发给这个玩家的客户端）
-     */
-    public static String executeCameraShotMaybeConfirm(double x, double y, double z,
-                                                         float yaw, float pitch,
-                                                         ServerPlayerEntity player) {
-        String summary = I18n.tr("confirm.summary.camera_shot", x, y, z, yaw, pitch);
-        if (!HelloWorldMod.getConfig().isConfirmBeforeExecuteEnabled()) {
-            return executeCameraShot(x, y, z, yaw, pitch, player);
-        }
-        PendingActionConfirmation.request(player, summary,
-                () -> executeCameraShot(x, y, z, yaw, pitch, player));
-        return I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
-    }
-
-    /**
-     * 真正发起摄像机截图：给玩家客户端发包，请求在指定坐标/角度截图。
-     *
-     * <p>注意：这里只是发包，不会同步等待客户端截图完成——{@code onAccept} 可能运行在
-     * 确认包接收器 server.execute 切来的服务端主线程上，绝不能阻塞等待网络往返。
-     * 真正的截图结果由 {@code CAMERA_SHOT_RESPONSE_PACKET} 的接收器异步收到后另行处理
-     * （测试阶段：直接聊天框回显文件路径；未来接入 AI 工具循环：把结果喂回续跑逻辑）。
-     */
-    private static String executeCameraShot(double x, double y, double z, float yaw, float pitch,
-                                              ServerPlayerEntity player) {
-        HelloWorldMod.requestCameraShot(player, x, y, z, yaw, pitch);
-        return I18n.tr("cmd.camera_shot.requested", x, y, z, yaw, pitch);
-    }
 }

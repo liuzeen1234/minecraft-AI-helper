@@ -46,12 +46,10 @@
 | 命令 | 说明 |
 |---|---|
 | `/ai <消息>` | 与 AI 对话；AI 可按回复中的受支持指令执行建造操作 |
-| `/ai blueprints` | 列出已加载的 TXT 蓝图 |
-| `/ai reload_blueprints` | 重新加载 TXT 蓝图 |
+| `/aiblueprints` | 列出已加载的 TXT 蓝图 |
 | `/ainew` | 清空对话历史，开始新话题 |
 | `/aistop` | 终止当前 AI 请求 |
-| `/aipos` | 显示当前坐标和维度 |
-| `/ai reject` | 拒绝 AI 当前所有待确认的操作请求，无需输入请求 ID（等同点击聊天框 [否]，AI 会收到"用户已拒绝"并据此续跑） |
+| `/aireject` | 拒绝 AI 当前所有待确认的操作请求，无需输入请求 ID（等同点击聊天框 [否]，AI 会收到"用户已拒绝"并据此续跑） |
 
 ### 配置
 
@@ -61,7 +59,6 @@
 | `/aiconfig api_base_url <值>` | 设置 API 地址 |
 | `/aiconfig api_key <值>` | 设置 API 密钥 |
 | `/aiconfig model <值>` | 设置模型名称 |
-| `/aiconfig web_search <on/off>` | 开启或关闭联网搜索 |
 | `/aiconfig tavily_api_key <值>` | 设置 Tavily API 密钥 |
 | `/aiconfig reload` | 重新加载手动编辑后的配置文件 |
 
@@ -92,10 +89,10 @@ Mod 内置一套 Minecraft 知识库（方块、生物、指令、游戏机制�
 按 `K` → **AI 权限设置**（从原 AI 聊天设置中拆分出的独立页面）可控制：
 
 - **允许 AI 使用原版命令**（`vanilla_commands_enabled`，默认开启）：关闭后 system prompt 不再包含 `execute_command` 相关说明，AI 只能使用 mod 自带的具体功能（放置方块、给物品、生成实体、蓝图等），即使 AI 仍尝试生成该指令也会被直接拒绝。
-- **执行前需玩家确认**（`confirm_before_execute_enabled`，默认关闭）：开启后，AI 使用 mod 自定义功能（放置方块、建造蓝图、地形查询、联网搜索、抓取网页等）前会先在聊天框发送一条 [是]/[否] 按钮的确认消息，同一轮内的多个操作会合并为一次批量确认；60 秒内未确认将按拒绝处理自动取消。点击 [是]/[否] 按钮即可确认或拒绝，无需输入任何命令；若想一次性拒绝当前所有待确认请求，可直接使用 `/ai reject`。
+- **执行前需玩家确认**（`confirm_before_execute_enabled`，默认关闭）：开启后，AI 使用 mod 自定义功能（放置方块、建造蓝图、地形查询、联网搜索、抓取网页等）前会先在聊天框发送一条 [是]/[否] 按钮的确认消息，同一轮内的多个操作会合并为一次批量确认；60 秒内未确认将按拒绝处理自动取消。点击 [是]/[否] 按钮即可确认或拒绝，无需输入任何命令；若想一次性拒绝当前所有待确认请求，可直接使用 `/aireject`。
 - **最大工具调用轮数**（原聊天设置中的 `max_tool_rounds`，现迁移到本页面）：控制多轮 agentic 工具调用循环的上限，0 表示禁用多轮调用。
 
-> 开发者备注：聊天框 [是]/[否] 按钮通过 `ClickEvent.RUN_COMMAND` 执行命令——`[是]` → `/ai confirm <请求ID>`，`[否]` → `/ai reject <请求ID>`，命令处理器调用 `PendingActionConfirmation.resolve(...)`。`/ai reject` 不带参数则拒绝当前玩家所有待确认请求。
+> 开发者备注：聊天框 [是]/[否] 按钮通过 `ClickEvent.RUN_COMMAND` 执行命令——`[是]` → `/aiconfirm <请求ID>`，`[否]` → `/aireject <请求ID>`，命令处理器调用 `PendingActionConfirmation.resolve(...)`。`/aireject` 不带参数则拒绝当前玩家所有待确认请求。
 
 ### 统一结构浏览器
 

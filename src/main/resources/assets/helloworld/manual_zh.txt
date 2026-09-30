@@ -37,12 +37,10 @@
 | 命令 | 说明 |
 |---|---|
 | `/ai <消息>` | 与 AI 对话；AI 可执行受支持的建造操作 |
-| `/ai blueprints` | 列出已加载的 TXT 蓝图 |
-| `/ai reload_blueprints` | 从磁盘重载 TXT 蓝图 |
+| `/aiblueprints` | 列出已加载的 TXT 蓝图 |
 | `/ainew` | 清空对话历史 |
 | `/aistop` | 终止当前 AI 请求 |
-| `/aipos` | 显示当前坐标和维度 |
-| `/ai reject` | 拒绝 AI 当前所有待确认的操作请求（无需输入请求 ID，等同点击 [否]） |
+| `/aireject` | 拒绝 AI 当前所有待确认的操作请求（无需输入请求 ID，等同点击 [否]） |
 
 ### 配置命令
 
@@ -52,7 +50,6 @@
 | `/aiconfig api_base_url <值>` | 设置 API 地址 |
 | `/aiconfig api_key <值>` | 设置 API 密钥 |
 | `/aiconfig model <值>` | 设置模型 |
-| `/aiconfig web_search <on/off>` | 开启或关闭联网搜索 |
 | `/aiconfig tavily_api_key <值>` | 设置 Tavily API 密钥 |
 | `/aiconfig reload` | 重载手动编辑后的配置文件 |
 
@@ -64,7 +61,7 @@
 
 > 聊天框日志转发和“生成测试日志”由可选的 debug-menu 模组提供，不属于 AI Builder 命令。
 
-> 开发者备注：聊天框 [是]/[否] 按钮通过 ClickEvent 执行命令——`[是]` → `/ai confirm <请求ID>`，`[否]` → `/ai reject <请求ID>`。`/ai reject` 不带参数可一次性拒绝当前所有待确认请求。
+> 开发者备注：聊天框 [是]/[否] 按钮通过 ClickEvent 执行命令——`[是]` → `/aiconfirm <请求ID>`，`[否]` → `/aireject <请求ID>`。`/aireject` 不带参数可一次性拒绝当前所有待确认请求。
 
 ## 功能详解
 
