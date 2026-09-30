@@ -238,8 +238,11 @@ public class HelloWorldClientMod implements ClientModInitializer {
      * 因为 {@code setCameraEntity} 只影响下一次渲染，本 tick 内读 framebuffer 仍是旧画面。
      */
     private void switchCameraForShot(MinecraftClient client, double x, double y, double z, float yaw, float pitch) {
-        boolean screenshotEnabled = HelloWorldMod.getConfig().isScreenshotEnabled();
-        if (!screenshotEnabled || client.player == null || client.world == null) {
+        // 摄像机截图（[CAMERA_SHOT]）用的是 camera_shot_enabled 开关，而非 AI 聊天截图的 screenshot_enabled。
+        // 服务端已按 camera_shot_enabled 决定是否发起拍照请求，客户端这里必须用同一个开关判断，
+        // 否则会出现"服务端已请求拍照、客户端却因误判 screenshot_enabled=false 立即回空串"导致截图失败。
+        boolean cameraShotEnabled = HelloWorldMod.getConfig().isCameraShotEnabled();
+        if (!cameraShotEnabled || client.player == null || client.world == null) {
             PacketByteBuf responseBuf = PacketByteBufs.create();
             responseBuf.writeString("");
             ClientPlayNetworking.send(HelloWorldMod.CAMERA_SHOT_RESPONSE_PACKET, responseBuf);
