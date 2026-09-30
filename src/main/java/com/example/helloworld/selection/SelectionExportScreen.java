@@ -53,7 +53,12 @@ public class SelectionExportScreen extends Screen {
         int totalW = 220;
         int leftX = cx - totalW / 2;
 
+        // 方块统计列表：把三种空气（air/cave_air/void_air）排到最前，方便快速切换保存开关，
+        // 其余方块保持字母序（blockCounts 是 TreeMap，本身已按字母序）。
         blockList = new ArrayList<>(result.blockCounts().entrySet());
+        blockList.sort(java.util.Comparator
+                .comparingInt((Map.Entry<String, Integer> e) -> airPriority(e.getKey()))
+                .thenComparing(Map.Entry::getKey));
 
         // 导出选区按钮（点击后弹出导出菜单）
         int exportBtnY = this.height - 80;
@@ -97,10 +102,16 @@ public class SelectionExportScreen extends Screen {
         context.drawTextWithShadow(this.textRenderer,
                 com.example.helloworld.I18n.tr("selection.export.types", result.blockCounts().size()),
                 leftX, infoY + 24, 0xAAAAAA);
-        // 忽略提示：显示已忽略的种类数
-        if (!ignoredBlocks.isEmpty()) {
+        // 忽略提示：只统计"选区里实际存在"的被忽略种类数。
+        // ignoredBlocks 预置了 air/cave_air/void_air，但选区里未必都有，
+        // 故与实际方块种类求交集，避免显示不存在的种类。
+        int ignoredPresent = 0;
+        for (String id : ignoredBlocks) {
+            if (result.blockCounts().containsKey(id)) ignoredPresent++;
+        }
+        if (ignoredPresent > 0) {
             context.drawTextWithShadow(this.textRenderer,
-                    com.example.helloworld.I18n.tr("selection.export.ignored_count", ignoredBlocks.size()),
+                    com.example.helloworld.I18n.tr("selection.export.ignored_count", ignoredPresent),
                     leftX + 120, infoY + 24, 0xFF7777);
         }
 
@@ -120,13 +131,18 @@ public class SelectionExportScreen extends Screen {
             Map.Entry<String, Integer> entry = blockList.get(i);
             String blockId = entry.getKey();
             boolean ignored = ignoredBlocks.contains(blockId);
-
-            String line = String.format("%-30s x%d", blockId, entry.getValue());
-            // 截断过长的行，给右侧符号留出空间
-            if (line.length() > 34) line = line.substring(0, 34);
-            // 被忽略的方块用灰色暗显，正常记录的用亮色
             int textColor = ignored ? 0x888888 : 0xDDDDDD;
-            context.drawTextWithShadow(this.textRenderer, line, leftX, listY, textColor);
+
+            // 计数 "x<数量>" 右对齐，紧贴 +/- 符号左侧，完整显示不截断
+            String countStr = "x" + entry.getValue();
+            int countW = this.textRenderer.getWidth(countStr);
+            int countX = toggleX - 6 - countW;
+            context.drawTextWithShadow(this.textRenderer, countStr, countX, listY, textColor);
+
+            // 方块 id 左对齐，按像素宽度截断，避免和计数重叠
+            int idMaxW = countX - 4 - leftX;
+            String idText = this.textRenderer.trimToWidth(blockId, idMaxW);
+            context.drawTextWithShadow(this.textRenderer, idText, leftX, listY, textColor);
 
             // 右侧切换符号：会被记录 -> 红色减号（按下后不记录）；已忽略 -> 绿色加号
             String symbol = ignored ? "+" : "-";
@@ -176,6 +192,17 @@ public class SelectionExportScreen extends Screen {
             scrollOffset = Math.min(maxScroll, scrollOffset + 1);
         }
         return true;
+    }
+
+    /**
+     * 方块统计列表的排序优先级：三种空气排最前（返回 0），其余方块排后（返回 1）。
+     * 同优先级内再按方块 id 字母序排列。
+     */
+    private static int airPriority(String blockId) {
+        return switch (blockId) {
+            case "air", "cave_air", "void_air" -> 0;
+            default -> 1;
+        };
     }
 
     /**
