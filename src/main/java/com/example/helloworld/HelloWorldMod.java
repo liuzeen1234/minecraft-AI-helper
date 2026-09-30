@@ -1896,7 +1896,8 @@ public class HelloWorldMod implements ModInitializer {
                             resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
                                     player, server, streaming, notifier, finisher);
                         });
-                    });
+                    }, buildInfoToolRejectResume(I18n.tr("debug.tool.fetch"), roundForResume, lastAllowedForResume,
+                            server, streaming, notifier, finisher));
                     String pendingText = I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
                     finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
                     return;
@@ -1933,7 +1934,8 @@ public class HelloWorldMod implements ModInitializer {
                             resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
                                     player, server, streaming, notifier, finisher);
                         });
-                    });
+                    }, buildInfoToolRejectResume(I18n.tr("debug.tool.search"), roundForResume, lastAllowedForResume,
+                            server, streaming, notifier, finisher));
                     String pendingText = I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
                     finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
                     return;
@@ -2046,7 +2048,8 @@ public class HelloWorldMod implements ModInitializer {
                                 CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
                                         toolFeedback, roundForResume, lastAllowedForResume,
                                         player, server, streaming, notifier, finisher));
-                            });
+                            }, buildInfoToolRejectResume(I18n.tr("debug.tool.query_region"), roundForResume,
+                                    lastAllowedForResume, server, streaming, notifier, finisher));
                             confirmedHolder[0] = true;
                         } catch (Exception e) {
                             LOGGER.error("发送地形查询确认请求失败", e);
@@ -2137,7 +2140,8 @@ public class HelloWorldMod implements ModInitializer {
                                         resumeToolLoopAfterConfirmedInfoTool(toolFeedback, base64Image, roundForResume,
                                                 lastAllowedForResume, player, server, streaming, notifier, finisher);
                                     });
-                                });
+                                }, buildInfoToolRejectResume(I18n.tr("debug.tool.camera_shot"), roundForResume,
+                                        lastAllowedForResume, server, streaming, notifier, finisher));
                                 confirmedHolder[0] = true;
                             } catch (Exception e) {
                                 LOGGER.error("发送摄像机截图确认请求失败", e);
@@ -2248,6 +2252,31 @@ public class HelloWorldMod implements ModInitializer {
                 streamedLastRound = false;
             }
         }
+    }
+
+    /**
+     * 为信息获取型工具（联网搜索/抓取网页/地形查询/摄像机截图）构造"被玩家拒绝或超时拒绝"时的回调。
+     *
+     * <p>没有这个回调时，这些工具的 {@code request} 只传了 onAccept，拒绝走默认空回调 → 对话不续跑、
+     * AI 卡在等待中（连拍会直接中断）。这里让拒绝也续跑一次：把"用户拒绝了本次【XX】操作"喂回 AI，
+     * 让它据此继续（换方案、拍下一张或直接答复），而不是无响应。
+     *
+     * <p>onReject 由 {@code resolve}（/ai reject 命令线程）或 {@code onTimeout}（超时线程 server.execute 主线程）
+     * 调用，续跑要调 AI（网络阻塞），因此和 onAccept 一样必须切到独立线程，绝不能卡在调用线程上。
+     *
+     * @param toolName          展示给 AI 的工具名（如"摄像机截图"），拼进拒绝反馈文本
+     * @param roundForResume    当前轮次，续跑时 +1 延续计数
+     * @param lastAllowedForResume 是否为最后一轮（续跑时附加轮数上限提示）
+     */
+    private java.util.function.Consumer<ServerPlayerEntity> buildInfoToolRejectResume(
+            String toolName, int roundForResume, boolean lastAllowedForResume,
+            net.minecraft.server.MinecraftServer server, boolean streaming,
+            ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+        return player -> CompletableFuture.runAsync(() -> {
+            String toolFeedback = I18n.tr("server.toolloop.user_rejected", toolName) + "\n\n";
+            resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
+                    player, server, streaming, notifier, finisher);
+        });
     }
 
     /**
