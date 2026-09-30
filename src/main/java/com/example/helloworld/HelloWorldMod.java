@@ -113,7 +113,57 @@ public class HelloWorldMod implements ModInitializer {
 
     // 当前正在执行的 AI 请求（用于取消）
     private volatile CompletableFuture<?> pendingAiTask = null;
-    private volatile boolean cancelRequested = false;
+
+    // === 请求代际（generation）管理 ===
+    // 背景：AI 请求跑在异步线程 + 跨线程续跑（确认后 runAsync / server.execute），取消判断散布在
+    // 流式循环、runToolLoopInternal、续跑等多处。若用单个全局布尔 cancelRequested，新请求启动时
+    // 把它重置为 false，会让"正在取消中但尚未退出"的旧请求复活（旧 bug：/aistop 后立刻发新消息，
+    // 旧请求继续输出、两会话交错）。
+    //
+    // 方案：每次新请求领取一个自增代号 myGen 并成为"当前活跃代"。所有取消检查点改判
+    // isCancelled(myGen)：只要自己不再是活跃代（被新请求顶替）或活跃代被显式取消（/aistop），即视为取消。
+    // 由此实现"新请求自动打断旧请求"，且新请求不会复活旧请求（每代独立判断，互不干扰）。
+    private final java.util.concurrent.atomic.AtomicLong generationCounter = new java.util.concurrent.atomic.AtomicLong(0);
+    // 当前活跃代号；只有 currentGeneration == myGen 的请求才被允许继续。
+    private volatile long currentGeneration = 0;
+    // 活跃代是否被显式取消（/aistop、取消包）。新代开始时清零。
+    private volatile boolean activeGenerationCancelled = false;
+
+    /**
+     * 开启一个新请求代：领取新代号、设为当前活跃代、清除显式取消标志，并打断上一个仍在跑的请求
+     * （新请求自动打断旧请求）。返回本请求应持有的代号 myGen，供后续所有取消检查点使用。
+     */
+    private long beginGeneration() {
+        long myGen = generationCounter.incrementAndGet();
+        currentGeneration = myGen;
+        activeGenerationCancelled = false;
+        // 打断上一个仍在途的异步任务：它的线程若阻塞在网络 IO 上，中断可尽快唤醒；
+        // 即使中断赶不上，它的取消检查点也会因 myGen != currentGeneration 而判定为已取消并自行退出。
+        CompletableFuture<?> old = pendingAiTask;
+        if (old != null && !old.isDone()) {
+            old.cancel(true);
+        }
+        return myGen;
+    }
+
+    /**
+     * 判断持有代号 myGen 的请求是否应停止：自己已不是当前活跃代（被新请求顶替），
+     * 或当前活跃代被显式取消（/aistop / 取消包）。
+     */
+    private boolean isCancelled(long myGen) {
+        return myGen != currentGeneration || activeGenerationCancelled;
+    }
+
+    /** 显式取消当前活跃代（供 /aistop、取消包调用）。返回是否确有活跃请求被取消。 */
+    private boolean cancelActiveGeneration() {
+        activeGenerationCancelled = true;
+        CompletableFuture<?> task = pendingAiTask;
+        if (task != null && !task.isDone()) {
+            task.cancel(true);
+            return true;
+        }
+        return false;
+    }
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -401,20 +451,20 @@ public class HelloWorldMod implements ModInitializer {
 
                 // 异步调用 AI API
                 final String finalRefContent = referenceContent;
-                cancelRequested = false;
+                final long myGen = beginGeneration();
                 pendingAiTask = CompletableFuture.runAsync(() -> {
                     try {
                         String response;
                         if (CONFIG.isStreamOutputEnabled()) {
                             // 流式模式：实时输出到聊天框
                             server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.generating")), false));
-                            response = callKimiApiStreaming(fullMessage, "", player, server);
+                            response = callKimiApiStreaming(fullMessage, "", player, server, myGen);
                         } else {
                             response = callKimiApi(fullMessage, "");
                         }
 
                         // 检查是否已被取消
-                        if (cancelRequested) {
+                        if (isCancelled(myGen)) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
                                 respBuf.writeString(THINKING_CANCELLED_SENTINEL);
@@ -452,9 +502,9 @@ public class HelloWorldMod implements ModInitializer {
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                         };
-                        runToolLoop(response, streamingChat, player, server, streamingChat, chatNotifier, chatFinisher);
+                        runToolLoop(response, streamingChat, player, server, streamingChat, chatNotifier, chatFinisher, myGen);
                     } catch (Exception e) {
-                        if (cancelRequested) {
+                        if (isCancelled(myGen)) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
                                 respBuf.writeString(THINKING_CANCELLED_SENTINEL);
@@ -469,7 +519,9 @@ public class HelloWorldMod implements ModInitializer {
                             ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                         });
                     } finally {
-                        pendingAiTask = null;
+                        // 仅当自己仍是当前活跃代时才清空任务引用，避免把更晚请求的任务句柄误清空，
+                        // 导致后续 /aistop 取消不到那个更晚的请求。
+                        if (myGen == currentGeneration) pendingAiTask = null;
                     }
                 });
             });
@@ -478,11 +530,9 @@ public class HelloWorldMod implements ModInitializer {
         // 注册取消 AI 请求的处理器
         ServerPlayNetworking.registerGlobalReceiver(CHAT_CANCEL_PACKET, (server, player, handler, buf, responseSender) -> {
             server.execute(() -> {
-                cancelRequested = true;
-                CompletableFuture<?> task = pendingAiTask;
-                if (task != null) {
-                    task.cancel(true);
-                }
+                // 显式取消当前活跃代：标记取消并中断在途任务。所有取消检查点通过 isCancelled(myGen)
+                // 感知到活跃代被取消而退出；后续新请求会领取新代号，不受此次取消影响。
+                cancelActiveGeneration();
                 LOGGER.info("玩家 {} 取消了 AI 请求", player.getName().getString());
             });
         });
@@ -521,18 +571,18 @@ public class HelloWorldMod implements ModInitializer {
                 }
 
                 final String finalBase64 = finalBase64Image;
-                cancelRequested = false;
+                final long myGen = beginGeneration();
                 pendingAiTask = CompletableFuture.runAsync(() -> {
                     try {
                         String response;
                         if (CONFIG.isStreamOutputEnabled()) {
                             server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.generating")), false));
-                            response = callKimiApiStreaming(fullMessage, finalBase64, player, server);
+                            response = callKimiApiStreaming(fullMessage, finalBase64, player, server, myGen);
                         } else {
                             response = callKimiApi(fullMessage, finalBase64);
                         }
 
-                        if (cancelRequested) {
+                        if (isCancelled(myGen)) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
                                 respBuf.writeString(THINKING_CANCELLED_SENTINEL);
@@ -570,9 +620,9 @@ public class HelloWorldMod implements ModInitializer {
                                 ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                             });
                         };
-                        runToolLoop(response, streamingImg, player, server, streamingImg, imgNotifier, imgFinisher);
+                        runToolLoop(response, streamingImg, player, server, streamingImg, imgNotifier, imgFinisher, myGen);
                     } catch (Exception e) {
-                        if (cancelRequested) {
+                        if (isCancelled(myGen)) {
                             server.execute(() -> {
                                 PacketByteBuf respBuf = PacketByteBufs.create();
                                 respBuf.writeString(THINKING_CANCELLED_SENTINEL);
@@ -587,7 +637,7 @@ public class HelloWorldMod implements ModInitializer {
                             ServerPlayNetworking.send(player, CHAT_SCREEN_RESPONSE_PACKET, respBuf);
                         });
                     } finally {
-                        pendingAiTask = null;
+                        if (myGen == currentGeneration) pendingAiTask = null;
                     }
                 });
             });
@@ -610,20 +660,20 @@ public class HelloWorldMod implements ModInitializer {
 
                 source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.thinking")), false);
 
-                cancelRequested = false;
+                final long myGen = beginGeneration();
                 pendingAiTask = CompletableFuture.runAsync(() -> {
                     try {
                         String response;
                         boolean wasStreamed = false;
                         if (CONFIG.isStreamOutputEnabled()) {
-                            response = callKimiApiStreaming(message, finalBase64Image, player, server);
+                            response = callKimiApiStreaming(message, finalBase64Image, player, server, myGen);
                             wasStreamed = true;
                         } else {
                             response = callKimiApi(message, finalBase64Image);
                         }
 
                         // 如果已被取消，直接返回不做后续处理
-                        if (cancelRequested) return;
+                        if (isCancelled(myGen)) return;
 
                         // 多轮工具调用循环：进度提示通过命令反馈发送
                         boolean streamingCmd = CONFIG.isStreamOutputEnabled();
@@ -651,7 +701,7 @@ public class HelloWorldMod implements ModInitializer {
                                 }
                             });
                         };
-                        runToolLoop(response, wasStreamed, player, server, streamingCmd, cmdNotifier, cmdFinisher);
+                        runToolLoop(response, wasStreamed, player, server, streamingCmd, cmdNotifier, cmdFinisher, myGen);
                     } catch (Exception e) {
                         LOGGER.error("调用 AI API 失败", e);
                         LOGGER.error("[AI诊断] 异常链: {}", getExceptionChain(e));
@@ -659,7 +709,7 @@ public class HelloWorldMod implements ModInitializer {
                             source.sendFeedback(() -> Text.literal(I18n.tr("server.ai.request_failed", e.getMessage())), false);
                         });
                     } finally {
-                        pendingAiTask = null;
+                        if (myGen == currentGeneration) pendingAiTask = null;
                     }
                 });
             });
@@ -843,10 +893,10 @@ public class HelloWorldMod implements ModInitializer {
             // /aistop - 终止当前 AI 思考/生成
             dispatcher.register(CommandManager.literal("aistop")
                 .executes(ctx -> {
-                    cancelRequested = true;
-                    CompletableFuture<?> task = pendingAiTask;
-                    if (task != null) {
-                        task.cancel(true);
+                    // 显式取消当前活跃代。所有取消检查点通过 isCancelled(myGen) 感知并退出；
+                    // 之后玩家再发的新请求会领取新代号，不会被本次取消影响，也不会复活本次被取消的请求。
+                    boolean hadRunning = cancelActiveGeneration();
+                    if (hadRunning) {
                         ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.ai.stopped")), false);
                     } else {
                         ctx.getSource().sendFeedback(() -> Text.literal(I18n.tr("server.ai.no_request")), false);
@@ -1230,7 +1280,7 @@ public class HelloWorldMod implements ModInitializer {
      * 返回完整的响应文本（用于后续指令解析和聊天界面显示）。
      */
     private String callKimiApiStreaming(String userMessage, String base64Image, ServerPlayerEntity player,
-                                        net.minecraft.server.MinecraftServer server) throws Exception {
+                                        net.minecraft.server.MinecraftServer server, long myGen) throws Exception {
         String escapedMessage = escapeJson(userMessage);
 
         // 构建当前用户消息
@@ -1284,7 +1334,7 @@ public class HelloWorldMod implements ModInitializer {
         java.util.Iterator<String> lines = response.body().iterator();
         try {
         while (lines.hasNext()) {
-            if (cancelRequested) break;
+            if (isCancelled(myGen)) break;
 
             String line = lines.next();
             totalLinesRead++;
@@ -1757,8 +1807,8 @@ public class HelloWorldMod implements ModInitializer {
      */
     private void runToolLoop(String initialResponse, boolean initiallyStreamed,
                               ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
-                              boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
-        runToolLoop(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher, 0);
+                              boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher, long myGen) {
+        runToolLoop(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher, 0, myGen);
     }
 
     /**
@@ -1769,9 +1819,9 @@ public class HelloWorldMod implements ModInitializer {
     private void runToolLoop(String initialResponse, boolean initiallyStreamed,
                               ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
                               boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher,
-                              int startRound) {
+                              int startRound, long myGen) {
         try {
-            runToolLoopInternal(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher, startRound);
+            runToolLoopInternal(initialResponse, initiallyStreamed, player, server, streaming, notifier, finisher, startRound, myGen);
         } catch (Exception e) {
             finisher.finish(ToolLoopOutcome.failed(e));
         }
@@ -1780,7 +1830,7 @@ public class HelloWorldMod implements ModInitializer {
     private void runToolLoopInternal(String initialResponse, boolean initiallyStreamed,
                                       ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
                                       boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher,
-                                      int startRound) throws Exception {
+                                      int startRound, long myGen) throws Exception {
         String response = initialResponse;
         boolean streamedLastRound = initiallyStreamed;
         int maxRounds = CONFIG.getMaxToolRounds();
@@ -1794,7 +1844,7 @@ public class HelloWorldMod implements ModInitializer {
             // 每轮开始时重置，避免把上一轮的图片错误地带到本轮（确认路径不用这个变量，
             // 那条路径通过 resumeToolLoopAfterConfirmedInfoTool 的 base64Image 重载直接传递）。
             String pendingCameraShotImage = "";
-            if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+            if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
 
             // 达到上限（maxRounds=0 时立刻退出循环，不执行任何工具回喂）后，
             // 若本轮仍请求了工具，则只做最终展示处理（联网标签会被清理，游戏操作在调用端统一执行）。
@@ -1853,7 +1903,7 @@ public class HelloWorldMod implements ModInitializer {
                         finisher.finish(ToolLoopOutcome.cancelled());
                         return;
                     }
-                    if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                    if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                     if (prHolder[0] != null && prHolder[0].hasPendingConfirmation) {
                         // 挂起等待确认：先把"等待确认"提示展示出来，真正的展示在上面的续跑回调里发生
                         String pendingText = prHolder[0].resultBlock != null ? prHolder[0].resultBlock : "";
@@ -1894,10 +1944,10 @@ public class HelloWorldMod implements ModInitializer {
                             debugPrintToolResult(player, server, I18n.tr("debug.tool.fetch"),
                                     pageContent != null ? pageContent : I18n.tr("server.fetch_failed"));
                             resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
-                                    player, server, streaming, notifier, finisher);
+                                    player, server, streaming, notifier, finisher, myGen);
                         });
                     }, buildInfoToolRejectResume(I18n.tr("debug.tool.fetch"), roundForResume, lastAllowedForResume,
-                            server, streaming, notifier, finisher));
+                            server, streaming, notifier, finisher, myGen));
                     String pendingText = I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
                     finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
                     return;
@@ -1905,7 +1955,7 @@ public class HelloWorldMod implements ModInitializer {
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.fetching"));
                 server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.fetching_page", url)), false));
                 String pageContent = webFetchService.fetch(url);
-                if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                 if (pageContent != null) {
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.fetch_done") + "\n\n");
                     feedback.append("以下是网页 ").append(url).append(" 的内容:\n\n")
@@ -1932,10 +1982,10 @@ public class HelloWorldMod implements ModInitializer {
                             debugPrintToolResult(player, server, I18n.tr("debug.tool.search"),
                                     searchResults != null ? searchResults : I18n.tr("server.search_failed"));
                             resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
-                                    player, server, streaming, notifier, finisher);
+                                    player, server, streaming, notifier, finisher, myGen);
                         });
                     }, buildInfoToolRejectResume(I18n.tr("debug.tool.search"), roundForResume, lastAllowedForResume,
-                            server, streaming, notifier, finisher));
+                            server, streaming, notifier, finisher, myGen));
                     String pendingText = I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS);
                     finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
                     return;
@@ -1943,7 +1993,7 @@ public class HelloWorldMod implements ModInitializer {
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.searching"));
                 server.execute(() -> player.sendMessage(Text.literal(I18n.tr("server.ai.searching_query", query)), false));
                 String searchResults = webSearchService.search(query, CONFIG.getTavilyApiKey());
-                if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                 if (searchResults != null) {
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.search_done") + "\n\n");
                     feedback.append("以下是联网搜索「").append(query).append("」的结果:\n\n")
@@ -1975,7 +2025,7 @@ public class HelloWorldMod implements ModInitializer {
                                 // 服务端主线程（由确认包接收器 server.execute 切来）上，切到独立线程异步处理。
                                 CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
                                         toolFeedback, roundForResume, lastAllowedForResume,
-                                        player, server, streaming, notifier, finisher));
+                                        player, server, streaming, notifier, finisher, myGen));
                             },
                             commandFeedback -> {
                                 // execute_command 建议的命令被玩家执行（或超时未执行）后触发：
@@ -1983,7 +2033,7 @@ public class HelloWorldMod implements ModInitializer {
                                 // 切到独立线程异步处理，避免卡住主线程 tick。
                                 CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
                                         commandFeedback, roundForResume, lastAllowedForResume,
-                                        player, server, streaming, notifier, finisher));
+                                        player, server, streaming, notifier, finisher, myGen));
                             });
                         resultHolder[0] = pr.resultBlock;
                         pendingHolder[0] = pr.hasPendingConfirmation;
@@ -2002,7 +2052,7 @@ public class HelloWorldMod implements ModInitializer {
                     finisher.finish(ToolLoopOutcome.cancelled());
                     return;
                 }
-                if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
 
                 // 有操作正在等待玩家点击 [是]/[否] 确认，或有 execute_command 建议的命令正在等待玩家执行：
                 // 都必须在这里停止循环，不能把"等待确认/等待执行"这句提示当作已完成的结果继续喂给 AI 推演。
@@ -2047,9 +2097,9 @@ public class HelloWorldMod implements ModInitializer {
                                 debugPrintToolResult(player, server, I18n.tr("debug.tool.query_region"), result);
                                 CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
                                         toolFeedback, roundForResume, lastAllowedForResume,
-                                        player, server, streaming, notifier, finisher));
+                                        player, server, streaming, notifier, finisher, myGen));
                             }, buildInfoToolRejectResume(I18n.tr("debug.tool.query_region"), roundForResume,
-                                    lastAllowedForResume, server, streaming, notifier, finisher));
+                                    lastAllowedForResume, server, streaming, notifier, finisher, myGen));
                             confirmedHolder[0] = true;
                         } catch (Exception e) {
                             LOGGER.error("发送地形查询确认请求失败", e);
@@ -2064,7 +2114,7 @@ public class HelloWorldMod implements ModInitializer {
                         finisher.finish(ToolLoopOutcome.cancelled());
                         return;
                     }
-                    if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                    if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                     if (confirmedHolder[0]) {
                         String pendingText = I18n.tr("confirm.pending", summaryHolder[0], PendingActionConfirmation.TIMEOUT_SECONDS);
                         finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
@@ -2092,7 +2142,7 @@ public class HelloWorldMod implements ModInitializer {
                         finisher.finish(ToolLoopOutcome.cancelled());
                         return;
                     }
-                    if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                    if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                     String regionResult = regionHolder[0];
                     if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.query_region_done") + "\n\n");
                     feedback.append("以下是你查询的区域 [").append(spec).append("] 的现有地形：\n\n")
@@ -2138,10 +2188,10 @@ public class HelloWorldMod implements ModInitializer {
                                         debugPrintToolResult(player, server, I18n.tr("debug.tool.camera_shot"),
                                                 !base64Image.isEmpty() ? "[截图成功]" : "[截图失败]");
                                         resumeToolLoopAfterConfirmedInfoTool(toolFeedback, base64Image, roundForResume,
-                                                lastAllowedForResume, player, server, streaming, notifier, finisher);
+                                                lastAllowedForResume, player, server, streaming, notifier, finisher, myGen);
                                     });
                                 }, buildInfoToolRejectResume(I18n.tr("debug.tool.camera_shot"), roundForResume,
-                                        lastAllowedForResume, server, streaming, notifier, finisher));
+                                        lastAllowedForResume, server, streaming, notifier, finisher, myGen));
                                 confirmedHolder[0] = true;
                             } catch (Exception e) {
                                 LOGGER.error("发送摄像机截图确认请求失败", e);
@@ -2156,7 +2206,7 @@ public class HelloWorldMod implements ModInitializer {
                             finisher.finish(ToolLoopOutcome.cancelled());
                             return;
                         }
-                        if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                        if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                         if (confirmedHolder[0]) {
                             String pendingText = I18n.tr("confirm.pending", summaryHolder[0], PendingActionConfirmation.TIMEOUT_SECONDS);
                             finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(pendingText, false)));
@@ -2166,7 +2216,7 @@ public class HelloWorldMod implements ModInitializer {
                     } else {
                         if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.camera_shot.taking"));
                         String path = requestCameraShotAndAwait(player, camX, camY, camZ, camYaw, camPitch);
-                        if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+                        if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
                         String base64Image = readImageAsBase64WithRetry(path);
                         if (notifier != null) notifier.notify("\n§7" + I18n.tr("server.camera_shot.done") + "\n\n");
                         if (!base64Image.isEmpty()) {
@@ -2245,7 +2295,7 @@ public class HelloWorldMod implements ModInitializer {
             // 中间轮次通常不携带截图；若本轮执行了 [CAMERA_SHOT]（非确认路径），
             // 把拍到的图片带上，让 AI 真正"看到"刚拍的画面。
             if (streaming) {
-                response = callKimiApiStreaming(reprompt, pendingCameraShotImage, player, server);
+                response = callKimiApiStreaming(reprompt, pendingCameraShotImage, player, server, myGen);
                 streamedLastRound = true;
             } else {
                 response = callKimiApi(reprompt, pendingCameraShotImage);
@@ -2271,11 +2321,11 @@ public class HelloWorldMod implements ModInitializer {
     private java.util.function.Consumer<ServerPlayerEntity> buildInfoToolRejectResume(
             String toolName, int roundForResume, boolean lastAllowedForResume,
             net.minecraft.server.MinecraftServer server, boolean streaming,
-            ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+            ToolLoopNotifier notifier, ToolLoopFinisher finisher, long myGen) {
         return player -> CompletableFuture.runAsync(() -> {
             String toolFeedback = I18n.tr("server.toolloop.user_rejected", toolName) + "\n\n";
             resumeToolLoopAfterConfirmedInfoTool(toolFeedback, roundForResume, lastAllowedForResume,
-                    player, server, streaming, notifier, finisher);
+                    player, server, streaming, notifier, finisher, myGen);
         });
     }
 
@@ -2289,9 +2339,9 @@ public class HelloWorldMod implements ModInitializer {
      */
     private void resumeToolLoopAfterConfirmedInfoTool(String toolFeedback, int roundBeforeResume, boolean lastAllowedRound,
                                                         ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
-                                                        boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+                                                        boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher, long myGen) {
         resumeToolLoopAfterConfirmedInfoTool(toolFeedback, "", roundBeforeResume, lastAllowedRound,
-                player, server, streaming, notifier, finisher);
+                player, server, streaming, notifier, finisher, myGen);
     }
 
     /**
@@ -2304,7 +2354,7 @@ public class HelloWorldMod implements ModInitializer {
     private void resumeToolLoopAfterConfirmedInfoTool(String toolFeedback, String base64Image,
                                                         int roundBeforeResume, boolean lastAllowedRound,
                                                         ServerPlayerEntity player, net.minecraft.server.MinecraftServer server,
-                                                        boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher) {
+                                                        boolean streaming, ToolLoopNotifier notifier, ToolLoopFinisher finisher, long myGen) {
         int round = roundBeforeResume + 1;
         String reprompt = toolFeedback.trim() + "\n\n" + I18n.tr("server.toolloop.continue_hint");
         if (lastAllowedRound) {
@@ -2317,15 +2367,15 @@ public class HelloWorldMod implements ModInitializer {
             String response;
             boolean streamedThisRound;
             if (streaming) {
-                response = callKimiApiStreaming(reprompt, base64Image, player, server);
+                response = callKimiApiStreaming(reprompt, base64Image, player, server, myGen);
                 streamedThisRound = true;
             } else {
                 response = callKimiApi(reprompt, base64Image);
                 streamedThisRound = false;
             }
-            if (cancelRequested) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
+            if (isCancelled(myGen)) { finisher.finish(ToolLoopOutcome.cancelled()); return; }
             // 传入 round 作为起始轮数，延续确认前已完成的计数，避免轮数上限被重置
-            runToolLoop(response, streamedThisRound, player, server, streaming, notifier, finisher, round);
+            runToolLoop(response, streamedThisRound, player, server, streaming, notifier, finisher, round, myGen);
         } catch (Exception e) {
             LOGGER.error("确认后续跑多轮工具循环失败", e);
             finisher.finish(ToolLoopOutcome.failed(e));
