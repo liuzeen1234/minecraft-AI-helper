@@ -225,6 +225,7 @@
     "settings.chat.stream_output": "Stream Output (Chat): %s",
     "debug.force_multi_tool.title": "Force Multi-Tool Calls (Test)",
     "debug.print_tool_result.title": "Print Tool Results to Chat (Test)",
+    "debug.image_diag.title": "Image Transfer Diagnostics (Test)",
     "debug.print_tool_result.prefix": "Tool Debug",
     "debug.print_tool_result.entry": "%s result:",
     "debug.tool.fetch": "Page Fetch",

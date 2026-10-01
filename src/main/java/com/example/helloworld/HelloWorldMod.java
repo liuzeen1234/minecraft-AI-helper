@@ -982,7 +982,13 @@ public class HelloWorldMod implements ModInitializer {
             try {
                 if (java.nio.file.Files.exists(imgPath) && java.nio.file.Files.size(imgPath) > 0) {
                     byte[] imageBytes = java.nio.file.Files.readAllBytes(imgPath);
-                    return java.util.Base64.getEncoder().encodeToString(imageBytes);
+                    String base64 = java.util.Base64.getEncoder().encodeToString(imageBytes);
+                    // [图片诊断] 确认图片确实被读到并编码：记录文件大小与 base64 长度。
+                    if (AICommandExecutor.isImageDiagEnabled()) {
+                        LOGGER.info("[图片诊断] readImageAsBase64WithRetry 成功: path={}, 文件字节={}, base64长度={}",
+                                imagePath, imageBytes.length, base64.length());
+                    }
+                    return base64;
                 }
             } catch (java.nio.file.AccessDeniedException e) {
                 LOGGER.warn("图片文件被占用，重试中... ({})", attempt + 1);
@@ -1031,6 +1037,13 @@ public class HelloWorldMod implements ModInitializer {
      */
     private String buildUserMessage(String escapedMessage, String base64Image) {
         boolean hasImage = base64Image != null && !base64Image.isEmpty();
+        // [图片诊断] 记录本条 user 消息是否携带图片、走哪种格式、base64 体积，
+        // 用于定位「CAMERA_SHOT 截图成功但 AI 收不到图」的断点。
+        if (AICommandExecutor.isImageDiagEnabled()) {
+            LOGGER.info("[图片诊断] buildUserMessage: hasImage={}, format={}, base64长度={}, model={}",
+                    hasImage, CONFIG.getEffectiveApiFormat(),
+                    base64Image == null ? 0 : base64Image.length(), CONFIG.getModel());
+        }
         if (!hasImage) {
             return """
                         {
@@ -1111,8 +1124,9 @@ public class HelloWorldMod implements ModInitializer {
      * Anthropic 使用顶层 system 字段；OpenAI 将 system 放入 messages（由 buildMessagesArray 处理）。
      */
     private String buildRequestBody(String messagesArray, String escapedSystemPrompt, boolean stream) {
+        String body;
         if (CONFIG.isOpenAiFormat()) {
-            return """
+            body = """
                 {
                     "model": "%s",
                     "max_tokens": 16384,
@@ -1120,9 +1134,9 @@ public class HelloWorldMod implements ModInitializer {
                     "messages": %s
                 }
                 """.formatted(CONFIG.getModel(), stream, messagesArray);
-        }
-        // Anthropic
-        return """
+        } else {
+            // Anthropic
+            body = """
                 {
                     "model": "%s",
                     "max_tokens": 16384,
@@ -1131,6 +1145,27 @@ public class HelloWorldMod implements ModInitializer {
                     "messages": %s
                 }
                 """.formatted(CONFIG.getModel(), stream, escapedSystemPrompt, messagesArray);
+        }
+        // [图片诊断] 确认最终请求体里是否真的含图片分支，以及历史里堆了几张 base64（token 膨胀迹象）。
+        boolean hasOpenAiImg = body.contains("\"image_url\"");
+        boolean hasAnthropicImg = body.contains("\"type\": \"image\"") || body.contains("\"type\":\"image\"");
+        int imgOccurrences = countOccurrences(body, "base64,") + countOccurrences(body, "\"data\": \"");
+        if (AICommandExecutor.isImageDiagEnabled()) {
+            LOGGER.info("[图片诊断] buildRequestBody: 请求体字节={}, 含image_url={}, 含anthropic图片={}, base64出现次数≈{}",
+                    body.length(), hasOpenAiImg, hasAnthropicImg, imgOccurrences);
+        }
+        return body;
+    }
+
+    /** [图片诊断] 统计子串出现次数，用于粗略估算请求体里堆积的 base64 图片数量。 */
+    private static int countOccurrences(String haystack, String needle) {
+        if (haystack == null || needle == null || needle.isEmpty()) return 0;
+        int count = 0, idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) != -1) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 
     /**
@@ -1574,10 +1609,9 @@ public class HelloWorldMod implements ModInitializer {
      * 从 AI 回复中提取 [FETCH]...[/FETCH] 标签内的 URL。
      */
     private String extractFetchUrl(String response) {
-        int start = response.indexOf("[FETCH]");
-        int end = response.indexOf("[/FETCH]");
-        if (start != -1 && end != -1 && end > start) {
-            String url = response.substring(start + 7, end).trim();
+        String url = extractLastTagContent(response, "[FETCH]", "[/FETCH]");
+        if (url != null) {
+            url = url.trim();
             if (url.startsWith("http://") || url.startsWith("https://")) {
                 return url;
             }
@@ -1586,13 +1620,31 @@ public class HelloWorldMod implements ModInitializer {
     }
 
     /**
+     * 从一对配对标签中提取内容，取“闭标签之前最后一个开标签”到该闭标签之间的文本。
+     *
+     * <p>为什么不用第一个开标签：AI 常在回复正文里解释性地写出标签名（例如说明某工具的用法），
+     * 那个开标签通常没有对应闭合。若从第一个开标签一路截到真正调用处的闭标签，会把中间大段
+     * 说明文字误当成参数（历史上导致 QUERY_REGION/KNOWLEDGE 反复解析失败）。取闭标签前最后一个
+     * 开标签，能跳过正文里的假标签，命中末尾真正的调用。
+     *
+     * @return 标签内容（未做 trim，由调用方按需处理）；未找到成对标签时返回 null
+     */
+    static String extractLastTagContent(String response, String openTag, String closeTag) {
+        if (response == null) return null;
+        int end = response.indexOf(closeTag);
+        if (end == -1) return null;
+        int start = response.lastIndexOf(openTag, end);
+        if (start == -1 || start >= end) return null;
+        return response.substring(start + openTag.length(), end);
+    }
+
+    /**
      * 从 AI 回复中提取 [SEARCH]...[/SEARCH] 标签内的搜索关键词。
      */
     private String extractSearchQuery(String response) {
-        int start = response.indexOf("[SEARCH]");
-        int end = response.indexOf("[/SEARCH]");
-        if (start != -1 && end != -1 && end > start) {
-            String query = response.substring(start + 8, end).trim();
+        String query = extractLastTagContent(response, "[SEARCH]", "[/SEARCH]");
+        if (query != null) {
+            query = query.trim();
             return query.isEmpty() ? null : query;
         }
         return null;
@@ -1600,15 +1652,15 @@ public class HelloWorldMod implements ModInitializer {
 
     /**
      * 从 AI 回复中提取 [KNOWLEDGE]文档A,文档B[/KNOWLEDGE] 标签内点名的知识库文档名列表。
-     * 文档名以英文逗号分隔，忽略空白项。仅取第一个 [KNOWLEDGE] 标签（与 SEARCH/FETCH 规则一致）。
+     * 文档名以英文逗号分隔，忽略空白项。仅取最后一个 [KNOWLEDGE] 开标签对应的内容
+     * （见 {@link #extractLastTagContent}，避免正文里提到标签名导致串味）。
      */
     private List<String> extractKnowledgeDocNames(String response) {
-        int start = response.indexOf("[KNOWLEDGE]");
-        int end = response.indexOf("[/KNOWLEDGE]");
-        if (start == -1 || end == -1 || end <= start) {
+        String raw = extractLastTagContent(response, "[KNOWLEDGE]", "[/KNOWLEDGE]");
+        if (raw == null) {
             return java.util.Collections.emptyList();
         }
-        String raw = response.substring(start + "[KNOWLEDGE]".length(), end).trim();
+        raw = raw.trim();
         if (raw.isEmpty()) {
             return java.util.Collections.emptyList();
         }
@@ -1637,10 +1689,9 @@ public class HelloWorldMod implements ModInitializer {
      * 仅取第一个 [KNOWLEDGE_FILE] 标签（与 SEARCH/FETCH/KNOWLEDGE 规则一致）。
      */
     private String extractKnowledgeFilePath(String response) {
-        int start = response.indexOf("[KNOWLEDGE_FILE]");
-        int end = response.indexOf("[/KNOWLEDGE_FILE]");
-        if (start != -1 && end != -1 && end > start) {
-            String path = response.substring(start + "[KNOWLEDGE_FILE]".length(), end).trim();
+        String path = extractLastTagContent(response, "[KNOWLEDGE_FILE]", "[/KNOWLEDGE_FILE]");
+        if (path != null) {
+            path = path.trim();
             return path.isEmpty() ? null : path;
         }
         return null;
@@ -1939,30 +1990,26 @@ public class HelloWorldMod implements ModInitializer {
                 final String actionResponse = response;
                 final int roundForResume = round;
                 final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
-                // 方块放置需在主线程执行
+                // 方块放置需在主线程执行。普通操作确认和 execute_command 都可能在同一轮挂起；
+                // 两者必须汇合为一次续跑，不能各自发起新 AI 请求导致对话分叉。
                 final boolean[] commandSuggestionHolder = new boolean[1];
+                final PendingToolRoundContinuation continuationGroup = new PendingToolRoundContinuation(toolFeedback ->
+                        CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
+                                toolFeedback, roundForResume, lastAllowedForResume,
+                                player, server, streaming, notifier, finisher, myGen)));
                 java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
                 server.execute(() -> {
                     try {
                         AICommandExecutor.ProcessResult pr = AICommandExecutor.process(actionResponse, player,
-                            toolFeedback -> {
-                                // 批次内所有操作均已确认完毕：网络调用（续跑 AI）不能卡在这个回调所在的
-                                // 服务端主线程（由确认包接收器 server.execute 切来）上，切到独立线程异步处理。
-                                CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
-                                        toolFeedback, roundForResume, lastAllowedForResume,
-                                        player, server, streaming, notifier, finisher, myGen));
-                            },
-                            commandFeedback -> {
-                                // execute_command 建议的命令被玩家执行（或超时未执行）后触发：
-                                // 该回调由命令执行/超时线程（服务端主线程或超时线程）调用，续跑要调 AI（网络阻塞），
-                                // 切到独立线程异步处理，避免卡住主线程 tick。
-                                CompletableFuture.runAsync(() -> resumeToolLoopAfterConfirmedInfoTool(
-                                        commandFeedback, roundForResume, lastAllowedForResume,
-                                        player, server, streaming, notifier, finisher, myGen));
-                            });
+                                continuationGroup::record,
+                                continuationGroup::record);
                         resultHolder[0] = pr.resultBlock;
                         pendingHolder[0] = pr.hasPendingConfirmation;
                         commandSuggestionHolder[0] = pr.hasPendingCommandSuggestion;
+                        // process() 完成后才能知道本轮有几类挂起信号。回调若已提前到达会先被汇合器缓存。
+                        int pendingSignals = (pr.hasPendingConfirmation ? 1 : 0)
+                                + (pr.hasPendingCommandSuggestion ? 1 : 0);
+                        continuationGroup.seal(pendingSignals);
                     } catch (Exception e) {
                         LOGGER.error("多轮循环中执行游戏操作失败", e);
                         resultHolder[0] = I18n.tr("cmd.action.failed", e.getMessage());

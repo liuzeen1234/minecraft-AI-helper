@@ -65,12 +65,29 @@ public class AICommandExecutor {
         LOGGER.info("[调试] 打印工具返回值到聊天框 = {}", enabled);
     }
 
+    /**
+     * 调试开关：输出图片传输诊断日志（[图片诊断]）。
+     * 开启后在图片读取、构建 user 消息、构建请求体三处各输出一条 INFO 日志，
+     * 用于排查 CAMERA_SHOT / 截图功能中图片是否成功被编码并附入 AI 请求。
+     * 仅内存态，不写入配置文件，通过 debug-menu 切换。
+     */
+    private static volatile boolean imageDiagEnabled = false;
+
+    public static boolean isImageDiagEnabled() { return imageDiagEnabled; }
+
+    public static void setImageDiagEnabled(boolean enabled) {
+        imageDiagEnabled = enabled;
+        LOGGER.info("[调试] 图片传输诊断日志 = {}", enabled);
+    }
+
     private static final Pattern ACTION_PATTERN = Pattern.compile("\\[ACTION\\](.*?)\\[/ACTION\\]", Pattern.DOTALL);
     private static final Pattern BLUEPRINT_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*?)\\[/BLUEPRINT\\]", Pattern.DOTALL);
     // 地形查询工具：[QUERY_REGION]x1,y1,z1 x2,y2,z2[/QUERY_REGION] 或 [QUERY_REGION]around <半径>[/QUERY_REGION]
-    private static final Pattern QUERY_REGION_PATTERN = Pattern.compile("\\[QUERY_REGION\\](.*?)\\[/QUERY_REGION\\]", Pattern.DOTALL);
+    // 捕获组用 (?:(?!\[QUERY_REGION\]).)*? 排除内容中嵌套的开标签，避免 AI 在正文里提到（未闭合的）标签名时，
+    // 非贪婪匹配从正文里的假开标签一直吞到真正调用处的闭标签，把大段说明文字误当成参数（见解析串味 bug）。
+    private static final Pattern QUERY_REGION_PATTERN = Pattern.compile("\\[QUERY_REGION\\]((?:(?!\\[QUERY_REGION\\]).)*?)\\[/QUERY_REGION\\]", Pattern.DOTALL);
     // 摄像机截图工具：[CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT]，用于建造后自查/视觉纠错
-    private static final Pattern CAMERA_SHOT_PATTERN = Pattern.compile("\\[CAMERA_SHOT\\](.*?)\\[/CAMERA_SHOT\\]", Pattern.DOTALL);
+    private static final Pattern CAMERA_SHOT_PATTERN = Pattern.compile("\\[CAMERA_SHOT\\]((?:(?!\\[CAMERA_SHOT\\]).)*?)\\[/CAMERA_SHOT\\]", Pattern.DOTALL);
     // 匹配未闭合的 [BLUEPRINT]（AI 输出被 token 截断时）
     private static final Pattern BLUEPRINT_UNCLOSED_PATTERN = Pattern.compile("\\[BLUEPRINT\\](.*)", Pattern.DOTALL);
 
@@ -965,7 +982,9 @@ public class AICommandExecutor {
              + "- execute_command 只是把命令预填到玩家聊天框等待确认，不会自动执行，一次只建议一条\n";
 
         return "你是一个 Minecraft 游戏助手 AI。你可以和玩家聊天，也可以通过特殊指令帮玩家在游戏中执行操作。\n"
-             + "当玩家要求你执行游戏操作时，在你的回复中嵌入指令标签。你可以在一条回复中包含多个标签。\n\n"
+             + "当玩家要求你执行游戏操作时，在你的回复中嵌入指令标签。非必要时不要在同一轮回复中使用多个工具标签；"
+             + "优先一次只调用一个工具，等收到结果后再决定下一步，避免确认、回调和工具执行顺序产生不可预测的问题。"
+             + "只有多个操作必须作为同一步完成且彼此独立时，才可以在同一轮使用多个标签。\n\n"
              + "========== 建筑放置（推荐方式）==========\n\n"
              + "当玩家要求建造建筑、结构、房屋等多方块结构时，使用 [BLUEPRINT]...[/BLUEPRINT] 标签，内容为 MCBLUEPRINT v2 格式：\n\n"
              + "[BLUEPRINT]\n"
@@ -1297,7 +1316,8 @@ public class AICommandExecutor {
              + vanillaCommandRules
              + "- 如果玩家只是聊天，正常回复即可，不需要加任何标签\n\n"
              + "其他规则：\n"
-             + "- 可以一次执行多个操作（多个标签）\n"
+             + "- 【默认单工具】非必要时不要在同一轮回复中使用多个工具标签。优先调用一个工具、等待结果、再按结果决定下一步，避免确认、回调和执行顺序出现不可预测的问题。\n"
+             + "- 只有多个操作必须同时作为同一步完成且互不依赖时，才可以在同一轮使用多个标签；否则请拆分到后续轮次。\n"
              + "- 同一种工具可以在不同轮次的回复中多次调用（只要每次参数不同、目的不同），"
              + "例如多次 [QUERY_REGION] 查询不同区域、多次 [CAMERA_SHOT] 从不同角度拍照、多次 [ACTION] 放置不同方块——"
              + "这不算\"重复已执行过的操作\"，是完成任务的正常步骤，不必因为用过某个工具就不敢再用它\n"

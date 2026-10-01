@@ -284,4 +284,48 @@ class AICommandExecutorTest {
         // 无参重载版本应等价于 getSystemPrompt(true)，保持向后兼容
         assertEquals(AICommandExecutor.getSystemPrompt(true), AICommandExecutor.getSystemPrompt());
     }
+
+    @Test
+    void testGetSystemPrompt_AdvisesSingleToolPerRoundUnlessNecessary() {
+        String prompt = AICommandExecutor.getSystemPrompt();
+        assertTrue(prompt.contains("非必要时不要在同一轮回复中使用多个工具标签"));
+        assertTrue(prompt.contains("优先调用一个工具、等待结果、再按结果决定下一步"));
+    }
+
+    // ========== 标签“串味”回归测试：正文里提到标签名不应污染真正调用的参数 ==========
+
+    @Test
+    void testExtractQueryRegion_CleanTag() {
+        String response = "帮你查一下周围地形：\n[QUERY_REGION]around 10[/QUERY_REGION]";
+        assertEquals("around 10", AICommandExecutor.extractQueryRegionSpec(response));
+    }
+
+    @Test
+    void testExtractQueryRegion_MentionedTagNameInProse_DoesNotContaminate() {
+        // 复现历史 bug：AI 在正文里解释性地写出一个未闭合的 [QUERY_REGION]，
+        // 后面才是真正的调用。提取应只拿到干净的 "around 10"，而不是把中间的中文说明吞进去。
+        String response = "我用 [QUERY_REGION]around 8 上一条也发了，但结果没回来，我再单独发一次干净的查询：\n\n"
+                + "[QUERY_REGION]around 10[/QUERY_REGION]";
+        assertEquals("around 10", AICommandExecutor.extractQueryRegionSpec(response));
+    }
+
+    @Test
+    void testExtractQueryRegion_AbsoluteCoords_WithProseMention() {
+        String response = "我要用 [QUERY_REGION] 查询这块地形。\n[QUERY_REGION]100,60,-200 120,80,-180[/QUERY_REGION]";
+        assertEquals("100,60,-200 120,80,-180", AICommandExecutor.extractQueryRegionSpec(response));
+    }
+
+    @Test
+    void testExtractCameraShot_MentionedTagNameInProse_DoesNotContaminate() {
+        String response = "我打算用 [CAMERA_SHOT] 拍一张验收图，正对刚建好的平台：\n"
+                + "[CAMERA_SHOT]-644,102,429,-90,20[/CAMERA_SHOT]";
+        assertEquals("-644,102,429,-90,20", AICommandExecutor.extractCameraShotSpec(response));
+    }
+
+    @Test
+    void testExtractQueryRegion_NoRealCall_ReturnsNull() {
+        // 正文里只是提到标签名，没有真正闭合的调用，不应误触发。
+        String response = "你可以用 [QUERY_REGION] 这个工具来查询地形，需要我查吗？";
+        assertNull(AICommandExecutor.extractQueryRegionSpec(response));
+    }
 }

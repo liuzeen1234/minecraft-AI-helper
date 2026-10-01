@@ -1,20 +1,72 @@
 package com.example.helloworld;
 
-/**
- * 说明：AI-helper 的显示语言现在完全跟随 Minecraft 当前游戏语言（见 {@link I18n#isEnglish()}），
- * 不再支持通过 debug_menu 手动切换。原本用于测试语言码 ↔ 菜单显示名映射逻辑
- * （{@code languageCodeToOption}/{@code optionToLanguageCode}/{@code OPTION_ZH}/
- * {@code OPTION_EN}/{@code OPTIONS}）的测试已随该功能一并移除。
- *
- * <p>{@link DebugMenuIntegration} 里仍保留的“强制多轮工具调用”“打印工具返回值到聊天框”
- * 两个调试开关与语言无关，未在此文件中覆盖（当前无对应单测）。
- *
- * <p>说明：日志级别 ↔ 显示名的映射逻辑已随“日志转发到聊天框”功能迁移到 debug-menu 模组
- * （见 debug_menu 的 DebugMenuClient / com.debugmenu.log.InGameLogAppender），对应测试
- * 也随之移除，不再由 AI-helper 维护。
- *
- * <p>说明：“生成测试日志”按钮（原 /aitest）已整体内置到 debug_menu 模组（见其 DebugMenuClient），
- * 不再由 AI-helper 注册，对应门控逻辑与测试也随之移除。
- */
+import com.debugmenu.api.DebugMenuApi;
+import com.debugmenu.api.DebugToggleEntry;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mockStatic;
+
 class DebugMenuIntegrationTest {
+
+    @Test
+    void registersAllTogglesWithoutDuplicatingOrResettingState() {
+        boolean force = AICommandExecutor.isForceMultiToolTesting();
+        boolean print = AICommandExecutor.isPrintToolResultsToChat();
+        boolean image = AICommandExecutor.isImageDiagEnabled();
+        try {
+            DebugMenuIntegration.register();
+            assertEquals("AI Builder", DebugMenuApi.getModDisplayName(HelloWorldMod.MOD_ID));
+            verifyToggle(DebugMenuIntegration.FORCE_MULTI_TOOL_KEY,
+                    AICommandExecutor::isForceMultiToolTesting,
+                    AICommandExecutor::setForceMultiToolTesting);
+            verifyToggle(DebugMenuIntegration.PRINT_TOOL_RESULT_KEY,
+                    AICommandExecutor::isPrintToolResultsToChat,
+                    AICommandExecutor::setPrintToolResultsToChat);
+            verifyToggle(DebugMenuIntegration.IMAGE_DIAG_KEY,
+                    AICommandExecutor::isImageDiagEnabled,
+                    AICommandExecutor::setImageDiagEnabled);
+            AICommandExecutor.setImageDiagEnabled(true);
+            DebugMenuIntegration.register();
+            assertTrue(AICommandExecutor.isImageDiagEnabled());
+            assertEquals(3, DebugMenuApi.getEntries().stream()
+                    .filter(entry -> HelloWorldMod.MOD_ID.equals(entry.getModId())).count());
+            assertTrue(DebugMenuApi.getOptionEntries().stream()
+                    .noneMatch(entry -> HelloWorldMod.MOD_ID.equals(entry.getModId())));
+        } finally {
+            AICommandExecutor.setForceMultiToolTesting(force);
+            AICommandExecutor.setPrintToolResultsToChat(print);
+            AICommandExecutor.setImageDiagEnabled(image);
+        }
+    }
+
+    @Test
+    void titleUsesCurrentTranslationWhenMenuReadsIt() {
+        DebugMenuIntegration.register();
+        DebugToggleEntry entry = DebugMenuApi.getEntry(DebugMenuIntegration.IMAGE_DIAG_KEY);
+        try (var translations = mockStatic(I18n.class)) {
+            translations.when(() -> I18n.tr("debug.image_diag.title"))
+                    .thenReturn("图片传输诊断日志(测试)");
+            assertEquals("图片传输诊断日志(测试)", entry.getDisplayName());
+            translations.when(() -> I18n.tr("debug.image_diag.title"))
+                    .thenReturn("Image Transfer Diagnostics (Test)");
+            assertEquals("Image Transfer Diagnostics (Test)", entry.getDisplayName());
+        }
+    }
+
+    private void verifyToggle(String key, java.util.function.Supplier<Boolean> getter,
+                              java.util.function.Consumer<Boolean> setter) {
+        DebugToggleEntry entry = DebugMenuApi.getEntry(key);
+        assertNotNull(entry, key);
+        assertEquals(HelloWorldMod.MOD_ID, entry.getModId());
+        assertTrue(entry.isVisible());
+        setter.accept(false);
+        assertFalse(entry.isEnabled());
+        entry.setEnabled(true);
+        assertTrue(getter.get());
+        entry.toggle();
+        assertFalse(getter.get());
+        setter.accept(true);
+        assertTrue(entry.isEnabled());
+    }
 }

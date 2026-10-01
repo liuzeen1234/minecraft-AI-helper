@@ -26,6 +26,9 @@ dependencies {
     // 相关集成代码由 FabricLoader.isModLoaded("debug-menu") 守卫。
     compileOnly files("libs/debug-menu-mc1.20.4-1.0.0.jar")
 
+    // 测试中验证真实 debug-menu API 注册和回调，不改变运行时软依赖。
+    testImplementation files("libs/debug-menu-mc1.20.4-1.0.0.jar")
+
     // 测试依赖
     testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
@@ -107,10 +110,21 @@ tasks.register("buildDebugMenu", Exec) {
     // 复用当前 Gradle 运行所用的 JDK（runClient 用 JDK 21 启动，子构建沿用同一 JDK，
     // 避免默认 JDK 版本过高导致 debug_menu 的 Gradle 不兼容）。
     def javaHome = System.getProperty("java.home")
+
+    // debug_menu 是独立 Gradle 进程，不会自动继承本项目 gradle.properties 的 systemProp.*。
+    // 将已生效的代理系统属性显式透传，避免其解析 Fabric Loom 时绕过代理而导致 TLS 握手失败。
+    def proxyArgs = [
+            "http.proxyHost", "http.proxyPort", "http.nonProxyHosts",
+            "https.proxyHost", "https.proxyPort", "https.nonProxyHosts"
+    ].collectMany { key ->
+        def value = System.getProperty(key)
+        value != null && !value.isBlank() ? ["-D${key}=${value}"] : []
+    }
+    def buildArgs = ["build", "-Pmc=${project.minecraft_version}", "-x", "test"] + proxyArgs
     if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-        commandLine "cmd", "/c", "gradlew.bat", "build", "-Pmc=${project.minecraft_version}", "-x", "test"
+        commandLine(["cmd", "/c", "gradlew.bat"] + buildArgs)
     } else {
-        commandLine "./gradlew", "build", "-Pmc=${project.minecraft_version}", "-x", "test"
+        commandLine(["./gradlew"] + buildArgs)
     }
     environment "JAVA_HOME", javaHome
 }

@@ -225,6 +225,7 @@
     "settings.chat.stream_output": "流式输出(聊天框): %s",
     "debug.force_multi_tool.title": "强制多轮工具调用(测试)",
     "debug.print_tool_result.title": "打印工具返回值到聊天框(测试)",
+    "debug.image_diag.title": "图片传输诊断日志(测试)",
     "debug.print_tool_result.prefix": "工具调试",
     "debug.print_tool_result.entry": "%s 返回值:",
     "debug.tool.fetch": "抓取网页",
