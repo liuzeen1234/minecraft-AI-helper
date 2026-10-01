@@ -51,6 +51,8 @@ public class HelloWorldClientMod implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ClickKeyCommand.register();
+
         // 软依赖 debug_menu：若已安装，则把调试开关注册进其调试菜单
         // （语言切换开关已随“显示语言完全跟随游戏语言”的改动一并移除）。
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("debug-menu")) {
