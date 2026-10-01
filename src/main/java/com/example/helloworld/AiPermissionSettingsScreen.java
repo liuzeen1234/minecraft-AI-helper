@@ -1,6 +1,7 @@
 package com.example.helloworld;
 
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
@@ -55,16 +56,17 @@ public class AiPermissionSettingsScreen extends Screen {
                 .build()
         );
 
-        // 执行前需玩家确认开关。开启后，AI 使用 mod 自定义功能（放置方块、建造蓝图、
-        // 给物品、查询等）前会先在聊天框发一条 [是]/[否] 确认消息，玩家点击"是"才会真正执行。
+        // 工具批准三态开关，点击循环切换并立即保存。
         int confirmY = startY + (btnH + gap);
         this.addDrawableChild(ButtonWidget.builder(
                 getConfirmBeforeExecuteButtonText(),
                 button -> {
-                    config.setConfirmBeforeExecuteEnabled(!config.isConfirmBeforeExecuteEnabled());
+                    config.setToolApprovalMode(config.getToolApprovalMode().next());
+                    button.setTooltip(getApprovalTooltip());
                     button.setMessage(getConfirmBeforeExecuteButtonText());
                 })
                 .dimensions(startX, confirmY, 200, btnH)
+                .tooltip(getApprovalTooltip())
                 .build()
         );
 
@@ -145,8 +147,13 @@ public class AiPermissionSettingsScreen extends Screen {
     }
 
     private Text getConfirmBeforeExecuteButtonText() {
-        String state = config.isConfirmBeforeExecuteEnabled() ? I18n.tr("settings.chat.on") : I18n.tr("settings.chat.off");
-        return Text.literal(I18n.tr("settings.permission.confirm_before_execute", state));
+        String state = I18n.tr("settings.permission.approval." + config.getToolApprovalMode().configValue());
+        return Text.literal(I18n.tr("settings.permission.tool_approval", state));
+    }
+
+    private Tooltip getApprovalTooltip() {
+        return Tooltip.of(Text.literal(I18n.tr("settings.permission.approval." +
+                config.getToolApprovalMode().configValue() + ".tooltip")));
     }
 
     private Text getCameraShotButtonText() {

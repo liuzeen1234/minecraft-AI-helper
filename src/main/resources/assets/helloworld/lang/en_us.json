@@ -442,5 +442,12 @@
     "server.blueprints.loaded": "§eLoaded %s blueprint(s):",
     "server.reject.none": "§7No pending AI requests right now",
     "server.reject.done": "§aRejected %s pending AI request(s)",
-    "server.thinking_cancelled": "§7[Thinking cancelled]"
+    "server.thinking_cancelled": "§7[Thinking cancelled]",
+    "settings.permission.tool_approval": "Tool Approval: %s",
+    "settings.permission.approval.never": "No Approval",
+    "settings.permission.approval.never.tooltip": "Enabled tools run directly. Vanilla commands are pre-filled in chat for manual execution.",
+    "settings.permission.approval.as_needed": "As Needed",
+    "settings.permission.approval.as_needed.tooltip": "Read-only tools run directly. Changes, blueprints and camera shots require approval. Vanilla commands remain manual.",
+    "settings.permission.approval.always": "Always",
+    "settings.permission.approval.always.tooltip": "Every tool requires approval, including read-only tools, except vanilla command suggestions, which remain manually executed from chat."
 }

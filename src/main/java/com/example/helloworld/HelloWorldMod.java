@@ -1815,7 +1815,7 @@ public class HelloWorldMod implements ModInitializer {
         // 否则每次经过确认流程续跑都会重置为 0，导致轮数上限失效）
         int round = startRound;
         while (true) {
-            // 非确认路径下（confirm_before_execute_enabled 关闭）本轮 [CAMERA_SHOT] 拍到的图片
+            // 无需确认时本轮 [CAMERA_SHOT] 拍到的图片
             // 暂存在这里，本轮末尾统一调用 callKimiApi/callKimiApiStreaming 时随反馈一起带上。
             // 每轮开始时重置，避免把上一轮的图片错误地带到本轮（确认路径不用这个变量，
             // 那条路径通过 resumeToolLoopAfterConfirmedInfoTool 的 base64Image 重载直接传递）。
@@ -1905,7 +1905,7 @@ public class HelloWorldMod implements ModInitializer {
             // 1) 抓取网页（优先于搜索，保持与旧逻辑一致）
             if (fetchUrl != null) {
                 final String url = fetchUrl;
-                if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                if (CONFIG.requiresToolApproval("FETCH")) {
                     String summary = I18n.tr("confirm.summary.fetch", url);
                     final int roundForResume = round;
                     final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
@@ -1944,7 +1944,7 @@ public class HelloWorldMod implements ModInitializer {
             } else if (webSearchAvailable) {
                 // 2) 联网搜索
                 final String query = searchQuery;
-                if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                if (CONFIG.requiresToolApproval("SEARCH")) {
                     String summary = I18n.tr("confirm.summary.web_search", query);
                     final int roundForResume = round;
                     final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
@@ -2050,7 +2050,7 @@ public class HelloWorldMod implements ModInitializer {
 
                 // 地形查询也是 AI 使用 mod 自定义功能，需要按同一开关确认。开启时先发确认消息挂起，
                 // 不执行查询也不继续回喂 AI，直到玩家点击 [是]/[否]；确认后自动续跑循环。
-                if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                if (CONFIG.requiresToolApproval("QUERY_REGION")) {
                     final boolean[] confirmedHolder = new boolean[1];
                     final String[] summaryHolder = new String[1];
                     final int roundForResume = round;
@@ -2137,7 +2137,7 @@ public class HelloWorldMod implements ModInitializer {
                     final double camX = parsed[0], camY = parsed[1], camZ = parsed[2];
                     final float camYaw = (float) parsed[3], camPitch = (float) parsed[4];
 
-                    if (CONFIG.isConfirmBeforeExecuteEnabled()) {
+                    if (CONFIG.requiresToolApproval("CAMERA_SHOT")) {
                         final String[] summaryHolder = new String[1];
                         final boolean[] confirmedHolder = new boolean[1];
                         final int roundForResume = round;
@@ -2207,8 +2207,29 @@ public class HelloWorldMod implements ModInitializer {
             }
 
             // 5) 查阅知识库（[KNOWLEDGE]）：本地读取 Markdown 文档正文，只读操作，速度快，
-            // 不涉及网络或游戏世界状态，因此不走确认流程，直接在当前线程处理。
+            // 仅在均需批准模式下请求确认。
             if (knowledgeAvailable) {
+                if (CONFIG.requiresToolApproval("KNOWLEDGE")) {
+                    final int roundForResume = round;
+                    final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                    String summary = I18n.tr("debug.tool.knowledge") + ": " + String.join(", ", knowledgeDocNames);
+                    PendingActionConfirmation.request(player, summary, () -> CompletableFuture.runAsync(() -> {
+                        try {
+                            String result = knowledgeBase.retrieve(knowledgeDocNames, CONFIG.getRagMaxDocs(), CONFIG.getRagMaxChars());
+                            if (result == null) result = I18n.tr("server.knowledge.not_found");
+                            debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge"), result);
+                            resumeToolLoopAfterConfirmedInfoTool(summary + "\n\n" + result + "\n\n",
+                                    roundForResume, lastAllowedForResume, player, server, streaming, notifier, finisher, myGen);
+                        } catch (Exception e) {
+                            finisher.finish(ToolLoopOutcome.failed(e));
+                        }
+                    }), buildInfoToolRejectResume(I18n.tr("debug.tool.knowledge"), roundForResume,
+                            lastAllowedForResume, server, streaming, notifier, finisher, myGen));
+                    finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(
+                            I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS), false)));
+                    return;
+                }
+
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.knowledge.querying"));
                 String knowledgeContent = knowledgeBase.retrieve(
                         knowledgeDocNames, CONFIG.getRagMaxDocs(), CONFIG.getRagMaxChars());
@@ -2224,9 +2245,30 @@ public class HelloWorldMod implements ModInitializer {
             }
 
             // 6) 查看知识库目录结构（[KNOWLEDGE_TREE]）：本地读取文件树，只读操作，不涉及网络或游戏世界状态，
-            // 因此不走确认流程，直接在当前线程处理。用于让 AI 先看清 knowledge/ 下的完整文件/文件夹结构，
+            // 仅在均需批准模式下请求确认。用于让 AI 先看清 knowledge/ 下的完整文件/文件夹结构，
             // 再用 [KNOWLEDGE_FILE] 点名读取具体文件正文。
             if (knowledgeTreeRequested) {
+                if (CONFIG.requiresToolApproval("KNOWLEDGE_TREE")) {
+                    final int roundForResume = round;
+                    final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                    String summary = I18n.tr("debug.tool.knowledge_tree");
+                    PendingActionConfirmation.request(player, summary, () -> CompletableFuture.runAsync(() -> {
+                        try {
+                            String result = knowledgeBase.buildTreeText();
+                            if (result == null) result = I18n.tr("server.knowledge.not_found");
+                            debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge_tree"), result);
+                            resumeToolLoopAfterConfirmedInfoTool(summary + "\n\n" + result + "\n\n",
+                                    roundForResume, lastAllowedForResume, player, server, streaming, notifier, finisher, myGen);
+                        } catch (Exception e) {
+                            finisher.finish(ToolLoopOutcome.failed(e));
+                        }
+                    }), buildInfoToolRejectResume(I18n.tr("debug.tool.knowledge_tree"), roundForResume,
+                            lastAllowedForResume, server, streaming, notifier, finisher, myGen));
+                    finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(
+                            I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS), false)));
+                    return;
+                }
+
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.knowledge_tree.querying"));
                 String treeText = knowledgeBase.buildTreeText();
                 if (treeText != null) {
@@ -2240,8 +2282,29 @@ public class HelloWorldMod implements ModInitializer {
             }
 
             // 7) 读取知识库中某个具体文件的正文（[KNOWLEDGE_FILE]）：本地读取任意文件原始文本，
-            // 只读操作，不涉及网络或游戏世界状态，因此不走确认流程，直接在当前线程处理。
+            // 只读操作，仅在均需批准模式下请求确认。
             if (knowledgeFileRequested) {
+                if (CONFIG.requiresToolApproval("KNOWLEDGE_FILE")) {
+                    final int roundForResume = round;
+                    final boolean lastAllowedForResume = !(maxRounds > 0 && round + 1 < maxRounds);
+                    String summary = I18n.tr("debug.tool.knowledge_file") + ": " + knowledgeFilePath;
+                    PendingActionConfirmation.request(player, summary, () -> CompletableFuture.runAsync(() -> {
+                        try {
+                            String result = knowledgeBase.readFile(knowledgeFilePath, CONFIG.getRagMaxChars());
+                            if (result == null) result = I18n.tr("server.knowledge.not_found");
+                            debugPrintToolResult(player, server, I18n.tr("debug.tool.knowledge_file"), result);
+                            resumeToolLoopAfterConfirmedInfoTool(summary + "\n\n" + result + "\n\n",
+                                    roundForResume, lastAllowedForResume, player, server, streaming, notifier, finisher, myGen);
+                        } catch (Exception e) {
+                            finisher.finish(ToolLoopOutcome.failed(e));
+                        }
+                    }), buildInfoToolRejectResume(I18n.tr("debug.tool.knowledge_file"), roundForResume,
+                            lastAllowedForResume, server, streaming, notifier, finisher, myGen));
+                    finisher.finish(ToolLoopOutcome.of(new ToolLoopResult(
+                            I18n.tr("confirm.pending", summary, PendingActionConfirmation.TIMEOUT_SECONDS), false)));
+                    return;
+                }
+
                 final String filePath = knowledgeFilePath;
                 if (notifier != null) notifier.notify("\n\n§7" + I18n.tr("server.knowledge_file.querying"));
                 String fileContent = knowledgeBase.readFile(filePath, CONFIG.getRagMaxChars());

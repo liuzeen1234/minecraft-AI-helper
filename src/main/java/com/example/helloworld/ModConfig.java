@@ -23,7 +23,7 @@ public class ModConfig {
     private boolean streamOutputEnabled;
     private int maxToolRounds;
     private boolean vanillaCommandsEnabled;
-    private boolean confirmBeforeExecuteEnabled;
+    private ToolApprovalMode toolApprovalMode = ToolApprovalMode.AS_NEEDED;
     private boolean cameraShotEnabled;
     private String apiFormat;
     private boolean ragEnabled;
@@ -44,9 +44,6 @@ public class ModConfig {
     // 是否允许 AI 使用原版命令（execute_command）：关闭时 system prompt 不会出现该指令说明，
     // AI 只能使用 mod 自带的具体功能（ACTION/BLUEPRINT 等）
     private static final boolean DEFAULT_VANILLA_COMMANDS_ENABLED = true;
-    // 是否要求玩家在 AI 执行 mod 自定义功能（ACTION/BLUEPRINT）前先在聊天框确认：
-    // 关闭时保持原有行为（AI 决定即执行），开启后需玩家点击 [是] 才会真正执行，默认关闭以保持现有体验。
-    private static final boolean DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED = false;
     // 是否允许 AI 使用摄像机截图工具（[CAMERA_SHOT]）自查建造效果：关闭时 system prompt 不会出现
     // 该工具说明，AI 不会尝试使用；即使因记忆/越狱等原因输出了该标签，运行时也会二次拦截。
     private static final boolean DEFAULT_CAMERA_SHOT_ENABLED = true;
@@ -88,14 +85,14 @@ public class ModConfig {
         streamOutputEnabled = Boolean.parseBoolean(props.getProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED)));
         maxToolRounds = parseMaxToolRounds(props.getProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS)));
         vanillaCommandsEnabled = Boolean.parseBoolean(props.getProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED)));
-        confirmBeforeExecuteEnabled = Boolean.parseBoolean(props.getProperty("confirm_before_execute_enabled", String.valueOf(DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED)));
+        toolApprovalMode = ToolApprovalMode.fromProperties(props);
         cameraShotEnabled = Boolean.parseBoolean(props.getProperty("camera_shot_enabled", String.valueOf(DEFAULT_CAMERA_SHOT_ENABLED)));
         apiFormat = props.getProperty("api_format", DEFAULT_API_FORMAT);
         ragEnabled = Boolean.parseBoolean(props.getProperty("rag_enabled", String.valueOf(DEFAULT_RAG_ENABLED)));
         ragMaxDocs = parsePositiveInt(props.getProperty("rag_max_docs", String.valueOf(DEFAULT_RAG_MAX_DOCS)), DEFAULT_RAG_MAX_DOCS);
         ragMaxChars = parsePositiveInt(props.getProperty("rag_max_chars", String.valueOf(DEFAULT_RAG_MAX_CHARS)), DEFAULT_RAG_MAX_CHARS);
 
-        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, confirmBeforeExecute={}, cameraShot={}, apiFormat={}(生效={}), rag={}(maxDocs={}, maxChars={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, confirmBeforeExecuteEnabled, cameraShotEnabled, apiFormat, getEffectiveApiFormat(), ragEnabled, ragMaxDocs, ragMaxChars);
+        HelloWorldMod.LOGGER.info("配置已加载: model={}, url={}, context={}, webSearch={}, stream={}, maxToolRounds={}, vanillaCommands={}, toolApprovalMode={}, cameraShot={}, apiFormat={}(生效={}), rag={}(maxDocs={}, maxChars={})", model, apiBaseUrl, contextEnabled, webSearchEnabled, streamOutputEnabled, maxToolRounds, vanillaCommandsEnabled, toolApprovalMode, cameraShotEnabled, apiFormat, getEffectiveApiFormat(), ragEnabled, ragMaxDocs, ragMaxChars);
     }
 
     /** 解析正整数配置，非法值回退默认，并 clamp 到 >=1。 */
@@ -132,7 +129,7 @@ public class ModConfig {
             props.setProperty("stream_output_enabled", String.valueOf(DEFAULT_STREAM_OUTPUT_ENABLED));
             props.setProperty("max_tool_rounds", String.valueOf(DEFAULT_MAX_TOOL_ROUNDS));
             props.setProperty("vanilla_commands_enabled", String.valueOf(DEFAULT_VANILLA_COMMANDS_ENABLED));
-            props.setProperty("confirm_before_execute_enabled", String.valueOf(DEFAULT_CONFIRM_BEFORE_EXECUTE_ENABLED));
+            props.setProperty("tool_approval_mode", ToolApprovalMode.AS_NEEDED.configValue());
             props.setProperty("camera_shot_enabled", String.valueOf(DEFAULT_CAMERA_SHOT_ENABLED));
             props.setProperty("api_format", DEFAULT_API_FORMAT);
             props.setProperty("rag_enabled", String.valueOf(DEFAULT_RAG_ENABLED));
@@ -216,14 +213,21 @@ public class ModConfig {
         save();
     }
 
-    /**
-     * 是否要求玩家在 AI 执行 mod 自定义功能（放置方块、建造蓝图、给物品、查询等 ACTION/BLUEPRINT 操作）前，
-     * 先在聊天框点击 [是]/[否] 确认。关闭时保持原有行为（AI 决定即执行）。
-     */
-    public boolean isConfirmBeforeExecuteEnabled() { return confirmBeforeExecuteEnabled; }
+    /** Compatibility API: whether any automatic tool calls require approval. */
+    @Deprecated
+    public boolean isConfirmBeforeExecuteEnabled() { return toolApprovalMode != ToolApprovalMode.NEVER; }
+
+    public ToolApprovalMode getToolApprovalMode() { return toolApprovalMode; }
+
+    public boolean requiresToolApproval(String tool) { return toolApprovalMode.requiresApproval(tool); }
+
+    public void setToolApprovalMode(ToolApprovalMode mode) {
+        this.toolApprovalMode = java.util.Objects.requireNonNull(mode);
+        save();
+    }
 
     public void setConfirmBeforeExecuteEnabled(boolean confirmBeforeExecuteEnabled) {
-        this.confirmBeforeExecuteEnabled = confirmBeforeExecuteEnabled;
+        this.toolApprovalMode = confirmBeforeExecuteEnabled ? ToolApprovalMode.ALWAYS : ToolApprovalMode.NEVER;
         save();
     }
 
@@ -332,7 +336,7 @@ public class ModConfig {
         props.setProperty("stream_output_enabled", String.valueOf(streamOutputEnabled));
         props.setProperty("max_tool_rounds", String.valueOf(maxToolRounds));
         props.setProperty("vanilla_commands_enabled", String.valueOf(vanillaCommandsEnabled));
-        props.setProperty("confirm_before_execute_enabled", String.valueOf(confirmBeforeExecuteEnabled));
+        props.setProperty("tool_approval_mode", toolApprovalMode.configValue());
         props.setProperty("camera_shot_enabled", String.valueOf(cameraShotEnabled));
         props.setProperty("api_format", apiFormat);
         props.setProperty("rag_enabled", String.valueOf(ragEnabled));

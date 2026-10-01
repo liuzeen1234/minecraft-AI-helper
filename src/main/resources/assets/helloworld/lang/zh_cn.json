@@ -442,5 +442,12 @@
     "server.blueprints.loaded": "§e已加载 %s 个蓝图: ",
     "server.reject.none": "§7当前没有待确认的 AI 请求",
     "server.reject.done": "§a已拒绝 %s 个 AI 待确认请求",
-    "server.thinking_cancelled": "§7[思考已终止]"
+    "server.thinking_cancelled": "§7[思考已终止]",
+    "settings.permission.tool_approval": "工具批准: %s",
+    "settings.permission.approval.never": "无需批准",
+    "settings.permission.approval.never.tooltip": "已启用的工具直接执行。原版命令仍预填聊天框，由玩家手动执行。",
+    "settings.permission.approval.as_needed": "按需批准",
+    "settings.permission.approval.as_needed.tooltip": "只读工具无需批准；修改状态、建造蓝图和摄像机截图需要批准。原版命令仍手动执行。",
+    "settings.permission.approval.always": "均需批准",
+    "settings.permission.approval.always.tooltip": "所有工具均需批准，包括只读工具；原版命令建议除外，仍预填聊天框，由玩家手动执行。"
 }

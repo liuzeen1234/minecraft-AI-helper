@@ -82,7 +82,7 @@ The mod ships a built-in Minecraft knowledge base (Markdown docs on blocks, mobs
 Press `K` → **AI Permission Settings** (split out from AI Chat Settings) to control:
 
 - **Allow AI to Use Vanilla Commands** (`vanilla_commands_enabled`, on by default): when off, the AI can only use the mod's built-in features and will not suggest any vanilla commands.
-- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, the AI sends a [Yes]/[No] confirmation message in chat before using a mod-specific feature; unconfirmed requests are canceled after 60 seconds.
+- **Tool Approval** (`tool_approval_mode`, defaults to `as_needed` for new installations): cycles through No Approval / As Needed / Always. As Needed approves changes, blueprints and camera shots; read-only tools run directly. Always also approves read-only tools. Vanilla command suggestions always remain pre-filled in chat for manual execution. Requests expire after 60 seconds. Legacy confirmation off maps to No Approval; on maps to Always.
 - **Max tool-call rounds** (the `max_tool_rounds` setting, moved here from chat settings): caps the multi-round agentic tool-call loop.
 
 ### Unified Structure Browser
@@ -127,7 +127,7 @@ Configuration file: `ai-helper/config/ai-builder.properties`
 | `stream_output_enabled` | `true` | Incrementally show AI responses |
 | `max_tool_rounds` | `3` | Max rounds for the multi-round tool-call loop; 0 disables multi-round tool calls |
 | `vanilla_commands_enabled` | `true` | Whether the AI is allowed to use vanilla commands (`execute_command`) |
-| `confirm_before_execute_enabled` | `false` | Whether the player must confirm in chat before the AI executes a mod-specific action |
+| `tool_approval_mode` | `as_needed` | `never`, `as_needed`, or `always`; vanilla commands remain manually executed |
 | `api_format` | `auto` | `auto`, `openai`, or `anthropic` |
 | `rag_enabled` | `true` | Whether knowledge base retrieval (`[KNOWLEDGE]` tag) is enabled |
 | `rag_max_docs` | `8` | Max documents nameable in a single `[KNOWLEDGE]` request |

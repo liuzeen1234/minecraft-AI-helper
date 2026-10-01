@@ -389,7 +389,7 @@ public class AICommandExecutor {
         }
 
         final String finalText = text;
-        if (!HelloWorldMod.getConfig().isConfirmBeforeExecuteEnabled()) {
+        if (!HelloWorldMod.getConfig().requiresToolApproval("BLUEPRINT")) {
             return executeBlueprint(data, finalText, player, world);
         }
 
@@ -496,7 +496,7 @@ public class AICommandExecutor {
     }
 
     /**
-     * ACTION 指令的确认包装：根据"执行前需确认"开关决定直接执行，还是先在聊天框
+     * ACTION 指令的确认包装：根据工具批准模式决定直接执行，还是先在聊天框
      * 发 [是]/[否] 确认消息、挂起后由玩家点击 [是] 再真正执行 {@link #executeAction}。
      * {@code execute_command} 本身已有"预填聊天框待玩家确认"的机制，为避免重复确认，此处不再二次拦截。
      */
@@ -504,7 +504,7 @@ public class AICommandExecutor {
         String type = extractJsonString(json, "type");
         if (type == null) return I18n.tr("cmd.action.unknown_type");
 
-        if (!HelloWorldMod.getConfig().isConfirmBeforeExecuteEnabled() || "execute_command".equals(type)) {
+        if (!HelloWorldMod.getConfig().requiresToolApproval(type)) {
             return executeAction(json, player, world);
         }
 
