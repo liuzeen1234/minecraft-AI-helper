@@ -6,6 +6,12 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
+import java.awt.Desktop;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+
 /**
  * AI 权限设置页面：控制 AI 在游戏中能做多少事、能做到什么程度的相关配置。
  * 目前包含最大工具调用轮数（多轮 agentic loop 的上限）。
@@ -21,6 +27,8 @@ public class AiPermissionSettingsScreen extends Screen {
     private int maxRoundsLabelY;
     private String maxRoundsStatus = null;
     private int maxRoundsStatusColor = 0xAAAAAA;
+    private String knowledgeFolderError;
+    private int knowledgeFolderStatusY;
 
     public AiPermissionSettingsScreen(Screen parent) {
         super(Text.literal(I18n.tr("settings.permission.title")));
@@ -33,7 +41,7 @@ public class AiPermissionSettingsScreen extends Screen {
         int startX = this.width / 2 - 100;
         int btnH = 20;
         int gap = 4;
-        int startY = this.height / 2 - 50;
+        int startY = this.height / 2 - 80;
 
         // 允许 AI 使用原版命令开关。关闭后 AI 只能使用 mod 自带的具体功能（放置方块、
         // 给物品、生成实体等），不会再建议任何 /命令（包括预填聊天框待确认的方式）。
@@ -91,6 +99,15 @@ public class AiPermissionSettingsScreen extends Screen {
                 .build()
         );
 
+        int folderY = roundsY + (btnH + gap) * 2;
+        this.addDrawableChild(ButtonWidget.builder(
+                Text.literal(I18n.tr("settings.permission.open_knowledge_folder")),
+                button -> openKnowledgeFolder())
+                .dimensions(startX, folderY, 200, btnH)
+                .build()
+        );
+        knowledgeFolderStatusY = folderY + (btnH + gap) * 2;
+
         // 返回按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("button.back")),
@@ -98,9 +115,28 @@ public class AiPermissionSettingsScreen extends Screen {
                     saveMaxToolRounds();
                     this.client.setScreen(this.parent);
                 })
-                .dimensions(startX, roundsY + (btnH + gap) * 2, 200, btnH)
+                .dimensions(startX, folderY + btnH + gap, 200, btnH)
                 .build()
         );
+    }
+
+    /** 打开当前游戏实例的知识库根目录，不保存或改变权限设置。 */
+    private void openKnowledgeFolder() {
+        knowledgeFolderError = null;
+        try {
+            Path folder = ModPaths.getKnowledgeDir().toAbsolutePath().normalize();
+            Files.createDirectories(folder);
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                Desktop.getDesktop().open(folder.toFile());
+            } else {
+                String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+                String command = os.contains("mac") ? "open" : os.contains("win") ? "explorer" : "xdg-open";
+                new ProcessBuilder(command, folder.toString()).start();
+            }
+        } catch (IOException | RuntimeException e) {
+            HelloWorldMod.LOGGER.error("打开知识库文件夹失败", e);
+            knowledgeFolderError = I18n.tr("settings.permission.open_knowledge_folder_error");
+        }
     }
 
     private Text getVanillaCommandsButtonText() {
@@ -150,6 +186,10 @@ public class AiPermissionSettingsScreen extends Screen {
             }
         }
         super.render(context, mouseX, mouseY, delta);
+        if (knowledgeFolderError != null) {
+            context.drawCenteredTextWithShadow(this.textRenderer, knowledgeFolderError,
+                    this.width / 2, knowledgeFolderStatusY, 0xFF5555);
+        }
     }
 
     private int maxRoundsField_bottomY() {

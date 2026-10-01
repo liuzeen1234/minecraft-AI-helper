@@ -242,6 +242,8 @@
     "settings.chat.api_settings": "AI API 设置",
     "settings.chat.permission_settings": "AI 权限设置",
     "settings.permission.title": "AI 权限设置",
+    "settings.permission.open_knowledge_folder": "打开 AI 资料库文件夹",
+    "settings.permission.open_knowledge_folder_error": "无法打开资料库文件夹，请查看日志。",
     "settings.permission.vanilla_commands": "允许 AI 使用原版命令: %s",
     "settings.permission.confirm_before_execute": "执行前需玩家确认: %s",
     "settings.permission.camera_shot": "允许 AI 视觉自查(摄像机截图): %s",

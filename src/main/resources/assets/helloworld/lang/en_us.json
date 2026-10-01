@@ -242,6 +242,8 @@
     "settings.chat.api_settings": "AI API Settings",
     "settings.chat.permission_settings": "AI Permission Settings",
     "settings.permission.title": "AI Permission Settings",
+    "settings.permission.open_knowledge_folder": "Open AI Knowledge Folder",
+    "settings.permission.open_knowledge_folder_error": "Could not open knowledge folder. See logs.",
     "settings.permission.vanilla_commands": "Allow AI to Use Vanilla Commands: %s",
     "settings.permission.confirm_before_execute": "Require Confirmation Before Execution: %s",
     "settings.permission.camera_shot": "Allow AI Visual Self-Check (Camera Screenshot): %s",
