@@ -21,11 +21,11 @@ public class ModSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        // 7 个按钮，每个高 20px，间距 4px，总高 = 7*20 + 6*4 = 164px，垂直居中
+        // 6 个按钮，每个高 20px，间距 4px，总高 = 6*20 + 5*4 = 140px，垂直居中
         int startX = this.width / 2 - 100;
         int btnH = 20;
         int gap = 4;
-        int startY = this.height / 2 - 82;
+        int startY = this.height / 2 - 70;
 
         // AI 聊天设置（二级菜单入口）
         this.addDrawableChild(ButtonWidget.builder(
@@ -59,19 +59,11 @@ public class ModSettingsScreen extends Screen {
                 .build()
         );
 
-        // Mod 语言说明按钮（显示语言跟随游戏语言，此页面仅作说明，不提供切换）
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(I18n.tr("screen.language.title")),
-                button -> this.client.setScreen(new LanguageSettingsScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
-                .build()
-        );
-
         // 用户手册按钮
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("settings.user_manual")),
                 button -> this.client.setScreen(new UserManualScreen(this)))
-                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 4, 200, btnH)
                 .build()
         );
 
@@ -79,7 +71,7 @@ public class ModSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(I18n.tr("button.back")),
                 button -> this.client.setScreen(this.parent))
-                .dimensions(startX, startY + (btnH + gap) * 6, 200, btnH)
+                .dimensions(startX, startY + (btnH + gap) * 5, 200, btnH)
                 .build()
         );
     }

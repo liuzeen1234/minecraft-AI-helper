@@ -2,8 +2,6 @@
     "category.helloworld": "AI Builder",
     "key.helloworld.settings": "打开设置页面",
 
-    "screen.language.title": "Mod 语言说明",
-    "screen.language.hint": "显示语言会自动跟随当前游戏语言，无需手动设置",
 
     "debugmenu.log.toggle": "聊天框日志显示",
     "debugmenu.log.level": "日志最低级别",
@@ -273,7 +271,6 @@
     "apikey.valid": "§a[AI Builder] API 连接验证成功！",
     "apikey.empty": "§c[AI Builder] API Key 未填写！请按 K 键打开设置界面配置 API Key。",
     "apikey.default_value": "§c[AI Builder] API Key 仍为默认值，请按 K 键打开设置界面填写有效的 API Key。",
-    "apikey.invalid_format": "§c[AI Builder] API Key 格式不正确（过短），请检查是否填写完整。",
     "apikey.auth_failed": "§c[AI Builder] API Key 验证失败（认证错误），请检查 Key 是否正确或已过期。",
     "apikey.network_error": "§e[AI Builder] API 连接测试失败（网络错误），请检查网络连接和 API URL 是否正确。",
     "apikey.unknown_error": "§e[AI Builder] API 验证返回异常，请检查 API URL 和 Model 配置是否正确。",

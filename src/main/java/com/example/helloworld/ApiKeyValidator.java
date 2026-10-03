@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 
 /**
  * AI API Key 验证工具类。
- * 提供快速格式检查和异步网络验证两种能力。
+ * 提供快速配置检查和异步网络验证两种能力。
  */
 public class ApiKeyValidator {
 
@@ -29,15 +29,14 @@ public class ApiKeyValidator {
         VALID,           // API 有效
         EMPTY,           // 未填写
         DEFAULT_VALUE,   // 未修改默认值
-        INVALID_FORMAT,  // 格式不正确（太短）
         AUTH_FAILED,     // 认证失败（401/403）
         NETWORK_ERROR,   // 网络错误
         UNKNOWN_ERROR    // 未知错误
     }
 
     /**
-     * 快速格式检查（不发网络请求），适合进入世界时调用。
-     * 返回 null 表示格式看起来正常，否则返回问题描述。
+     * 快速配置检查（不发网络请求），适合进入世界时调用。
+     * 只检查是否填写和是否仍为默认值，不限制服务商的 Key 格式或长度。
      */
     public static ValidationResult quickCheck(String apiKey) {
         if (apiKey == null || apiKey.trim().isEmpty()) {
@@ -45,9 +44,6 @@ public class ApiKeyValidator {
         }
         if (DEFAULT_API_KEY.equals(apiKey.trim())) {
             return ValidationResult.DEFAULT_VALUE;
-        }
-        if (apiKey.trim().length() < 10) {
-            return ValidationResult.INVALID_FORMAT;
         }
         return ValidationResult.VALID;
     }
@@ -168,7 +164,6 @@ public class ApiKeyValidator {
             case VALID -> I18n.tr("apikey.valid");
             case EMPTY -> I18n.tr("apikey.empty");
             case DEFAULT_VALUE -> I18n.tr("apikey.default_value");
-            case INVALID_FORMAT -> I18n.tr("apikey.invalid_format");
             case AUTH_FAILED -> I18n.tr("apikey.auth_failed");
             case NETWORK_ERROR -> I18n.tr("apikey.network_error");
             case UNKNOWN_ERROR -> I18n.tr("apikey.unknown_error");

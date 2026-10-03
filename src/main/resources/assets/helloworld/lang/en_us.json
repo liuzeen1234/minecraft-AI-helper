@@ -2,8 +2,6 @@
     "category.helloworld": "AI Builder",
     "key.helloworld.settings": "Open Settings Screen",
 
-    "screen.language.title": "Mod Language",
-    "screen.language.hint": "Display language automatically follows the current game language",
 
     "debugmenu.log.toggle": "Chat Log Display",
     "debugmenu.log.level": "Log Min Level",
@@ -273,7 +271,6 @@
     "apikey.valid": "§a[AI Builder] API connection verified successfully!",
     "apikey.empty": "§c[AI Builder] API Key is empty! Press K to open settings and configure your API Key.",
     "apikey.default_value": "§c[AI Builder] API Key is still the default value. Press K to open settings and enter a valid API Key.",
-    "apikey.invalid_format": "§c[AI Builder] API Key format is invalid (too short). Please check if it's complete.",
     "apikey.auth_failed": "§c[AI Builder] API Key validation failed (auth error). Please check if the key is correct or expired.",
     "apikey.network_error": "§e[AI Builder] API connection test failed (network error). Please check your network and API URL.",
     "apikey.unknown_error": "§e[AI Builder] API validation returned an error. Please check your API URL and Model settings.",
