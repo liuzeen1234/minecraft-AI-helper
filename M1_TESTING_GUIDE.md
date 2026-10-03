@@ -110,7 +110,7 @@ python3 /tmp/m1-helper-test.py \
 
 ### 打开界面
 
-本项目新增了客户端命令 `/click <按键>`。进入世界、关闭其他界面后，可通过 M1 发送 `/click K` 打开 AI Builder 设置，无需玩家手动按键：
+客户端命令 `/click <按键>` 已迁移至相邻的 debug_menu 模组，测试实例须加载包含此命令的新版 debug_menu。进入世界、关闭其他界面后，可通过 M1 发送 `/click K` 打开 AI Builder 设置，无需玩家手动按键：
 
 ```bash
 python3 /tmp/m1-helper-test.py \
