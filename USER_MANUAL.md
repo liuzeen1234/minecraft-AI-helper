@@ -82,7 +82,7 @@ AI 可放置、填充或清除方块，给予物品，生成实体，设置时�
 
 ### RAG 知识库
 
-Mod 内置一套 Minecraft 知识库（方块、生物、指令、游戏机制等分类的 Markdown 文档），首次启动时释放到 `ai-helper/knowledge/` 目录（仅内置英文版以控制安装包体积）。当 AI 需要查阅精确细节（如红石电路信号强度公式、特定生物机制）时，会在回复中用 `[KNOWLEDGE]文档名[/KNOWLEDGE]` 标签点名读取文档正文，而不再依赖写死在提示词里的固定内容。此过程为本地文件读取，不涉及网络请求。你可以在知识库目录中自行增删 Markdown 文档来扩展或替换内置内容。
+资料库位于 `ai-helper/knowledge/`，默认包含 `info/`（资料）、`structure/`（结构参考）和 `workflow.txt`（AI 工作流程，默认为空，供用户自定义）。基础资料使用规则固定写入提示词。每次 AI 调用都会重新读取 `workflow.txt` 全文和完整文件夹/文件结构并加入提示词，修改后无需重启。资料正文可通过 `[KNOWLEDGE_FILE]相对路径[/KNOWLEDGE_FILE]` 按需读取；`info/` 中的 Markdown 文档也支持 `[KNOWLEDGE]文档名[/KNOWLEDGE]` 查询。工作流程和目录注入不受 `rag_enabled` 控制，资料读取工具仍受该设置控制。默认不附带百科资料；若旧的 `basic_info_en/` 存在且 `info/` 尚不存在，会将旧目录迁移为 `info/`，保留原有文件。
 
 ### AI 权限设置
 

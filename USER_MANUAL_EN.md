@@ -82,7 +82,7 @@ Blueprint coordinates are relative: X is east, Y is up, Z is south, and the orig
 
 ### RAG Knowledge Base
 
-The mod ships a built-in Minecraft knowledge base (Markdown docs covering blocks, mobs, commands, game mechanics, etc.), released to `ai-helper/knowledge/` on first launch (English only, to keep the install size down). When the AI needs precise details (e.g. a redstone circuit's signal-strength formula, or a specific mob mechanic), it names documents in its reply using a `[KNOWLEDGE]doc name[/KNOWLEDGE]` tag to read their body text, instead of relying only on fixed content baked into the prompt. This is a local file read with no network request involved. You can add, remove, or edit Markdown docs in the knowledge base directory to extend or replace the built-in content.
+The knowledge base at `ai-helper/knowledge/` contains `info/` (reference documents), `structure/` (structure references), and `workflow.txt` (AI workflow, initially empty for user customization). Basic knowledge usage guidelines are built into the system prompt. Every AI request reloads the complete workflow and folder/file tree into the system prompt; edits take effect without restarting. Read reference contents on demand with `[KNOWLEDGE_FILE]relative/path[/KNOWLEDGE_FILE]`; Markdown documents in `info/` also support `[KNOWLEDGE]doc name[/KNOWLEDGE]`. Workflow and tree injection apply regardless of `rag_enabled`; retrieval tools still follow that setting. No encyclopedia documents are bundled. An existing `basic_info_en/` directory is migrated to `info/` when `info/` does not yet exist, preserving its files.
 
 ### AI Permission Settings
 

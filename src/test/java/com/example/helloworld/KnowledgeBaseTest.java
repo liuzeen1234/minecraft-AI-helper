@@ -42,6 +42,44 @@ class KnowledgeBaseTest {
         Files.createDirectories(langDir);
     }
 
+    @Test
+    void layoutMigratesLegacyDocsAndPreservesWorkflow() throws IOException {
+        Path legacy = tempRoot.resolve("basic_info_en");
+        Files.createDirectories(legacy);
+        Files.writeString(legacy.resolve("custom.md"), "User documentation");
+        Files.writeString(tempRoot.resolve("workflow.txt"), "Custom workflow");
+        knowledgeBase.ensureLayout();
+        knowledgeBase.ensureLayout();
+        assertTrue(Files.isDirectory(tempRoot.resolve("structure")));
+        assertEquals("User documentation", Files.readString(tempRoot.resolve("info/custom.md")));
+        assertEquals("Custom workflow", Files.readString(tempRoot.resolve("workflow.txt")));
+        assertFalse(Files.exists(legacy));
+        assertEquals(1, knowledgeBase.loadDocs().size());
+    }
+
+    @Test
+    void promptContextReloadsWorkflowAndNestedFiles() throws IOException {
+        knowledgeBase.ensureLayout();
+        assertEquals("", Files.readString(tempRoot.resolve("workflow.txt")));
+        Files.writeString(tempRoot.resolve("workflow.txt"), "First workflow 中文");
+        Path nested = tempRoot.resolve("structure/houses");
+        Files.createDirectories(nested);
+        Files.writeString(nested.resolve("house.txt"), "Structure body must not be injected");
+        String first = knowledgeBase.buildPromptContext();
+        assertTrue(first.contains("First workflow 中文"));
+        assertTrue(first.contains("info/"));
+        assertTrue(first.contains("structure/"));
+        assertTrue(first.contains("houses/"));
+        assertTrue(first.contains("house.txt"));
+        assertFalse(first.contains("Structure body must not be injected"));
+        Files.writeString(tempRoot.resolve("workflow.txt"), "Updated workflow");
+        Files.writeString(nested.resolve("new.md"), "New body");
+        String updated = knowledgeBase.buildPromptContext();
+        assertTrue(updated.contains("Updated workflow"));
+        assertFalse(updated.contains("First workflow"));
+        assertTrue(updated.contains("new.md"));
+    }
+
     private void writeDoc(String fileName, String content) throws IOException {
         Files.writeString(langDir.resolve(fileName), content);
     }

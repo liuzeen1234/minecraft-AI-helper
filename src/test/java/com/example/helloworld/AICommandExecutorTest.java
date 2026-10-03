@@ -12,6 +12,37 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class AICommandExecutorTest {
 
+    @org.junit.jupiter.api.io.TempDir
+    java.nio.file.Path knowledgeRoot;
+
+    private org.mockito.MockedStatic<ModPaths> paths;
+
+    @org.junit.jupiter.api.BeforeEach
+    void mockKnowledgePath() {
+        paths = org.mockito.Mockito.mockStatic(ModPaths.class);
+        paths.when(ModPaths::getKnowledgeDir).thenReturn(knowledgeRoot);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void closeKnowledgePath() {
+        paths.close();
+    }
+
+    @Test
+    void testSystemPromptReloadsKnowledgeContextEvenWhenRetrievalDisabled() throws Exception {
+        java.nio.file.Files.createDirectories(knowledgeRoot.resolve("info"));
+        java.nio.file.Files.createDirectories(knowledgeRoot.resolve("structure"));
+        java.nio.file.Files.writeString(knowledgeRoot.resolve("workflow.txt"), "Use verified IDs FIRST");
+        assertTrue(AICommandExecutor.getSystemPrompt().contains("Use verified IDs FIRST"));
+        assertTrue(AICommandExecutor.getSystemPrompt().contains("structure/"));
+        java.nio.file.Files.writeString(knowledgeRoot.resolve("workflow.txt"), "UPDATED workflow");
+        String prompt = AICommandExecutor.getSystemPrompt();
+        assertTrue(prompt.contains("UPDATED workflow"));
+        assertTrue(prompt.contains("Do not invent block IDs or block states."));
+        assertFalse(prompt.contains("Use verified IDs FIRST"));
+    }
+
+
     // ========== 多轮工具循环：游戏操作标签检测 ==========
 
     @Test

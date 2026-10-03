@@ -1366,6 +1366,12 @@ public class AICommandExecutor {
              + "- 典型流程：先 around 探周围地形 → 分析 → 决定建造位置 → （必要时再精查目标区域）→ 用绝对坐标生成蓝图/操作。\n"
              + "- 每次回复最多使用一个 [QUERY_REGION] 标签。\n\n"
              + getCameraShotSection(cameraShotEnabled)
+             + "Knowledge base usage guidelines:\n"
+             + "- Consult info/ for command syntax, valid block IDs and block states.\n"
+             + "- Before building, inspect structure/ in the provided knowledge base folder/file tree for references matching the requested building type, style and purpose. If suitable references exist, read them with [KNOWLEDGE_FILE]structure/relative/path[/KNOWLEDGE_FILE] before designing or generating a blueprint, and use them to guide the build. If no suitable reference exists, proceed with your own design.\n"
+             + "- Read relevant files with [KNOWLEDGE_FILE]relative/path[/KNOWLEDGE_FILE] before using unfamiliar commands or block IDs.\n"
+             + "- Do not invent block IDs or block states. Follow the current Minecraft version.\n\n"
+             + new KnowledgeBase().buildPromptContext()
              + getKnowledgeBaseSection()
              + getKnowledgeFileToolsSection()
              + "建筑入口与地面衔接（重要，避免入口悬空或被埋）：\n"
@@ -1442,7 +1448,7 @@ public class AICommandExecutor {
      * 生成知识库文件浏览工具（[KNOWLEDGE_TREE] / [KNOWLEDGE_FILE]）的说明段落。
      * 与 [KNOWLEDGE] 标签互补：[KNOWLEDGE] 只能按预置文档名检索固定语料，
      * 而这两个工具可以让 AI 直接浏览 knowledge/ 目录下的完整文件/文件夹结构（不限语言子目录、不限扩展名），
-     * 并按 [KNOWLEDGE_TREE] 返回的相对路径读取任意文件的原始正文，覆盖范围更广（如 basic_info_ch/ 下的分类文档）。
+     * 并按 [KNOWLEDGE_TREE] 返回的相对路径读取任意文件的原始正文，覆盖范围更广（如 structure/ 下的结构参考）。
      * 知识库功能关闭时返回空串，不影响正常提示词。
      */
     private static String getKnowledgeFileToolsSection() {

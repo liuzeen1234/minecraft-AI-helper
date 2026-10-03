@@ -1,9 +1,6 @@
 package com.example.helloworld;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,31 +11,12 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * RAG 知识库：管理 ai-helper/knowledge/ 目录下的 Markdown 文档。
- *
- * <p>职责：
- * <ul>
- *   <li>加载知识库子目录（basic_info_en）下的所有 .md 文档；</li>
- *   <li>解析每篇文档的 YAML front matter（title/category/keywords/summary）与正文；</li>
- *   <li>生成不含正文的目录索引，供 system prompt 注入，让 AI 判断是否需要查阅；</li>
- *   <li>按文档名（[KNOWLEDGE] 标签点名）检索正文，并应用 maxDocs/maxChars 上限。</li>
- * </ul>
- *
- * <p>知识库文档只维护英文一份（{@code basic_info_en}），不随 mod 界面语言切换：
- * 知识库是给 AI 检索用的原始资料，AI 具备英文阅读能力，检索到英文正文后仍会按
- * system prompt 中的语言指令用玩家的语言作答，因此不需要为减小 jar 体积而重复
- * 维护中文版知识库。{@code loadDocs(String)}/{@code retrieve(...)} 等方法保留了
- * 可指定语言子目录名的重载，供测试或未来恢复多语言知识库时使用。
- *
- * <p>知识库在每次请求时按需重新加载（文档数量少，直接读盘即可，不做常驻缓存，
- * 方便用户增删文档后无需重启即可生效）。
+ * 管理 knowledge/info/ 下的资料，以及 knowledge/structure/ 下的结构参考。
+ * 每次请求重新读取 workflow.txt 和目录结构，使用户的编辑立即生效。
  */
 public class KnowledgeBase {
 
-    private static final String LANG_DIR_EN = "basic_info_en";
-
-    /** 打包在 jar 内的默认知识库资源根路径，随 manifest.txt 列出各语言目录下的文档相对路径。 */
-    private static final String BUNDLED_RESOURCE_ROOT = "/assets/helloworld/knowledge";
+    private static final String LANG_DIR_EN = "info";
 
     /** 知识库根目录。默认走 {@link ModPaths#getKnowledgeDir()}，测试时可注入临时目录。 */
     private final Path knowledgeRootDir;
@@ -52,84 +30,54 @@ public class KnowledgeBase {
         this.knowledgeRootDir = knowledgeRootDir;
     }
 
-    /**
-     * 返回知识库使用的子目录名。目前固定为英文版（{@code basic_info_en}），
-     * 不随 mod 界面语言切换——见类注释。
-     */
+    /** 按名称检索的资料目录，不随界面语言切换。 */
     public static String currentLangDirName() {
         return LANG_DIR_EN;
     }
 
-    /**
-     * 首次启动释放默认知识库文档到运行目录。
-     *
-     * <p>仅当目标目录（ai-helper/knowledge/basic_info_en/）不存在或为空时才释放，
-     * 已存在内容（包括用户自行修改/新增的文档）不会被覆盖。应在 mod 初始化时调用一次。
-     */
     public static void ensureDefaultDocsReleased() {
-        releaseLangDirIfEmpty(LANG_DIR_EN);
+        new KnowledgeBase().ensureLayout();
     }
 
-    private static void releaseLangDirIfEmpty(String langDirName) {
-        Path targetDir = ModPaths.getKnowledgeDir().resolve(langDirName);
+    /** 创建默认结构；已有工作流程及资料保持原样。 */
+    void ensureLayout() {
         try {
-            if (Files.isDirectory(targetDir)) {
-                try (Stream<Path> existing = Files.list(targetDir)) {
-                    if (existing.findAny().isPresent()) {
-                        return; // 目录已有内容（首次释放过或用户自建），不覆盖
-                    }
-                }
+            Files.createDirectories(knowledgeRootDir);
+            Path info = knowledgeRootDir.resolve("info");
+            Path legacy = knowledgeRootDir.resolve("basic_info_en");
+            if (!Files.exists(info) && Files.isDirectory(legacy)) {
+                Files.move(legacy, info);
             }
-            List<String> relativePaths = readManifest(langDirName);
-            if (relativePaths.isEmpty()) {
-                return;
+            Files.createDirectories(info);
+            Files.createDirectories(knowledgeRootDir.resolve("structure"));
+            Path workflow = knowledgeRootDir.resolve("workflow.txt");
+            if (!Files.exists(workflow)) {
+                Files.writeString(workflow, "",
+                        StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE_NEW);
             }
-            for (String relativePath : relativePaths) {
-                String resourcePath = BUNDLED_RESOURCE_ROOT + "/" + langDirName + "/" + relativePath;
-                try (InputStream in = KnowledgeBase.class.getResourceAsStream(resourcePath)) {
-                    if (in == null) {
-                        HelloWorldMod.LOGGER.warn("默认知识库资源缺失: {}", resourcePath);
-                        continue;
-                    }
-                    Path destFile = targetDir.resolve(relativePath);
-                    Files.createDirectories(destFile.getParent());
-                    Files.copy(in, destFile);
-                } catch (IOException e) {
-                    HelloWorldMod.LOGGER.error("释放知识库文档失败: {}", resourcePath, e);
-                }
-            }
-            HelloWorldMod.LOGGER.info("已释放默认知识库文档到 {} ({} 篇)", targetDir, relativePaths.size());
         } catch (IOException e) {
-            HelloWorldMod.LOGGER.error("释放默认知识库文档失败: {}", targetDir, e);
+            HelloWorldMod.LOGGER.error("初始化知识库目录失败: {}", knowledgeRootDir, e);
         }
     }
 
-    /**
-     * 读取打包在 jar 内的 manifest.txt，列出该语言目录下所有文档的相对路径（每行一个，UTF-8）。
-     * manifest 由构建时一并复制到 knowledge/{langDirName}/manifest.txt，避免运行时在 jar 内递归列目录
-     * （中文子目录名在部分 classpath 实现下不便直接枚举）。
-     */
-    private static List<String> readManifest(String langDirName) {
-        String manifestPath = BUNDLED_RESOURCE_ROOT + "/" + langDirName + "/manifest.txt";
-        List<String> lines = new ArrayList<>();
-        try (InputStream in = KnowledgeBase.class.getResourceAsStream(manifestPath)) {
-            if (in == null) {
-                HelloWorldMod.LOGGER.warn("知识库 manifest 缺失: {}", manifestPath);
-                return lines;
-            }
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    line = line.trim();
-                    if (!line.isEmpty()) {
-                        lines.add(line);
-                    }
-                }
+    /** 每次 AI 请求都读取工作流程全文与完整文件目录，不缓存。 */
+    public String buildPromptContext() {
+        StringBuilder context = new StringBuilder();
+        Path workflow = knowledgeRootDir.resolve("workflow.txt");
+        try {
+            if (Files.isRegularFile(workflow)) {
+                context.append("Knowledge base workflow (workflow.txt):\n")
+                        .append(Files.readString(workflow, StandardCharsets.UTF_8)).append("\n\n");
             }
         } catch (IOException e) {
-            HelloWorldMod.LOGGER.error("读取知识库 manifest 失败: {}", manifestPath, e);
+            HelloWorldMod.LOGGER.error("读取知识库工作流程失败: {}", workflow, e);
         }
-        return lines;
+        String tree = buildTreeText();
+        if (tree != null) {
+            context.append("Knowledge base folder/file structure (paths relative to knowledge/):\n")
+                    .append(tree).append("\n");
+        }
+        return context.toString();
     }
 
     /**
