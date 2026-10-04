@@ -517,6 +517,7 @@ public class StructureBrowserScreen extends Screen {
     private void openPlacementScreen(ListEntry entry, net.minecraft.util.Identifier packet, String relative) {
         String name = entry.name;
         int sx = -1, sy = -1, sz = -1;
+        boolean absoluteBlueprint = false;
         try {
             File file = STRUCTURES_DIR.resolve(entry.fullPath).toFile();
             if (entry.isStructureNbt()) {
@@ -528,6 +529,7 @@ public class StructureBrowserScreen extends Screen {
             } else if (entry.isTxt()) {
                 String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
                 BlueprintData data = BlueprintParser.parse(content);
+                absoluteBlueprint = data.isV3();
                 name = data.getName() != null ? data.getName() : entry.name;
                 if (data.isBlockList()) {
                     sx = data.getSizeX();
@@ -545,7 +547,7 @@ public class StructureBrowserScreen extends Screen {
         } catch (Exception e) {
             // 解析失败：保留文件名作为结构名，尺寸标记为未知
         }
-        this.client.setScreen(new StructurePlacementScreen(this, packet, relative, name, sx, sy, sz));
+        this.client.setScreen(new StructurePlacementScreen(this, packet, relative, name, sx, sy, sz, absoluteBlueprint));
     }
 
     /** 去掉路径开头的指定段（大小写不敏感），若不存在则原样返回。 */

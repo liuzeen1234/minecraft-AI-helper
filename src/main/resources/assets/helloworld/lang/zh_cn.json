@@ -152,6 +152,7 @@
     "placement.size": "§7大小:",
     "placement.size.unknown": "未知",
     "placement.origin": "§e放置原点坐标:",
+    "placement.origin.v3": "§eV3 原点（固定为 0,0,0）:",
     "placement.button.reset": "回到玩家位置",
     "placement.button.place": "确认放置",
     "structurebrowser.button.delete": "删除",

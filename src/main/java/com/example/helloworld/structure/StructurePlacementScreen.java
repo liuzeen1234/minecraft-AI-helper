@@ -19,7 +19,7 @@ import net.minecraft.util.math.BlockPos;
  * <ul>
  *   <li>要放置的结构名</li>
  *   <li>结构大小（X×Y×Z）</li>
- *   <li>放置原点 XYZ 坐标（可编辑，默认值为玩家当前所在位置）</li>
+ *   <li>放置原点 XYZ 坐标（V3 固定为零且不可编辑；其他格式默认玩家位置，可编辑）</li>
  * </ul>
  *
  * <p>点击"放置"后，把相对路径与原点 XYZ 写入对应的 PLACE 网络包发送给服务端。
@@ -33,6 +33,7 @@ public class StructurePlacementScreen extends Screen {
     private final String relativePath;
     /** 展示用的结构名。 */
     private final String structureName;
+    private final boolean absoluteBlueprint;
     /** 结构尺寸，任一维为负表示未知。 */
     private final int sizeX, sizeY, sizeZ;
 
@@ -45,12 +46,13 @@ public class StructurePlacementScreen extends Screen {
     private static final int POPUP_HEIGHT = 176;
 
     public StructurePlacementScreen(Screen parent, Identifier placePacket, String relativePath,
-                                    String structureName, int sizeX, int sizeY, int sizeZ) {
+                                    String structureName, int sizeX, int sizeY, int sizeZ, boolean absoluteBlueprint) {
         super(Text.literal(com.example.helloworld.I18n.tr("placement.title")));
         this.parent = parent;
         this.placePacket = placePacket;
         this.relativePath = relativePath;
         this.structureName = structureName;
+        this.absoluteBlueprint = absoluteBlueprint;
         this.sizeX = sizeX;
         this.sizeY = sizeY;
         this.sizeZ = sizeZ;
@@ -66,8 +68,8 @@ public class StructurePlacementScreen extends Screen {
         int fieldLeft = popLeft + 20;
         int contentW = POPUP_WIDTH - 40;
 
-        // 默认原点 = 玩家当前所在位置
-        BlockPos origin = (this.client != null && this.client.player != null)
+        // V3 默认世界原点；其他格式默认玩家位置
+        BlockPos origin = (!absoluteBlueprint && this.client != null && this.client.player != null)
                 ? this.client.player.getBlockPos()
                 : BlockPos.ORIGIN;
 
@@ -81,29 +83,34 @@ public class StructurePlacementScreen extends Screen {
         xField = new TextFieldWidget(this.textRenderer, x0, coordY, fieldW, 18, Text.literal("X"));
         xField.setText(Integer.toString(origin.getX()));
         xField.setMaxLength(12);
+        xField.setEditable(!absoluteBlueprint);
         this.addDrawableChild(xField);
 
         int y0 = x0 + fieldW + gap + labelW;
         yField = new TextFieldWidget(this.textRenderer, y0, coordY, fieldW, 18, Text.literal("Y"));
         yField.setText(Integer.toString(origin.getY()));
         yField.setMaxLength(12);
+        yField.setEditable(!absoluteBlueprint);
         this.addDrawableChild(yField);
 
         int z0 = y0 + fieldW + gap + labelW;
         zField = new TextFieldWidget(this.textRenderer, z0, coordY, fieldW, 18, Text.literal("Z"));
         zField.setText(Integer.toString(origin.getZ()));
         zField.setMaxLength(12);
+        zField.setEditable(!absoluteBlueprint);
         this.addDrawableChild(zField);
 
         // "回到玩家位置" 按钮
         int resetY = coordY + 26;
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.literal(com.example.helloworld.I18n.tr("placement.button.reset")),
-                button -> resetToPlayer())
-                .dimensions(fieldLeft, resetY, contentW, 18).build());
+        if (!absoluteBlueprint) {
+            this.addDrawableChild(ButtonWidget.builder(
+                    Text.literal(com.example.helloworld.I18n.tr("placement.button.reset")),
+                    button -> resetToPlayer())
+                    .dimensions(fieldLeft, resetY, contentW, 18).build());
+        }
 
         // 放置按钮
-        int placeY = resetY + 24;
+        int placeY = absoluteBlueprint ? resetY : resetY + 24;
         this.addDrawableChild(ButtonWidget.builder(
                 Text.literal(com.example.helloworld.I18n.tr("placement.button.place")),
                 button -> doPlace())
@@ -126,7 +133,7 @@ public class StructurePlacementScreen extends Screen {
         }
     }
 
-    /** 解析坐标输入，非法时回退为玩家当前对应坐标。 */
+    /** 解析坐标输入，非法时回退为默认原点对应坐标。 */
     private int parseCoord(TextFieldWidget field, int fallback) {
         try {
             return Integer.parseInt(field.getText().trim());
@@ -136,12 +143,12 @@ public class StructurePlacementScreen extends Screen {
     }
 
     private void doPlace() {
-        BlockPos playerPos = (this.client != null && this.client.player != null)
+        BlockPos playerPos = (!absoluteBlueprint && this.client != null && this.client.player != null)
                 ? this.client.player.getBlockPos()
                 : BlockPos.ORIGIN;
-        int x = parseCoord(xField, playerPos.getX());
-        int y = parseCoord(yField, playerPos.getY());
-        int z = parseCoord(zField, playerPos.getZ());
+        int x = absoluteBlueprint ? 0 : parseCoord(xField, playerPos.getX());
+        int y = absoluteBlueprint ? 0 : parseCoord(yField, playerPos.getY());
+        int z = absoluteBlueprint ? 0 : parseCoord(zField, playerPos.getZ());
 
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(relativePath);
@@ -186,7 +193,7 @@ public class StructurePlacementScreen extends Screen {
 
         // 原点标签
         context.drawTextWithShadow(this.textRenderer,
-                Text.literal(com.example.helloworld.I18n.tr("placement.origin")),
+                Text.literal(com.example.helloworld.I18n.tr(absoluteBlueprint ? "placement.origin.v3" : "placement.origin")),
                 textLeft, popTop + 66, 0xFFFFFF);
 
         // 坐标轴标签（X/Y/Z 紧贴各输入框左侧）

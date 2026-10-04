@@ -1,10 +1,10 @@
 # AI Builder 用户手册
 
-> 版本 1.5.0 | Minecraft 1.20.4 | Fabric Mod
+> 版本 1.6.0 | Minecraft 1.20.4 | Fabric Mod
 
 ## 安装与环境要求
 
-需要 Minecraft 1.20.4、Fabric Loader 0.15.0 或更高版本、Java 17 或更高版本，以及 Fabric API。安装依赖后，将 `ai-builder-1.5.0.jar` 放入 `.minecraft/mods/`，启动游戏并按 `K`。
+需要 Minecraft 1.20.4、Fabric Loader 0.15.0 或更高版本、Java 17 或更高版本，以及 Fabric API。安装依赖后，将 `ai-builder-1.6.0.jar` 放入 `.minecraft/mods/`，启动游戏并按 `K`。
 
 ## 首次配置
 
@@ -16,7 +16,7 @@
 /aiconfig model 你的模型名称
 ```
 
-也可按 `K` → **AI 聊天设置**。Mod 支持 OpenAI 兼容接口和 Anthropic Messages 接口。`api_format=auto` 会根据地址自动选择格式；需要时直接编辑配置文件为 `openai` 或 `anthropic`，再执行 `/aiconfig reload`。
+也可按 `K` → **AI 聊天设置** → **AI API 设置**。Mod 支持 OpenAI 兼容接口和 Anthropic Messages 接口。`api_format=auto` 会根据地址自动选择格式；需要时直接编辑配置文件为 `openai` 或 `anthropic`，再执行 `/aiconfig reload`。
 
 ## 快捷键
 
@@ -71,7 +71,7 @@
 
 AI 可放置、填充或清除方块，给予物品，生成实体，设置时间/天气，生成/放置蓝图，还能主动查询指定区域的地形（`[QUERY_REGION]`）。填充或清除单次建议不超过约 10,000 方块（无硬性限制，超出可能影响服务器性能），给予最多 64 件物品，生成最多 20 个实体，单次地形查询建议不超过约 30,000 方块体积。`execute_command` 不会自动执行任何命令——AI 只会把建议的命令文本预填到你的聊天输入框，需要你自己确认后手动按回车才会发送，真正执行时的权限完全由你自己当前的游戏权限决定。
 
-蓝图坐标为相对坐标：X 向东、Y 向上、Z 向南，原点在玩家脚下。支持 V1 和 MCBLUEPRINT v2 TXT 蓝图，且支持自定义放置原点（相对玩家朝向偏移或绝对坐标），放置前会弹出确认界面供你编辑原点坐标。
+V1/V2 蓝图坐标为相对坐标：X 向东、Y 向上、Z 向南，原点在玩家脚下。支持 V1 和 MCBLUEPRINT v2 TXT 蓝图，且支持自定义放置原点（相对玩家朝向偏移或绝对坐标），放置前会弹出确认界面供你编辑原点坐标。
 
 ### RAG 知识库
 
@@ -79,11 +79,13 @@ AI 可放置、填充或清除方块，给予物品，生成实体，设置时�
 
 ### AI 权限设置
 
-按 `K` → **AI 权限设置**（从 AI 聊天设置中拆分出的独立页面）可控制：
+按 `K` → **AI 聊天设置** → **AI 权限设置**（从 AI 聊天设置中拆分出的独立页面）可控制：
 
 - **允许 AI 使用原版命令**（`vanilla_commands_enabled`，默认开启）：关闭后 AI 只能使用 mod 自带的具体功能，不会再建议任何原版命令。
 - **工具批准**（`tool_approval_mode`，新安装默认 `as_needed`）：点击在「无需批准 / 按需批准 / 均需批准」之间循环切换。按需模式下只读工具免批准，修改状态、蓝图和摄像机截图需要批准；均需模式下只读工具也要批准。原版命令在所有模式下均预填聊天框，由玩家手动按回车执行。批准请求 60 秒未处理自动取消。旧确认开关关闭映射为无需批准，开启映射为均需批准。
 - **最大工具调用轮数**（原聊天设置中的 `max_tool_rounds`，现迁移到本页面）：控制多轮 agentic 工具调用循环的上限。
+
+摄像机截图（`camera_shot_enabled`，默认开启）可在 AI 权限设置中独立控制。AI 使用 `[CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT]` 从指定世界坐标与视角截图，用于视觉自查；此开关独立于发送消息时的 `screenshot_enabled`。同一页面的**打开资料库文件夹**按钮会打开当前游戏实例的 `ai-helper/knowledge/`（开发客户端为 `run/ai-helper/knowledge/`）。
 
 ### 统一结构浏览器
 
@@ -91,7 +93,7 @@ AI 可放置、填充或清除方块，给予物品，生成实体，设置时�
 
 - `ai-helper/structures/nbts/` 中的 `.nbt`；
 - `ai-helper/structures/litematic/` 中的 `.litematic`；
-- `ai-helper/structures/txts/` 中的 V1/V2 `.txt` 蓝图。
+- `ai-helper/structures/txts/` 中的 V1/V2/V3 `.txt` 蓝图。
 
 NBT/Litematica 放置会跳过 `air` 和 `structure_void`，保留方块状态、方块实体数据和结构实体，并转换旧格式告示牌数据。AI 生成的 TXT 蓝图保存到 `ai-helper/structures/txts/ai-generated/`。
 
@@ -128,8 +130,9 @@ NBT/Litematica 放置会跳过 `air` 和 `structure_void`，保留方块状态�
 | `max_tool_rounds` | `3` | 多轮工具调用循环的最大轮数，0=禁用多轮 |
 | `vanilla_commands_enabled` | `true` | 是否允许 AI 使用原版命令（`execute_command`） |
 | `tool_approval_mode` | `as_needed` | `never` 无需批准、`as_needed` 按需批准、`always` 均需批准；原版命令仍由玩家手动执行 |
+| `camera_shot_enabled` | `true` | 是否允许 AI 摄像机截图自查，独立于消息截图 |
 | `api_format` | `auto` | `auto`、`openai` 或 `anthropic` |
-| `rag_enabled` | `true` | 是否启用知识库检索（`[KNOWLEDGE]` 标签） |
+| `rag_enabled` | `true` | 是否启用资料读取与目录查询（`[KNOWLEDGE]`、`[KNOWLEDGE_TREE]`、`[KNOWLEDGE_FILE]`） |
 | `rag_max_docs` | `8` | 单次 `[KNOWLEDGE]` 请求最多允许点名的文档数量 |
 | `rag_max_chars` | `20000` | 回填给 AI 的知识库正文总字符数上限 |
 
@@ -223,6 +226,9 @@ NBT/Litematica 放置会跳过 `air` 和 `structure_void`，保留方块状态�
 
 V2 方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# size:`、`# origin:` 为可选元数据；`#` 开头为注释。旧版 V1 字符网格蓝图仍兼容：行向南、列向东，空格表示空气。
 
+V3 使用 `# MCBLUEPRINT v3` 头部，方块行语法与 V2 相同，但坐标为世界绝对坐标；不支持原点平移，`# origin:` 会被忽略。V1/V2 仍使用相对坐标。手动放置 V3 时，放置原点固定为 `0,0,0`，不可编辑，且不显示“回到玩家位置”按钮；始终按文件中的世界绝对坐标放置。
+
+
 ## 文件目录
 
 ```text
@@ -234,10 +240,14 @@ V2 方块行格式为 `x,y,z   方块ID   [属性=值 ...]`。`# name:`、`# siz
 │   │   ├── litematic/
 │   │   └── txts/
 │   │       └── ai-generated/
+│   ├── knowledge/
+│   │   ├── info/
+│   │   ├── structure/
+│   │   └── workflow.txt
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.5.0.jar
+└── mods/ai-builder-1.6.0.jar
 ```
 
 所有结构目录均支持任意深度的子文件夹。

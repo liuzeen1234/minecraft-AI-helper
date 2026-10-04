@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.6.0
+
+- **Manual V3 placement** — Locks the origin to `0,0,0`, disables editing and removes the Reset to Player button. Placement always uses absolute world coordinates.
+
+### New Features
+
+- **Three-state tool approval** — Added `tool_approval_mode=never|as_needed|always`, defaulting to `as_needed` for new installations. Queries, searches and knowledge reads run directly; state changes, blueprints and camera shots require approval. `always` also covers read-only tools. Legacy `confirm_before_execute_enabled=false/true` migrates to `never/always`. Vanilla command suggestions always require manual submission from chat.
+- **Camera shots for visual inspection** — The AI can use `[CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT]` to capture a specified viewpoint. Added `camera_shot_enabled` (on by default), independent of message screenshots.
+- **MCBLUEPRINT v3** — Supports absolute world coordinates with V2 block-line syntax. `# origin:` translation is unsupported; V1/V2 retain relative coordinates.
+- **Knowledge browsing and file reads** — Added `[KNOWLEDGE_TREE]` and `[KNOWLEDGE_FILE]` tools and an Open Knowledge Folder button in permission settings.
+
+### Improvements & Compatibility Changes
+
+- **User-maintained knowledge base** — Removed bundled encyclopedia documents. The layout is now `info/`, `structure/`, and an initially empty `workflow.txt`. Every AI request reloads the complete workflow and directory tree without a restart. Legacy `basic_info_en/` migrates when `info/` is absent. Workflow and tree injection apply regardless of `rag_enabled`; retrieval tools still follow that setting.
+- **Command entry points** — Provides `/aiblueprints`, `/ainew`, `/aistop`, and `/aireject`. Removed `/ainbt`; structure operations use the GUI browser. `/click` moved to the optional debug-menu mod.
+- **Simplified settings** — Removed API key length checks and the Mod Language information screen. Display language continues to follow Minecraft.
+
+### Fixes
+
+- Fixed tool-round counters resetting after approval, conversations failing to resume after read-only tool rejection or timeout, and tool parsing/resumption in approval flows.
+- Fixed a race between `/aistop` and new requests that could revive canceled requests.
+- Fixed camera shots incorrectly using the message screenshot toggle; manually executed AI command suggestions can return execution feedback to resume the AI conversation.
+- Corrected air ordering, truncated counts and ignored-type counts in selection analysis; improved debug-menu option registration.
+
+### Documentation
+
+- Synced Chinese/English user manuals, in-game manuals, README and version metadata, including configuration, knowledge folders, camera shots, V3 coordinates and actual settings navigation.
+
+---
+
 ## v1.5.0
 
 ### New Features

@@ -1,10 +1,10 @@
 # AI Builder User Manual
 
-> Version 1.5.0 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.6.0 | Minecraft 1.20.4 | Fabric Mod
 
 ## Installation
 
-Requires Minecraft 1.20.4, Fabric Loader 0.15.0 or later, Java 17 or later, and Fabric API. Install those dependencies, place `ai-builder-1.5.0.jar` in `.minecraft/mods/`, then start the game and press `K`.
+Requires Minecraft 1.20.4, Fabric Loader 0.15.0 or later, Java 17 or later, and Fabric API. Install those dependencies, place `ai-builder-1.6.0.jar` in `.minecraft/mods/`, then start the game and press `K`.
 
 ## Initial Setup
 
@@ -16,7 +16,7 @@ The first launch creates `ai-helper/config/ai-builder.properties`. Set your API 
 /aiconfig model YOUR_MODEL_NAME
 ```
 
-You can also press `K` → **AI Chat Settings**. OpenAI-compatible APIs and Anthropic Messages APIs are supported. `api_format=auto` selects a format from the endpoint; edit the config to explicitly use `openai` or `anthropic`, then run `/aiconfig reload` when necessary.
+You can also press `K` → **AI Chat Settings** → **AI API Settings**. OpenAI-compatible APIs and Anthropic Messages APIs are supported. `api_format=auto` selects a format from the endpoint; edit the config to explicitly use `openai` or `anthropic`, then run `/aiconfig reload` when necessary.
 
 ## Keybindings
 
@@ -71,7 +71,7 @@ Open **AI Chat** with `K`, or use `/ai <message>`. The chat UI supports up to 20
 
 AI can place, fill, or clear blocks; give items; summon entities; set time/weather; create/place blueprints; and proactively query the terrain of a region (`[QUERY_REGION]`). A fill or clear operation is recommended to stay under about 10,000 blocks (not hard-enforced; going far beyond this may affect server performance), `give` is limited to 64 items, entity spawning to 20 entities, and a single terrain query to about 30,000 blocks in volume. `execute_command` never executes anything automatically — the AI can only pre-fill a suggested command into your chat input box; you must review it and press Enter yourself, and whatever permission you already have in-game is what applies.
 
-Blueprint coordinates are relative: X east, Y up, Z south, with the origin at player feet. V1 and MCBLUEPRINT v2 TXT blueprints are supported, and blueprints support a custom placement origin (relative to facing direction, or absolute); a confirmation screen lets you edit the origin before placement.
+V1/V2 blueprint coordinates are relative: X east, Y up, Z south, with the origin at player feet. V1 and MCBLUEPRINT v2 TXT blueprints are supported, and blueprints support a custom placement origin (relative to facing direction, or absolute); a confirmation screen lets you edit the origin before placement.
 
 ### RAG Knowledge Base
 
@@ -79,11 +79,13 @@ The knowledge base at `ai-helper/knowledge/` contains `info/` (reference documen
 
 ### AI Permission Settings
 
-Press `K` → **AI Permission Settings** (split out from AI Chat Settings) to control:
+Press `K` → **AI Chat Settings** → **AI Permission Settings** (split out from AI Chat Settings) to control:
 
 - **Allow AI to Use Vanilla Commands** (`vanilla_commands_enabled`, on by default): when off, the AI can only use the mod's built-in features and will not suggest any vanilla commands.
 - **Tool Approval** (`tool_approval_mode`, defaults to `as_needed` for new installations): cycles through No Approval / As Needed / Always. As Needed approves changes, blueprints and camera shots; read-only tools run directly. Always also approves read-only tools. Vanilla command suggestions always remain pre-filled in chat for manual execution. Requests expire after 60 seconds. Legacy confirmation off maps to No Approval; on maps to Always.
 - **Max tool-call rounds** (the `max_tool_rounds` setting, moved here from chat settings): caps the multi-round agentic tool-call loop.
+
+Camera shots (`camera_shot_enabled`, on by default) have an independent toggle in AI Permission Settings. The AI uses `[CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT]` to capture a view from specified world coordinates and angles for visual inspection; this is separate from `screenshot_enabled` for message screenshots. **Open Knowledge Folder** on the same screen opens this game instance’s `ai-helper/knowledge/` (`run/ai-helper/knowledge/` for the development client).
 
 ### Unified Structure Browser
 
@@ -91,7 +93,7 @@ Open **Load Structures** from the `K` menu to browse, search, delete, and place 
 
 - `ai-helper/structures/nbts/` for `.nbt` files;
 - `ai-helper/structures/litematic/` for `.litematic` files;
-- `ai-helper/structures/txts/` for V1/V2 `.txt` blueprints.
+- `ai-helper/structures/txts/` for V1/V2/V3 `.txt` blueprints.
 
 NBT/Litematica placement skips `air` and `structure_void` and preserves block states, block-entity data, and structure entities. Legacy sign data is converted to the 1.20+ format. AI-generated TXT blueprints are saved in `ai-helper/structures/txts/ai-generated/`.
 
@@ -128,12 +130,13 @@ Configuration file: `ai-helper/config/ai-builder.properties`
 | `max_tool_rounds` | `3` | Max rounds for the multi-round tool-call loop; 0 disables multi-round tool calls |
 | `vanilla_commands_enabled` | `true` | Whether the AI is allowed to use vanilla commands (`execute_command`) |
 | `tool_approval_mode` | `as_needed` | `never`, `as_needed`, or `always`; vanilla commands remain manually executed |
+| `camera_shot_enabled` | `true` | Allow AI camera shots, independently of message screenshots |
 | `api_format` | `auto` | `auto`, `openai`, or `anthropic` |
-| `rag_enabled` | `true` | Whether knowledge base retrieval (`[KNOWLEDGE]` tag) is enabled |
+| `rag_enabled` | `true` | Whether knowledge retrieval tools (`[KNOWLEDGE]`, `[KNOWLEDGE_TREE]`, `[KNOWLEDGE_FILE]`) is enabled |
 | `rag_max_docs` | `8` | Max documents nameable in a single `[KNOWLEDGE]` request |
 | `rag_max_chars` | `20000` | Total character limit for knowledge base content returned to the AI |
 
-**AI Chat Settings** controls the screenshot, context, web-search, and streaming toggles. **AI Permission Settings** controls the vanilla-commands toggle, confirm-before-execute toggle, and max tool-call rounds. The API settings screen edits the endpoint, key, model, and Tavily key. Run `/aiconfig reload` after manual edits. The UI display language has no config option; it automatically follows the current Minecraft game language.
+**AI Chat Settings** controls the screenshot, context, web-search, and streaming toggles. **AI Permission Settings** controls the vanilla-commands toggle, tool approval mode, and max tool-call rounds. The API settings screen edits the endpoint, key, model, and Tavily key. Run `/aiconfig reload` after manual edits. The UI display language has no config option; it automatically follows the current Minecraft game language.
 
 ## Blueprint Format
 
@@ -223,6 +226,9 @@ Configuration file: `ai-helper/config/ai-builder.properties`
 
 A V2 block line is `x,y,z   block_id   [key=value ...]`. `# name:`, `# size:`, and `# origin:` are optional metadata; lines beginning with `#` are comments. Legacy V1 character-grid blueprints remain compatible: rows go south, columns go east, and spaces mean air.
 
+V3 uses a `# MCBLUEPRINT v3` header and the same block-line syntax as V2, but coordinates are absolute world coordinates. Origin translation is unsupported and `# origin:` is ignored. V1/V2 retain relative coordinates. Manual V3 placement locks the origin to `0,0,0`, disables coordinate editing and hides the Reset to Player button. Blocks always use the absolute world coordinates in the file.
+
+
 ## File Structure
 
 ```text
@@ -234,10 +240,14 @@ A V2 block line is `x,y,z   block_id   [key=value ...]`. `# name:`, `# size:`, a
 │   │   ├── litematic/
 │   │   └── txts/
 │   │       └── ai-generated/
+│   ├── knowledge/
+│   │   ├── info/
+│   │   ├── structure/
+│   │   └── workflow.txt
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.5.0.jar
+└── mods/ai-builder-1.6.0.jar
 ```
 
 All structure directories support arbitrarily nested folders.

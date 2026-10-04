@@ -208,3 +208,37 @@ run/ai-helper/structures/txts/codex_selection_test_20261001.txt
 界面截图：`run/screenshots/approval-never.png`、`approval-as-needed.png`、`approval-always.png`。审批截图：`approval-request-1.png`（按需批准摄像机）、`approval-always-readonly.png`（均需批准只读工具）。结果截图：`approval-never-result.png`、`approval-needed-result.png`、`approval-always-result.png`。
 
 本次实测没有扩展或修复同轮多工具调度。测试在世界中留下少量方块、物品、实体和测试蓝图文件，并修改了时间和天气；最后已停止 AI 请求并清理待批准请求，客户端保留运行。
+
+
+## 2026-10-04 PrismLauncher 1.6.0 / V3 放置实测
+
+新建独立实例 `AI-Builder-1.6.0-Test`（显示名“AI Builder 1.6.0 测试”），使用 Minecraft 1.20.4、Fabric Loader 0.19.3、Java 17，加载 AI Builder 1.6.0、Fabric API 0.97.3+1.20.4、M1 0.17.5+1.20 和 debug-menu 1.0.2。Prism 的“添加实例”界面触发崩溃，因此按本机实例格式创建独立目录，再通过 Prism CLI 启动。启动前确认没有 Minecraft 客户端运行。
+
+使用 `run/saves/新的世界` 的副本 `V3_Test_Copy`，未复制 API 配置或测试 AI 网络请求。通过 M1 操作，结果如下：
+
+- V3 手动放置界面三个坐标均为 `0`，显示只读样式，没有“回到玩家位置”按钮。截图：新实例 `minecraft/screenshots/prism-v3-locked-origin.png`。
+- M1 的 `type` 直接调用设置文本方法，可绕过普通输入的只读限制；将显示值设置为 `123,124,125` 后提交，服务端日志仍显示原点 `0,0,0`。
+- 保存后直接解析存档区域 NBT，确认 V3 测试金块位于文件指定的世界坐标 `(0,100,0)`。
+- V2 默认原点为玩家方块位置 `(-53,77,-105)`，保留坐标编辑及“回到玩家位置”按钮，重置功能正常。截图：新实例 `minecraft/screenshots/prism-v2-player-origin.png`。
+- V2 自定义原点 `10,100,10` 放置后，存档 NBT 确认测试石头位于 `(10,100,10)`。
+
+保存退出世界的 M1 调用因等待超过 15 秒返回超时；应以随后界面及存档结果为准，不把接口超时直接判定为保存失败。客户端在退出世界后仍卡住，后续 M1 命令超时；已确认两个方块保存成功，随后发送 SIGTERM 结束测试进程。两张证据截图亦复制到项目 `run/screenshots/`。本次未测试普通键盘输入、AI API、NBT/Litematic 放置或其他功能。
+
+
+## 2026-10-04 Prism 实例 AI 聊天与建造实测
+
+沿用 `AI-Builder-1.6.0-Test` 和 `V3_Test_Copy`。启动前确认无 Minecraft 客户端运行。经用户明确同意，仅从开发实例复制 API 地址、密钥、模型和接口格式至新实例；其他设置保持不变（按需批准、最大工具轮数 3）。未在输出或文档中记录密钥。
+
+首次调用失败：API 地址 `127.0.0.1:3010` 拒绝连接。启动本机已有 codex2api 项目的服务后恢复；仅绑定本机回环地址，使用现有 API 密钥鉴权，临时数据位于 `/tmp/ai-builder-prism-api-test`。
+
+实测结果：
+
+- `/ai` 纯文本请求收到“Prism聊天测试成功。”，日志确认流收到 `[DONE]` 正常结束。
+- 从 `K` → AI 聊天页面填写消息并点击发送，成功收到“已记住橡木星桥。”；后续请求准确返回“橡木星桥”，验证界面发送、流式响应与跨请求上下文。
+- 请求 AI 生成并实际放置名为 `prism_ai_arch_20261004` 的 V3 橡木门框。批准前 M1 扫描未发现橡木木板；收到 7 方块蓝图批准请求。
+- 通过 `/aiconfirm req1` 批准后，日志记录放置 7 个方块，AI 自动续跑并回复“橡木门框已建造完成，共放置7个橡木木板。”。曾误用 `/aiconfirm 1`，被正确拒绝，未执行操作。
+- M1 体积扫描确认恰好 7 个 `oak_planks`：`(-50,80,-100)`、`(-50,81,-100)`、`(-50,82,-100)`、`(-48,80,-100)`、`(-48,81,-100)`、`(-48,82,-100)`、`(-49,82,-100)`，全部符合请求。
+- 生成文件位于新实例 `minecraft/ai-helper/structures/txts/ai-generated/prism_ai_arch_20261004.txt`，文件头为 V3，7 行方块坐标与实际扫描一致。
+- 实际建造截图已复制到项目 `run/screenshots/prism-ai-arch-built.png`。结束时暂停世界触发保存，客户端和本机 API 服务保留运行供检查。
+
+范围：验证基础聊天、聊天界面发送、上下文、V3 蓝图生成/批准/放置与批准后续跑；未覆盖大型建筑、所有 ACTION 工具、联网搜索或截图视觉工具。

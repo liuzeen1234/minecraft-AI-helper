@@ -152,6 +152,7 @@
     "placement.size": "§7Size:",
     "placement.size.unknown": "Unknown",
     "placement.origin": "§eOrigin Coordinates:",
+    "placement.origin.v3": "§eV3 Origin (locked to 0,0,0):",
     "placement.button.reset": "Reset to Player",
     "placement.button.place": "Confirm Place",
     "structurebrowser.button.delete": "Delete",

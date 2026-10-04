@@ -316,7 +316,7 @@ public class HelloWorldMod implements ModInitializer {
                     String content = java.nio.file.Files.readString(file.toPath(), java.nio.charset.StandardCharsets.UTF_8);
                     com.example.helloworld.blueprint.BlueprintData data =
                             com.example.helloworld.blueprint.BlueprintParser.parse(content);
-                    // V3 坐标本身即世界绝对坐标，忽略放置界面传入的自定义原点，固定为世界坐标原点
+                    // V3 固定使用世界原点，服务端也忽略客户端传来的坐标。
                     net.minecraft.util.math.BlockPos origin = data.isV3()
                             ? net.minecraft.util.math.BlockPos.ORIGIN
                             : (hasOrigin

@@ -1,6 +1,6 @@
 # AI Builder User Manual
 
-> Version 1.5.0 | Minecraft 1.20.4 | Fabric Mod
+> Version 1.6.0 | Minecraft 1.20.4 | Fabric Mod
 
 ## Installation & Requirements
 
@@ -12,7 +12,7 @@
 | Prerequisite mod | Fabric API (required) |
 
 1. Install Fabric Loader and Fabric API.
-2. Drop `ai-builder-1.5.0.jar` into `.minecraft/mods/`.
+2. Drop `ai-builder-1.6.0.jar` into `.minecraft/mods/`.
 3. Launch the game and press `K` to open the AI Builder settings.
 
 ## First-Time Setup
@@ -25,7 +25,7 @@ On first launch, the mod creates `ai-helper/config/ai-builder.properties`. You m
 /aiconfig model your model name
 ```
 
-You can also press `K` → **AI Chat Settings** for a visual configuration. The mod supports OpenAI-compatible interfaces and the Anthropic Messages interface. The default `api_format=auto` picks the format automatically based on the URL; if needed, edit the config file directly to specify `openai` or `anthropic`, then run `/aiconfig reload`.
+You can also press `K` → **AI Chat Settings** → **AI API Settings** for a visual configuration. The mod supports OpenAI-compatible interfaces and the Anthropic Messages interface. The default `api_format=auto` picks the format automatically based on the URL; if needed, edit the config file directly to specify `openai` or `anthropic`, then run `/aiconfig reload`.
 
 ## Keybindings
 
@@ -78,7 +78,7 @@ Press `K` → **AI Chat**, or use `/ai <message>`. The chat screen supports up t
 
 The AI can place, fill, or clear blocks, give items, spawn entities, set time/weather, generate/place blueprints, and proactively query the terrain of a region (`[QUERY_REGION]`). A single fill or clear is recommended to stay under about 10,000 blocks (not hard-enforced; going far beyond this may affect server performance), giving is limited to 64 items, spawning is limited to 20 entities, and a single terrain query is recommended to stay under about 30,000 blocks in volume (split larger areas into multiple queries). `execute_command` never executes anything automatically — the AI can only pre-fill a suggested command into your chat input box; you must review it yourself and press Enter to actually send it, and whatever permission you already have in-game is what applies. Do not describe it as able to run commands automatically or with elevated permissions.
 
-Blueprint coordinates are relative: X is east, Y is up, Z is south, and the origin is at the player's feet. Both V1 and MCBLUEPRINT v2 TXT formats can be loaded, and blueprints support a custom placement origin (relative to the player's facing direction, or an absolute coordinate); a confirmation screen lets you edit the origin before placement.
+V1/V2 blueprint coordinates are relative: X is east, Y is up, Z is south, and the origin is at the player's feet. V1, MCBLUEPRINT v2 and v3 TXT formats can be loaded, and blueprints support a custom placement origin (relative to the player's facing direction, or an absolute coordinate); a confirmation screen lets you edit the origin before placement.
 
 ### RAG Knowledge Base
 
@@ -86,13 +86,15 @@ The knowledge base at `ai-helper/knowledge/` contains `info/` (reference documen
 
 ### AI Permission Settings
 
-Press `K` → **AI Permission Settings** (split out from the AI Chat Settings screen into its own page) to control:
+Press `K` → **AI Chat Settings** → **AI Permission Settings** (split out from the AI Chat Settings screen into its own page) to control:
 
 - **Allow AI to Use Vanilla Commands** (`vanilla_commands_enabled`, on by default): when off, the system prompt no longer includes `execute_command` instructions, so the AI can only use the mod's built-in features (placing blocks, giving items, spawning entities, blueprints, etc.); even if the AI still tries to generate that instruction, it is rejected outright.
-- **Require Confirmation Before Execution** (`confirm_before_execute_enabled`, off by default): when on, before the AI uses a mod-specific feature (placing blocks, building blueprints, terrain queries, web search, web scraping, etc.) it first sends a [Yes]/[No] confirmation message in chat; multiple actions in the same round are merged into a single batch confirmation, and unconfirmed requests are treated as rejected and automatically canceled after 60 seconds. Just click [Yes]/[No] to confirm or reject — no command input needed; to reject all pending requests at once, use `/aireject`.
+- **Tool Approval** (`tool_approval_mode`, defaults to `as_needed` for new installations): cycles through No Approval / As Needed / Always. As Needed approves changes, blueprints and camera shots; read-only tools run directly. Always also approves read-only tools. Vanilla command suggestions always remain pre-filled in chat for manual execution. Requests expire after 60 seconds. Legacy confirmation off maps to No Approval; on maps to Always.
 - **Max tool-call rounds** (the `max_tool_rounds` setting, moved here from the chat settings screen): caps the multi-round agentic tool-call loop; 0 disables multi-round tool calls.
 
 > Developer note: the [Yes]/[No] chat buttons run commands via `ClickEvent.RUN_COMMAND` — `[Yes]` → `/aiconfirm <requestId>`, `[No]` → `/aireject <requestId>`; the handler calls `PendingActionConfirmation.resolve(...)`. Running `/aireject` with no argument rejects all of the player's pending requests.
+
+Camera shots (`camera_shot_enabled`, on by default) have an independent toggle in AI Permission Settings. The AI uses `[CAMERA_SHOT]x,y,z,yaw,pitch[/CAMERA_SHOT]` to capture a view from specified world coordinates and angles for visual inspection; this is separate from `screenshot_enabled` for message screenshots. **Open Knowledge Folder** on the same screen opens this game instance’s `ai-helper/knowledge/` (`run/ai-helper/knowledge/` for the development client).
 
 ### Unified Structure Browser
 
@@ -100,7 +102,7 @@ Press `K` → **Load Structure** to browse, search, delete, and place the follow
 
 - `ai-helper/structures/nbts/`: standard `.nbt` structures;
 - `ai-helper/structures/litematic/`: `.litematic` structures;
-- `ai-helper/structures/txts/`: V1/V2 `.txt` blueprints.
+- `ai-helper/structures/txts/`: V1/V2/V3 `.txt` blueprints.
 
 NBT/Litematica placement skips `air` and `structure_void`, and preserves block states, block entity data, and structure entities; legacy sign data is converted to the 1.20+ format. AI-generated TXT blueprints are saved to `ai-helper/structures/txts/ai-generated/`.
 
@@ -136,13 +138,14 @@ Config file: `ai-helper/config/ai-builder.properties`
 | `stream_output_enabled` | `true` | Whether to display AI replies incrementally |
 | `max_tool_rounds` | `3` | Max rounds for the multi-round tool-call loop; 0 disables multi-round tool calls |
 | `vanilla_commands_enabled` | `true` | Whether the AI is allowed to use vanilla commands (`execute_command`) |
-| `confirm_before_execute_enabled` | `false` | Whether the player must confirm in chat before the AI executes a mod-specific action |
+| `tool_approval_mode` | `as_needed` | `never`, `as_needed`, or `always`; legacy `confirm_before_execute_enabled` migrates automatically |
+| `camera_shot_enabled` | `true` | Allow AI camera shots, independently of message screenshots |
 | `api_format` | `auto` | `auto`, `openai`, or `anthropic` |
-| `rag_enabled` | `true` | Whether knowledge base retrieval (`[KNOWLEDGE]` tag) is enabled |
+| `rag_enabled` | `true` | Whether knowledge retrieval tools (`[KNOWLEDGE]`, `[KNOWLEDGE_TREE]`, `[KNOWLEDGE_FILE]`) is enabled |
 | `rag_max_docs` | `8` | Max number of documents that can be named in a single `[KNOWLEDGE]` request |
 | `rag_max_chars` | `20000` | Total character limit for knowledge base content returned to the AI |
 
-Press `K` → **AI Chat Settings** to change the screenshot, context, web search, and streaming toggles; `K` → **AI Permission Settings** to change the vanilla-commands toggle, the confirm-before-execute toggle, and the max tool-call rounds; the API settings screen can change the API URL, key, model, and Tavily key. After editing any config manually, use `/aiconfig reload` to apply. The UI display language has no config option; it automatically follows the current Minecraft game language, and `K` → **Mod Language Settings** is now just an informational page.
+Press `K` → **AI Chat Settings** to change the screenshot, context, web search, and streaming toggles; `K` → **AI Chat Settings** → **AI Permission Settings** to change the vanilla-commands toggle, the tool approval mode, and the max tool-call rounds; the API settings screen can change the API URL, key, model, and Tavily key. After editing any config manually, use `/aiconfig reload` to apply. The UI display language has no config option; it automatically follows the current Minecraft game language.
 
 ## Blueprint Format
 
@@ -236,6 +239,9 @@ The following example is based on `run/ai-helper/structures/txts/example2.txt` i
 
 A V2 block line has the format `x,y,z   block_id   [key=value ...]`. `# name:`, `# size:`, and `# origin:` are optional metadata, and lines starting with `#` are comments.
 
+V3 uses a `# MCBLUEPRINT v3` header and the same block-line syntax as V2, but coordinates are absolute world coordinates. Origin translation is unsupported and `# origin:` is ignored. V1/V2 retain relative coordinates. Manual V3 placement locks the origin to `0,0,0`, disables coordinate editing and hides the Reset to Player button. Blocks always use the absolute world coordinates in the file.
+
+
 ## Directory Layout
 
 ```text
@@ -247,10 +253,14 @@ A V2 block line has the format `x,y,z   block_id   [key=value ...]`. `# name:`, 
 │   │   ├── litematic/
 │   │   └── txts/
 │   │       └── ai-generated/
+│   ├── knowledge/
+│   │   ├── info/
+│   │   ├── structure/
+│   │   └── workflow.txt
 │   └── screenshots/
 │       ├── ai_temp.png
 │       └── ai_chat_temp.png
-└── mods/ai-builder-1.5.0.jar
+└── mods/ai-builder-1.6.0.jar
 ```
 
 All structure directories support subfolders at any depth.
